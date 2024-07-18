@@ -1,0 +1,4 @@
+- https://arcprize.org/
+- https://www.kaggle.com/competitions/arc-prize-2024
+- https://www.kaggle.com/code/sebastien/arc-prize-2024-sebhtml/edit
+- https://github.com/sebhtml/Arc-Prize-2024-sebhtml
