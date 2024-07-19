@@ -2,9 +2,15 @@
 # Author: Sebastien Boisvert <sebhtml@protonmail.com>
 # Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
-# - TODO use CUDA (NVIDIA P100) on Kaggle
+# References
+# - On the Measure of Intelligence
+#   https://arxiv.org/pdf/1911.01547
+# - Addressing the Abstraction and Reasoning Corpus via Procedural Example Generation
+#   https://arxiv.org/pdf/2404.07353
+
+# - TODO add helper function to print 2D grid
 # - TODO model should take in input (input_state, current_state)
-# - TODO read https://arxiv.org/abs/2404.07353
+# - TODO use CUDA (NVIDIA P100) on Kaggle
 # - TODO implement rotations
 # - TODO implement translations
 # - TODO improve stopping criterion
@@ -27,6 +33,7 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 from torch.nn import functional as F
 import os
+import sys
 import itertools
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.308582Z","iopub.execute_input":"2024-07-18T17:58:05.309436Z","iopub.status.idle":"2024-07-18T17:58:05.324028Z","shell.execute_reply.started":"2024-07-18T17:58:05.309403Z","shell.execute_reply":"2024-07-18T17:58:05.322739Z"}}
@@ -48,6 +55,7 @@ import itertools
 # /kaggle/input/arc-prize-2024/sample_submission.json
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.325644Z","iopub.execute_input":"2024-07-18T17:58:05.326104Z","iopub.status.idle":"2024-07-18T17:58:05.336750Z","shell.execute_reply.started":"2024-07-18T17:58:05.326060Z","shell.execute_reply":"2024-07-18T17:58:05.335390Z"}}
+selected_puzzle_id = "3aa6fb7a"
 vision_width = 7
 vision_height = 7
 output_width = 7
@@ -81,20 +89,41 @@ def generate_action_examples(puzzle_example):
             current_state[action_cell] = action_value
     return action_examples
 
-def load_puzzle_train_examples(file_path, problem):
-    f = open(file_path)
-    data = json.load(f)
-    problem_data = data[problem]
-    puzzle_examples = problem_data["train"]
-    puzzle_train_examples = []
+def get_puzzle_solution(venue, puzzle_id):
+    solutions_file = f"/kaggle/input/arc-prize-2024/arc-agi_{venue}_solutions.json"
+    f = open(solutions_file)
+    solutions_data = json.load(f)
+    solution = solutions_data[puzzle_id][0]
+    return solution
+
+def load_puzzle_examples(venue, puzzle_id, example_type):
+    """
+    - venue is "training" or "evaluation" or "test"
+    - example_type is "train" or "test"
+    Note that for the "test" venue, no solutions are provided.
+    """
+    challenges_file = f"/kaggle/input/arc-prize-2024/arc-agi_{venue}_challenges.json"
+    f = open(challenges_file)
+    challenges_data = json.load(f)
+    puzzle_challenges_data = challenges_data[puzzle_id]
+    puzzle_examples = puzzle_challenges_data[example_type]
+
+    puzzle_venue_examples = []
     for puzzle_example in puzzle_examples:
         example_input = puzzle_example["input"]
-        example_output = puzzle_example["output"]
+        example_output = None
+        if venue == "test":
+            pass
+        elif example_type == "train":
+            example_output = puzzle_example["output"]
+        else:
+            example_output = get_puzzle_solution(venue, puzzle_id)
         example_input = list(itertools.chain(*example_input))
         example_output = list(itertools.chain(*example_output))
+
         example = (example_input, example_output)
-        puzzle_train_examples.append(example)
-    return puzzle_train_examples
+        puzzle_venue_examples.append(example)
+    return puzzle_venue_examples
 
 def generate_train_action_examples(puzzle_examples):
     train_examples = []
@@ -252,9 +281,13 @@ model_total_params = sum(p.numel() for p in model.parameters())
 print("Model parameters: " + str(model_total_params))
 optimizer = AdamW(model.parameters(), lr=lr)
 
-puzzle_train_examples = load_puzzle_train_examples("/kaggle/input/arc-prize-2024/arc-agi_training_challenges.json", "3aa6fb7a")
+puzzle_train_examples = load_puzzle_examples("training", selected_puzzle_id, "train")
 train_action_examples = generate_train_action_examples(puzzle_train_examples)
 
+puzzle_test_examples = load_puzzle_examples("training", selected_puzzle_id, "test")
+
+print("puzzle_train_examples")
+print(len(puzzle_train_examples))
 dataset = MyDataset(train_action_examples)
 train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
@@ -302,8 +335,15 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         print(current_state)
     return current_state
 
-puzzle_example_input = puzzle_train_examples[0][0]
-puzzle_example_output = puzzle_train_examples[0][1]
-solve_puzzle_example_auto_regressive(puzzle_example_input, puzzle_example_input)
+puzzle_train_example_input = puzzle_train_examples[0][0]
+puzzle_train_example_output = puzzle_train_examples[0][1]
+output = solve_puzzle_example_auto_regressive(puzzle_train_example_input, puzzle_train_example_input)
 print("Expected output")
-print(puzzle_example_output)
+print(puzzle_train_example_output)
+
+print("test example")
+puzzle_test_example_input = puzzle_test_examples[0][0]
+puzzle_test_example_output = puzzle_test_examples[0][1]
+output = solve_puzzle_example_auto_regressive(puzzle_test_example_input, puzzle_test_example_input)
+print("Expected output")
+print(puzzle_test_example_output)
