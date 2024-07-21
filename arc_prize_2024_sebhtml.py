@@ -312,7 +312,7 @@ for epoch in range(num_epochs):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         grad_l2_norm = get_grad_norm(model)
-        print(f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  loss: {loss}  grad_l2_norm: {grad_l2_norm:.4f}")
+        print(f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  grad_l2_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
         global_step += 1
         
 print("[after training] print_predicted_actions")
