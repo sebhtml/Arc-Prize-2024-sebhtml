@@ -3,17 +3,12 @@
 # Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
 # References
-# - On the Measure of Intelligence
-#   https://arxiv.org/pdf/1911.01547
-# - Addressing the Abstraction and Reasoning Corpus via Procedural Example Generation
-#   https://arxiv.org/pdf/2404.07353
-
-# - TODO add helper function to print 2D grid
+# - TODO output a single output instead of two for cell_row, cell_col, cell_value
 # - TODO model should take in input (input_state, current_state)
+# - TODO improve stopping criterion in auto-regressive AI
 # - TODO use CUDA (NVIDIA P100) on Kaggle
 # - TODO implement rotations
 # - TODO implement translations
-# - TODO improve stopping criterion
 
 # The model predicts (action_cell, action_value) (write <action_value> to cell <action_cell>)
 
@@ -56,10 +51,10 @@ import itertools
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.325644Z","iopub.execute_input":"2024-07-18T17:58:05.326104Z","iopub.status.idle":"2024-07-18T17:58:05.336750Z","shell.execute_reply.started":"2024-07-18T17:58:05.326060Z","shell.execute_reply":"2024-07-18T17:58:05.335390Z"}}
 selected_puzzle_id = "3aa6fb7a"
+puzzle_width = 7
+puzzle_height = 7
 vision_width = 7
 vision_height = 7
-output_width = 7
-output_height = 7
 num_classes = 10
 d_model = 768
 num_heads = 12
@@ -153,7 +148,7 @@ class MyDataset(Dataset):
 
         action_cell = item_output[0]
         action_cell = torch.tensor(action_cell)
-        action_cell = F.one_hot(action_cell, num_classes=output_width * output_height).float()
+        action_cell = F.one_hot(action_cell, num_classes=puzzle_width * puzzle_height).float()
 
         action_value = item_output[1]
         action_value = torch.tensor(action_value)
@@ -217,10 +212,10 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.ln = nn.LayerNorm(normalized_shape=d_model)
 
         self.action_cell_lin = nn.Linear(
-            in_features=output_width * output_height * d_model,
-            out_features=output_width * output_height)
+            in_features=puzzle_width * puzzle_height * d_model,
+            out_features=puzzle_width * puzzle_height)
         self.action_value_lin = nn.Linear(
-            in_features=output_width * output_height * d_model,
+            in_features=puzzle_width * puzzle_height * d_model,
             out_features=num_classes)
         self.action_cell_soft = nn.Softmax(dim=-1)
         self.action_value_soft = nn.Softmax(dim=-1)
@@ -261,18 +256,28 @@ def print_predicted_actions():
         print(inputs.size())
         outputs = model(inputs) 
         for idx in range(len(inputs)):
-            initial_state = inputs[idx].argmax(dim=-1)
+            current_state = inputs[idx].argmax(dim=-1)
             target_action_cell = targets[0][idx].argmax(dim=-1).item()
             target_action_value = targets[1][idx].argmax(dim=-1).item()
             output_action_cell = outputs[0][idx].argmax(dim=-1).item()
             output_action_value = outputs[1][idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
-            print("initial_state: " + str(initial_state))
+            print("current_state")
+            print_puzzle_state(puzzle_width, puzzle_height, current_state)
             print("target_action_cell: " + str(target_action_cell))
             print("target_action_value: " + str(target_action_value))
             print("output_action_cell: " + str(output_action_cell))
             print("output_action_value: " + str(output_action_value))
 
+def print_puzzle_state(puzzle_width, puzzle_height, puzzle_output):
+    for row in range(puzzle_height):
+        print("|", end="")
+        for col in range(puzzle_width):
+            cell = row * puzzle_width + col
+            value = puzzle_output[cell]
+            print(f" {value}", end="")
+        print(" |")
+            
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.438134Z","iopub.execute_input":"2024-07-18T17:58:05.438488Z","iopub.status.idle":"2024-07-18T17:58:05.684885Z","shell.execute_reply.started":"2024-07-18T17:58:05.438459Z","shell.execute_reply":"2024-07-18T17:58:05.683364Z"}}
 model = DecoderOnlyTransformerModel(num_classes, d_model, dropout, num_heads)
 
@@ -295,9 +300,12 @@ print("Train Examples")
 print(len(train_action_examples))
 for (idx, example) in enumerate(train_action_examples):
     print("Example: " + str(idx))
-    print("initial_state: " + str(example[0]))
-    print("output_action_cell: " + str(example[1][0]))
-    print("output_action_value: " + str(example[1][1]))
+    current_state = example[0]
+    action_cell = example[1][0]
+    action_value = example[1][1]
+    print_puzzle_state(puzzle_width, puzzle_height, current_state)
+    print("output_action_cell: " + str(action_cell))
+    print("output_action_value: " + str(action_value))
 
 global_step = 0
 for epoch in range(num_epochs):
@@ -321,9 +329,9 @@ print_predicted_actions()
 def solve_puzzle_example_auto_regressive(input_state, current_state):
     print("AUTO-REGRESSIVE wannabe AGI megabot")
     print("input_state")
-    print(input_state)
+    print_puzzle_state(puzzle_width, puzzle_height, input_state)
     print("current_state on entry")
-    print(current_state)
+    print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
     for i in range(10):
         inputs = make_example_input_tensor(current_state).unsqueeze(0)
@@ -332,18 +340,17 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         current_state = current_state.copy()
         current_state[action_cell] = action_value
         print("current_state after motor action")
-        print(current_state)
+        print_puzzle_state(puzzle_width, puzzle_height, current_state)
     return current_state
 
-puzzle_train_example_input = puzzle_train_examples[0][0]
-puzzle_train_example_output = puzzle_train_examples[0][1]
-output = solve_puzzle_example_auto_regressive(puzzle_train_example_input, puzzle_train_example_input)
-print("Expected output")
-print(puzzle_train_example_output)
+for puzzle_train_example_input, puzzle_train_example_output in puzzle_train_examples:
+    print("train example")
+    output = solve_puzzle_example_auto_regressive(puzzle_train_example_input, puzzle_train_example_input)
+    print("Expected output")
+    print_puzzle_state(puzzle_width, puzzle_height, puzzle_train_example_output)
 
-print("test example")
-puzzle_test_example_input = puzzle_test_examples[0][0]
-puzzle_test_example_output = puzzle_test_examples[0][1]
-output = solve_puzzle_example_auto_regressive(puzzle_test_example_input, puzzle_test_example_input)
-print("Expected output")
-print(puzzle_test_example_output)
+for puzzle_test_example_input, puzzle_test_example_output in puzzle_test_examples:
+    print("test example")
+    output = solve_puzzle_example_auto_regressive(puzzle_test_example_input, puzzle_test_example_input)
+    print("Expected output")
+    print_puzzle_state(puzzle_width, puzzle_height, puzzle_test_example_output)
