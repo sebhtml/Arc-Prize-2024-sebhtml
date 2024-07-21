@@ -19,8 +19,8 @@
 # It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
 # For example, here's several helpful packages to load
 
-import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import numpy as np  # linear algebra
+import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import json
 import torch
 from torch import nn
@@ -35,7 +35,7 @@ import itertools
 # Input data files are available in the read-only "../input/" directory
 # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
 
-# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All" 
+# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All"
 # You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
 
 #
@@ -67,6 +67,8 @@ num_epochs = 100
 num_layers = 12
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.339070Z","iopub.execute_input":"2024-07-18T17:58:05.339468Z","iopub.status.idle":"2024-07-18T17:58:05.349542Z","shell.execute_reply.started":"2024-07-18T17:58:05.339437Z","shell.execute_reply":"2024-07-18T17:58:05.348400Z"}}
+
+
 def generate_action_examples(puzzle_example):
     (example_input, example_output) = puzzle_example
     action_examples = []
@@ -84,12 +86,14 @@ def generate_action_examples(puzzle_example):
             current_state[action_cell] = action_value
     return action_examples
 
+
 def get_puzzle_solution(venue, puzzle_id):
     solutions_file = f"/kaggle/input/arc-prize-2024/arc-agi_{venue}_solutions.json"
     f = open(solutions_file)
     solutions_data = json.load(f)
     solution = solutions_data[puzzle_id][0]
     return solution
+
 
 def load_puzzle_examples(venue, puzzle_id, example_type):
     """
@@ -120,6 +124,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
         puzzle_venue_examples.append(example)
     return puzzle_venue_examples
 
+
 def generate_train_action_examples(puzzle_examples):
     train_examples = []
     for puzzle_example in puzzle_examples:
@@ -127,12 +132,15 @@ def generate_train_action_examples(puzzle_examples):
             train_examples.append(action_example)
     return train_examples
 
+
 def make_example_input_tensor(puzzle_example_current_state):
     item_input = torch.tensor(puzzle_example_current_state)
     item_input = F.one_hot(item_input, num_classes=num_classes).float()
     return item_input
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.396980Z","iopub.execute_input":"2024-07-18T17:58:05.397548Z","iopub.status.idle":"2024-07-18T17:58:05.406723Z","shell.execute_reply.started":"2024-07-18T17:58:05.397499Z","shell.execute_reply":"2024-07-18T17:58:05.405477Z"}}
+
+
 class MyDataset(Dataset):
     def __init__(self, examples):
         self.examples = examples
@@ -142,13 +150,14 @@ class MyDataset(Dataset):
 
     def __getitem__(self, idx):
         example = self.examples[idx]
-        
+
         item_input = make_example_input_tensor(example[0])
         item_output = example[1]
 
         action_cell = item_output[0]
         action_cell = torch.tensor(action_cell)
-        action_cell = F.one_hot(action_cell, num_classes=puzzle_width * puzzle_height).float()
+        action_cell = F.one_hot(
+            action_cell, num_classes=puzzle_width * puzzle_height).float()
 
         action_value = item_output[1]
         action_value = torch.tensor(action_value)
@@ -159,8 +168,11 @@ class MyDataset(Dataset):
         return item
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.409064Z","iopub.execute_input":"2024-07-18T17:58:05.409463Z","iopub.status.idle":"2024-07-18T17:58:05.436922Z","shell.execute_reply.started":"2024-07-18T17:58:05.409420Z","shell.execute_reply":"2024-07-18T17:58:05.435808Z"}}
+
+
 class FeedForward(nn.Module):
     """ a simple linear layer followed by a non-linearity """
+
     def __init__(self, n_embd, dropout):
         super().__init__()
         self.net = nn.Sequential(
@@ -173,41 +185,49 @@ class FeedForward(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
     def __init__(self, d_model, num_heads, dropout):
         super(NonCausalSelfAttentionTransformerBlock, self).__init__()
-        self.multihead_attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=num_heads, dropout=dropout, batch_first=True)
+        self.multihead_attn = nn.MultiheadAttention(
+            embed_dim=d_model, num_heads=num_heads, dropout=dropout, batch_first=True)
         self.ffwd = FeedForward(d_model, dropout)
         self.ln1 = nn.LayerNorm(d_model)
         self.ln2 = nn.LayerNorm(d_model)
 
     def forward(self, src):
         src_ln = self.ln1(src)
-        attn_output, attn_output_weights = self.multihead_attn(src_ln, src_ln, src_ln)
-        #print("attn_output")
-        #print(attn_output)
+        attn_output, attn_output_weights = self.multihead_attn(
+            src_ln, src_ln, src_ln)
+        # print("attn_output")
+        # print(attn_output)
         src_and_sa = self.ln2(src + attn_output)
         src_and_sa_and_ffwd = src_and_sa + self.ffwd(src_and_sa)
         return src_and_sa_and_ffwd
-        
+
+
 class DecoderOnlyTransformerModel(nn.Module):
     def __init__(self, num_classes, d_model, dropout, num_heads):
         super(DecoderOnlyTransformerModel, self).__init__()
-        self.embed = nn.Linear(in_features=num_classes, out_features=d_model, bias=False)
+        self.embed = nn.Linear(in_features=num_classes,
+                               out_features=d_model, bias=False)
         self.dropout_1 = nn.Dropout(dropout)
         self.blocks = nn.Sequential(
-            NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            #NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            NonCausalSelfAttentionTransformerBlock(
+                d_model, num_heads, dropout),
+            NonCausalSelfAttentionTransformerBlock(
+                d_model, num_heads, dropout),
+            NonCausalSelfAttentionTransformerBlock(
+                d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
         )
         self.ln = nn.LayerNorm(normalized_shape=d_model)
 
@@ -234,6 +254,7 @@ class DecoderOnlyTransformerModel(nn.Module):
         action_value = self.action_value_soft(self.action_value_lin(reshaped))
         return (action_cell, action_value)
 
+
 def get_grad_norm(model):
     """
     Calculates and prints the total L2 norm of the gradients of all model parameters.
@@ -250,11 +271,12 @@ def get_grad_norm(model):
 
     return total_norm
 
+
 def print_predicted_actions():
     for data in train_loader:
         (inputs, targets) = data
         print(inputs.size())
-        outputs = model(inputs) 
+        outputs = model(inputs)
         for idx in range(len(inputs)):
             current_state = inputs[idx].argmax(dim=-1)
             target_action_cell = targets[0][idx].argmax(dim=-1).item()
@@ -269,6 +291,7 @@ def print_predicted_actions():
             print("output_action_cell: " + str(output_action_cell))
             print("output_action_value: " + str(output_action_value))
 
+
 def print_puzzle_state(puzzle_width, puzzle_height, puzzle_output):
     for row in range(puzzle_height):
         print("|", end="")
@@ -277,7 +300,8 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_output):
             value = puzzle_output[cell]
             print(f" {value}", end="")
         print(" |")
-            
+
+
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.438134Z","iopub.execute_input":"2024-07-18T17:58:05.438488Z","iopub.status.idle":"2024-07-18T17:58:05.684885Z","shell.execute_reply.started":"2024-07-18T17:58:05.438459Z","shell.execute_reply":"2024-07-18T17:58:05.683364Z"}}
 model = DecoderOnlyTransformerModel(num_classes, d_model, dropout, num_heads)
 
@@ -286,10 +310,12 @@ model_total_params = sum(p.numel() for p in model.parameters())
 print("Model parameters: " + str(model_total_params))
 optimizer = AdamW(model.parameters(), lr=lr)
 
-puzzle_train_examples = load_puzzle_examples("training", selected_puzzle_id, "train")
+puzzle_train_examples = load_puzzle_examples(
+    "training", selected_puzzle_id, "train")
 train_action_examples = generate_train_action_examples(puzzle_train_examples)
 
-puzzle_test_examples = load_puzzle_examples("training", selected_puzzle_id, "test")
+puzzle_test_examples = load_puzzle_examples(
+    "training", selected_puzzle_id, "test")
 
 print("puzzle_train_examples")
 print(len(puzzle_train_examples))
@@ -320,11 +346,13 @@ for epoch in range(num_epochs):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         grad_l2_norm = get_grad_norm(model)
-        print(f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  grad_l2_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
+        print(
+            f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  grad_l2_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
         global_step += 1
-        
+
 print("[after training] print_predicted_actions")
 print_predicted_actions()
+
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):
     print("AUTO-REGRESSIVE wannabe AGI megabot")
@@ -336,21 +364,26 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     for i in range(10):
         inputs = make_example_input_tensor(current_state).unsqueeze(0)
         outputs = model(inputs)
-        (action_cell, action_value) = (outputs[0][0].argmax(dim=-1).item(), outputs[1][0].argmax(dim=-1).item())
+        (action_cell, action_value) = (outputs[0][0].argmax(
+            dim=-1).item(), outputs[1][0].argmax(dim=-1).item())
         current_state = current_state.copy()
         current_state[action_cell] = action_value
         print("current_state after motor action")
         print_puzzle_state(puzzle_width, puzzle_height, current_state)
     return current_state
 
+
 for puzzle_train_example_input, puzzle_train_example_output in puzzle_train_examples:
     print("train example")
-    output = solve_puzzle_example_auto_regressive(puzzle_train_example_input, puzzle_train_example_input)
+    output = solve_puzzle_example_auto_regressive(
+        puzzle_train_example_input, puzzle_train_example_input)
     print("Expected output")
-    print_puzzle_state(puzzle_width, puzzle_height, puzzle_train_example_output)
+    print_puzzle_state(puzzle_width, puzzle_height,
+                       puzzle_train_example_output)
 
 for puzzle_test_example_input, puzzle_test_example_output in puzzle_test_examples:
     print("test example")
-    output = solve_puzzle_example_auto_regressive(puzzle_test_example_input, puzzle_test_example_input)
+    output = solve_puzzle_example_auto_regressive(
+        puzzle_test_example_input, puzzle_test_example_input)
     print("Expected output")
     print_puzzle_state(puzzle_width, puzzle_height, puzzle_test_example_output)
