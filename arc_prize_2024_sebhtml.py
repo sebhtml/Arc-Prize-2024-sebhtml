@@ -3,8 +3,7 @@
 # Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
 # References
-# - TODO model should take in input (input_state, current_state)
-# - TODO fix action_Value predictor
+# - generate more examples
 # - TODO improve stopping criterion in auto-regressive AI
 # - TODO implement rotations
 # - TODO implement translations
@@ -52,7 +51,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # /kaggle/input/arc-prize-2024/sample_submission.json
 
 selected_puzzle_id = "3aa6fb7a"
-context_size = 128
+context_size = 160
 puzzle_width = 7
 puzzle_height = 7
 vision_width = 7
@@ -70,40 +69,59 @@ lr = 0.001
 num_epochs = 6
 
 
-def make_input_text(current_state, cell, new_value):
+def make_input_text(initial_state, current_state, cell, new_value):
     # TODO use / to separate rows
+    initial_state_text = "".join(map(str, initial_state))
     current_state_text = "".join(map(str, current_state))
-    text = "<|current_state|>" + "\n" + current_state_text + "\n" + \
-        "<|action|>" + "\n" + str(cell) + " " + str(new_value) + "\n"
+    text = ""
+    text += "<|initial_state|>" + "\n" + initial_state_text + "\n"
+    text += "<|current_state|>" + "\n" + current_state_text + "\n"
+    text += "<|action|>" + "\n" + str(cell) + " " + str(new_value) + "\n"
     return text
 
 
 def get_winning_cells(example_output, current_state):
+    # print("get_winning_cells")
+    # print("example_output")
+    # print(example_output)
+    # print("current_state")
+    # print(current_state)
+
     winning_cells = 0
     for i in range(len(example_output)):
         if example_output[i] == current_state[i]:
             winning_cells += 1
+    # print("winning_cells")
+    # print(winning_cells)
     return winning_cells
 
 
 def generate_action_examples(puzzle_example):
     (example_input, example_output) = puzzle_example
     action_examples = []
-    current_state = example_input
+    current_state = example_output.copy()
+    # Clear initial current state
+    for cell_addr in range(len(current_state)):
+        current_state[cell_addr] = 0
     current_action_value = get_winning_cells(example_output, current_state)
     for cell_addr in range(len(current_state)):
         for cell_value in range(num_classes):
             # Skip if the move is illegal.
             if current_state[cell_addr] == cell_value:
                 continue
-            input_text = make_input_text(current_state, cell_addr, cell_value)
+            input_text = make_input_text(
+                example_input, current_state, cell_addr, cell_value)
             current_state_tmp = current_state.copy()
             current_state_tmp[cell_addr] = cell_value
             action_value = get_winning_cells(example_output, current_state_tmp)
+            # print("input_text")
+            # print(input_text)
+            # print(f"action_value: {action_value}")
             example = (input_text, action_value)
             action_examples.append(example)
             if action_value > current_action_value:
                 current_state = current_state_tmp
+                current_action_value = action_value
 
     return action_examples
 
@@ -324,8 +342,6 @@ puzzle_test_examples = load_puzzle_examples(
 
 
 def print_train_examples():
-    print("puzzle_train_examples")
-    print(len(puzzle_train_examples))
 
     print("Train Examples")
     print(len(train_action_examples))
@@ -364,9 +380,9 @@ def train():
 def solve_puzzle_example_auto_regressive(input_state, current_state):
     print("AUTO-REGRESSIVE wannabe AGI megabot")
     print("input_state")
-    print_puzzle_state(puzzle_width, puzzle_height, input_state)
+    # print_puzzle_state(puzzle_width, puzzle_height, input_state)
     print("current_state on entry")
-    print_puzzle_state(puzzle_width, puzzle_height, current_state)
+    # print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
     for iteration in range(10):
         best_cell_addr = None
@@ -392,6 +408,12 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         print_puzzle_state(puzzle_width, puzzle_height, current_state)
     return current_state
 
+
+print("puzzle_train_examples")
+print(len(puzzle_train_examples))
+
+print("train_action_examples")
+print(len(train_action_examples))
 
 train()
 
