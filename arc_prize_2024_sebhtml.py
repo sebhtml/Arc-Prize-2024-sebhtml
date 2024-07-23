@@ -60,13 +60,19 @@ d_model = 256
 num_heads = 8
 dropout = 0.1
 num_layers = 16
+ascii_printable_start = 33
+ascii_printable_size = 94
 batch_size = 512
 shuffle = True
 lr = 0.001
 num_epochs = 200
-num_layers = 12
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.339070Z","iopub.execute_input":"2024-07-18T17:58:05.339468Z","iopub.status.idle":"2024-07-18T17:58:05.349542Z","shell.execute_reply.started":"2024-07-18T17:58:05.339437Z","shell.execute_reply":"2024-07-18T17:58:05.348400Z"}}
+
+
+def input_state_to_input_text(input_state):
+    # TODO use / to separate rows
+    return "".join(map(str, input_state))
 
 
 def generate_action_examples(puzzle_example):
@@ -79,7 +85,8 @@ def generate_action_examples(puzzle_example):
         if input_pixel != output_pixel:
             action_cell = i
             action_value = output_pixel
-            example = (current_state, (action_cell, action_value))
+            input_text = input_state_to_input_text(current_state)
+            example = (input_text, (action_cell, action_value))
             action_examples.append(example)
             # Update current_state
             current_state = current_state.copy()
@@ -133,9 +140,13 @@ def generate_train_action_examples(puzzle_examples):
     return train_examples
 
 
-def make_example_input_tensor(puzzle_example_current_state):
-    item_input = torch.tensor(puzzle_example_current_state)
-    item_input = F.one_hot(item_input, num_classes=num_classes).float()
+def make_example_input_tensor(input_text):
+    tokens = [*input_text]
+    tokens = list(map(ord, tokens))
+    tokens = list(map(lambda x: x - ascii_printable_start, tokens))
+    item_input = torch.tensor(tokens)
+    item_input = F.one_hot(
+        item_input, num_classes=ascii_printable_size).float()
     return item_input
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.396980Z","iopub.execute_input":"2024-07-18T17:58:05.397548Z","iopub.status.idle":"2024-07-18T17:58:05.406723Z","shell.execute_reply.started":"2024-07-18T17:58:05.397499Z","shell.execute_reply":"2024-07-18T17:58:05.405477Z"}}
@@ -209,7 +220,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 class DecoderOnlyTransformerModel(nn.Module):
     def __init__(self, num_classes, d_model, dropout, num_heads):
         super(DecoderOnlyTransformerModel, self).__init__()
-        self.embed = nn.Linear(in_features=num_classes,
+        self.embed = nn.Linear(in_features=ascii_printable_size,
                                out_features=d_model, bias=False)
         self.dropout_1 = nn.Dropout(dropout)
         self.blocks = nn.Sequential(
@@ -333,26 +344,25 @@ for (idx, example) in enumerate(train_action_examples):
     print("output_action_cell: " + str(action_cell))
     print("output_action_value: " + str(action_value))
 
-global_step = 0
-for epoch in range(num_epochs):
-    for data in train_loader:
-        optimizer.zero_grad()
-        (inputs, targets) = data
-        outputs = model(inputs)
-        # Use only the logits in the last row.
-        cell_loss = criterion(outputs[0][:, -1, :], targets[0])
-        pixel_loss = criterion(outputs[1][:, -1, :], targets[1])
-        loss = cell_loss + pixel_loss
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        optimizer.step()
-        grad_l2_norm = get_grad_norm(model)
-        print(
-            f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
-        global_step += 1
 
-print("[after training] print_predicted_actions")
-print_predicted_actions()
+def train():
+    global_step = 0
+    for epoch in range(num_epochs):
+        for data in train_loader:
+            optimizer.zero_grad()
+            (inputs, targets) = data
+            outputs = model(inputs)
+            # Use only the logits in the last row.
+            cell_loss = criterion(outputs[0][:, -1, :], targets[0])
+            pixel_loss = criterion(outputs[1][:, -1, :], targets[1])
+            loss = cell_loss + pixel_loss
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            grad_l2_norm = get_grad_norm(model)
+            print(
+                f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
+            global_step += 1
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):
@@ -363,7 +373,8 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
     for i in range(10):
-        inputs = make_example_input_tensor(current_state).unsqueeze(0)
+        input_text = input_state_to_input_text(current_state)
+        inputs = make_example_input_tensor(input_text).unsqueeze(0)
         outputs = model(inputs)
         action_cell = outputs[0][:, -1, :][0].argmax(dim=-1).item()
         action_value = (outputs[1][:, -1, :][0].argmax(dim=-1).item())
@@ -372,6 +383,12 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         print("current_state after motor action")
         print_puzzle_state(puzzle_width, puzzle_height, current_state)
     return current_state
+
+
+train()
+
+print("[after training] print_predicted_actions")
+print_predicted_actions()
 
 
 for puzzle_train_example_input, puzzle_train_example_output in puzzle_train_examples:
