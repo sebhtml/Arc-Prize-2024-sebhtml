@@ -56,14 +56,14 @@ puzzle_height = 7
 vision_width = 7
 vision_height = 7
 num_classes = 10
-d_model = 768
-num_heads = 12
+d_model = 256
+num_heads = 8
 dropout = 0.1
-num_layers = 6
+num_layers = 16
 batch_size = 512
 shuffle = True
 lr = 0.001
-num_epochs = 100
+num_epochs = 200
 num_layers = 12
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.339070Z","iopub.execute_input":"2024-07-18T17:58:05.339468Z","iopub.status.idle":"2024-07-18T17:58:05.349542Z","shell.execute_reply.started":"2024-07-18T17:58:05.339437Z","shell.execute_reply":"2024-07-18T17:58:05.348400Z"}}
@@ -348,7 +348,7 @@ for epoch in range(num_epochs):
         optimizer.step()
         grad_l2_norm = get_grad_norm(model)
         print(
-            f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  grad_l2_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
+            f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
         global_step += 1
 
 print("[after training] print_predicted_actions")
