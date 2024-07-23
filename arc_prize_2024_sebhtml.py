@@ -30,7 +30,8 @@ import os
 import sys
 import itertools
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(f"torch.cuda.is_available {torch.cuda.is_available()}")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.083820Z","iopub.execute_input":"2024-07-23T13:47:56.084317Z","iopub.status.idle":"2024-07-23T13:47:56.106060Z","shell.execute_reply.started":"2024-07-23T13:47:56.084283Z","shell.execute_reply":"2024-07-23T13:47:56.105176Z"}}
 # Input data files are available in the read-only "../input/" directory
@@ -92,8 +93,9 @@ def generate_action_examples(puzzle_example):
     current_action_value = get_winning_cells(example_output, current_state)
     for cell_addr in range(len(current_state)):
         for cell_value in range(num_classes):
-            # TODO An action that put a value that is already in a cell is illegal.
-            # TODO An action was already attempted in the past is illegal.
+            # Skip if the move is illegal.
+            if current_state[cell_addr] == cell_value:
+                continue
             input_text = make_input_text(current_state, cell_addr, cell_value)
             current_state_tmp = current_state.copy()
             current_state_tmp[cell_addr] = cell_value
@@ -320,20 +322,24 @@ train_action_examples = generate_train_action_examples(puzzle_train_examples)
 puzzle_test_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "test")
 
-print("puzzle_train_examples")
-print(len(puzzle_train_examples))
+
+def print_train_examples():
+    print("puzzle_train_examples")
+    print(len(puzzle_train_examples))
+
+    print("Train Examples")
+    print(len(train_action_examples))
+    for (idx, example) in enumerate(train_action_examples):
+        print("Example: " + str(idx))
+        current_state = example[0]
+        action_value = example[1]
+        print("input")
+        print(current_state)
+        print("action_value: " + str(action_value))
+
+
 dataset = MyDataset(train_action_examples)
 train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
-
-print("Train Examples")
-print(len(train_action_examples))
-for (idx, example) in enumerate(train_action_examples):
-    print("Example: " + str(idx))
-    current_state = example[0]
-    action_value = example[1]
-    print("input")
-    print(current_state)
-    print("action_value: " + str(action_value))
 
 
 def train():
@@ -391,8 +397,8 @@ train()
 
 # TODO predicted action-values currently suck. Fix it. Maybe it's because most of the moves are incorrect (46) so the model outputs 46 and like 95% of the
 # predictions are OK.
-print("[after training] print_predicted_actions")
-print_predicted_action_values()
+# print("[after training] print_predicted_actions")
+# print_predicted_action_values()
 
 
 def do_auto_regressive_prediction():
