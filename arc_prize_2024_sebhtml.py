@@ -66,7 +66,7 @@ action_value_bins = 50
 batch_size = 256
 shuffle = True
 lr = 0.001
-num_epochs = 100
+num_epochs = 6
 
 
 def make_input_text(current_state, cell, new_value):
@@ -92,6 +92,8 @@ def generate_action_examples(puzzle_example):
     current_action_value = get_winning_cells(example_output, current_state)
     for cell_addr in range(len(current_state)):
         for cell_value in range(num_classes):
+            # TODO An action that put a value that is already in a cell is illegal.
+            # TODO An action was already attempted in the past is illegal.
             input_text = make_input_text(current_state, cell_addr, cell_value)
             current_state_tmp = current_state.copy()
             current_state_tmp[cell_addr] = cell_value
@@ -278,7 +280,7 @@ def get_grad_norm(model):
     return total_norm
 
 
-def print_predicted_actions():
+def print_predicted_action_values():
     for data in train_loader:
         (inputs, targets) = data
         outputs = model(inputs)
@@ -340,8 +342,8 @@ def train():
     print("torch.cuda.is_available()")
     print(torch.cuda.is_available())
     model.to(device)
-    global_step = 0
-    for epoch in range(num_epochs):
+    num_steps = num_epochs * len(train_action_examples) // batch_size
+    for step in range(num_steps):
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
@@ -353,8 +355,7 @@ def train():
             optimizer.step()
             grad_l2_norm = get_grad_norm(model)
             print(
-                f"Epoch: {epoch + 1} / {num_epochs}  global_step: {global_step + 1}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
-            global_step += 1
+                f"Step: {step + 1}/{num_steps}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):
@@ -391,21 +392,25 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
 
 train()
 
+# TODO predicted action-values currently suck. Fix it. Maybe it's because most of the moves are incorrect (46) so the model outputs 46 and like 95% of the
+# predictions are OK.
 print("[after training] print_predicted_actions")
-print_predicted_actions()
+print_predicted_action_values()
 
 
-for puzzle_train_example_input, puzzle_train_example_output in puzzle_train_examples:
-    print("train example")
-    output = solve_puzzle_example_auto_regressive(
-        puzzle_train_example_input, puzzle_train_example_input)
-    print("Expected output")
-    print_puzzle_state(puzzle_width, puzzle_height,
-                       puzzle_train_example_output)
+def do_auto_regressive_prediction():
+    for puzzle_train_example_input, puzzle_train_example_output in puzzle_train_examples:
+        print("train example")
+        output = solve_puzzle_example_auto_regressive(
+            puzzle_train_example_input, puzzle_train_example_input)
+        print("Expected output")
+        print_puzzle_state(puzzle_width, puzzle_height,
+                           puzzle_train_example_output)
 
-for puzzle_test_example_input, puzzle_test_example_output in puzzle_test_examples:
-    print("test example")
-    output = solve_puzzle_example_auto_regressive(
-        puzzle_test_example_input, puzzle_test_example_input)
-    print("Expected output")
-    print_puzzle_state(puzzle_width, puzzle_height, puzzle_test_example_output)
+    for puzzle_test_example_input, puzzle_test_example_output in puzzle_test_examples:
+        print("test example")
+        output = solve_puzzle_example_auto_regressive(
+            puzzle_test_example_input, puzzle_test_example_input)
+        print("Expected output")
+        print_puzzle_state(puzzle_width, puzzle_height,
+                           puzzle_test_example_output)
