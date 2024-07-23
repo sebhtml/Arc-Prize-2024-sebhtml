@@ -1,4 +1,4 @@
-# %% [code]
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.066533Z","iopub.execute_input":"2024-07-23T13:47:56.067166Z","iopub.status.idle":"2024-07-23T13:47:56.071486Z","shell.execute_reply.started":"2024-07-23T13:47:56.067134Z","shell.execute_reply":"2024-07-23T13:47:56.070491Z"}}
 # Author: Sebastien Boisvert <sebhtml@protonmail.com>
 # Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
@@ -11,7 +11,7 @@
 
 # The model predicts (action_cell, action_value) (write <action_value> to cell <action_cell>)
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.299013Z","iopub.execute_input":"2024-07-18T17:58:05.299454Z","iopub.status.idle":"2024-07-18T17:58:05.306369Z","shell.execute_reply.started":"2024-07-18T17:58:05.299420Z","shell.execute_reply":"2024-07-18T17:58:05.305066Z"}}
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.073115Z","iopub.execute_input":"2024-07-23T13:47:56.073401Z","iopub.status.idle":"2024-07-23T13:47:56.082009Z","shell.execute_reply.started":"2024-07-23T13:47:56.073372Z","shell.execute_reply":"2024-07-23T13:47:56.081089Z"}}
 # https://www.kaggle.com/code/sebastien/arc-prize-2024-sebhtml/edit
 
 # This Python 3 environment comes with many helpful analytics libraries installed
@@ -32,7 +32,7 @@ import itertools
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.308582Z","iopub.execute_input":"2024-07-18T17:58:05.309436Z","iopub.status.idle":"2024-07-18T17:58:05.324028Z","shell.execute_reply.started":"2024-07-18T17:58:05.309403Z","shell.execute_reply":"2024-07-18T17:58:05.322739Z"}}
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.083820Z","iopub.execute_input":"2024-07-23T13:47:56.084317Z","iopub.status.idle":"2024-07-23T13:47:56.106060Z","shell.execute_reply.started":"2024-07-23T13:47:56.084283Z","shell.execute_reply":"2024-07-23T13:47:56.105176Z"}}
 # Input data files are available in the read-only "../input/" directory
 # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
 
@@ -180,7 +180,7 @@ class MyDataset(Dataset):
         item = (item_input, action_value)
         return item
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-18T17:58:05.409064Z","iopub.execute_input":"2024-07-18T17:58:05.409463Z","iopub.status.idle":"2024-07-18T17:58:05.436922Z","shell.execute_reply.started":"2024-07-18T17:58:05.409420Z","shell.execute_reply":"2024-07-18T17:58:05.435808Z"}}
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.138797Z","iopub.execute_input":"2024-07-23T13:47:56.139043Z","iopub.status.idle":"2024-07-23T13:48:15.616393Z","shell.execute_reply.started":"2024-07-23T13:47:56.139021Z","shell.execute_reply":"2024-07-23T13:48:15.615185Z"}}
 
 
 class FeedForward(nn.Module):
@@ -245,9 +245,8 @@ class DecoderOnlyTransformerModel(nn.Module):
         )
         self.ln = nn.LayerNorm(normalized_shape=d_model)
 
-        # TODO don't depend on context_size
         self.action_value_lin = nn.Linear(
-            in_features=context_size * d_model,
+            in_features=d_model,
             out_features=action_value_bins)
         self.softmax = nn.Softmax(dim=-1)
 
@@ -256,9 +255,7 @@ class DecoderOnlyTransformerModel(nn.Module):
         embed_drop = self.dropout_1(embed)
         transformed = self.blocks(embed_drop)
         transformed_ln = self.ln(transformed)
-        size = transformed_ln.size()
-        view = transformed_ln.view([size[0], size[1] * size[2]])
-        action_value = self.action_value_lin(view)
+        action_value = self.action_value_lin(transformed_ln)
         softmax = self.softmax(action_value)
         return softmax
 
@@ -287,12 +284,13 @@ def print_predicted_action_values():
         for idx in range(len(inputs)):
             current_state = inputs[idx].argmax(dim=-1)
             target_action_value = targets[idx].argmax(dim=-1).item()
-            # output_action_value = outputs[:, -
-            # 1, :][idx].argmax(dim=-1).item()
-            output_action_value = outputs[idx].argmax(dim=-1).item()
+            # outputs = outputs[:, -1, :]
+            print("outputs size")
+            print(outputs.size())
+            # take last row
+            output_action_value = outputs[idx][-1].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")
-            # print_puzzle_state(puzzle_width, puzzle_height, current_state)
             print("".join(list(map(chr, current_state.tolist()))))
             print("target_action_value: " + str(target_action_value))
             print("output_action_value: " + str(output_action_value))
@@ -339,8 +337,6 @@ for (idx, example) in enumerate(train_action_examples):
 
 
 def train():
-    print("torch.cuda.is_available()")
-    print(torch.cuda.is_available())
     model.to(device)
     num_steps = num_epochs * len(train_action_examples) // batch_size
     for step in range(num_steps):
@@ -348,7 +344,8 @@ def train():
             optimizer.zero_grad()
             (inputs, targets) = data
             outputs = model(inputs)
-            # loss = criterion(outputs[:, -1, :], targets)
+            # Take last row
+            outputs = outputs[:, -1, :]
             loss = criterion(outputs, targets)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
