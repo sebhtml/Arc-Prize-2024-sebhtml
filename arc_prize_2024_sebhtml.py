@@ -58,7 +58,7 @@ vision_height = 7
 num_classes = 10
 d_model = 768
 num_heads = 12
-dropout = 0.5
+dropout = 0.1
 num_layers = 6
 batch_size = 512
 shuffle = True
@@ -232,10 +232,10 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.ln = nn.LayerNorm(normalized_shape=d_model)
 
         self.action_cell_lin = nn.Linear(
-            in_features=puzzle_width * puzzle_height * d_model,
+            in_features=d_model,
             out_features=puzzle_width * puzzle_height)
         self.action_value_lin = nn.Linear(
-            in_features=puzzle_width * puzzle_height * d_model,
+            in_features=d_model,
             out_features=num_classes)
         self.action_cell_soft = nn.Softmax(dim=-1)
         self.action_value_soft = nn.Softmax(dim=-1)
@@ -245,10 +245,8 @@ class DecoderOnlyTransformerModel(nn.Module):
         embed_drop = self.dropout_1(embed)
         transformed = self.blocks(embed_drop)
         transformed_ln = self.ln(transformed)
-        size = transformed_ln.size()
-        reshaped = transformed_ln.view([size[0], size[1] * size[2]])
-        action_cell = self.action_cell_lin(reshaped)
-        action_value = self.action_value_lin(reshaped)
+        action_cell = self.action_cell_lin(transformed_ln)
+        action_value = self.action_value_lin(transformed_ln)
         return (action_cell, action_value)
         action_cell = self.action_cell_soft(self.action_cell_lin(reshaped))
         action_value = self.action_value_soft(self.action_value_lin(reshaped))
@@ -281,8 +279,10 @@ def print_predicted_actions():
             current_state = inputs[idx].argmax(dim=-1)
             target_action_cell = targets[0][idx].argmax(dim=-1).item()
             target_action_value = targets[1][idx].argmax(dim=-1).item()
-            output_action_cell = outputs[0][idx].argmax(dim=-1).item()
-            output_action_value = outputs[1][idx].argmax(dim=-1).item()
+            output_action_cell = outputs[0][:, -
+                                            1, :][idx].argmax(dim=-1).item()
+            output_action_value = outputs[1][:, -
+                                             1, :][idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("current_state")
             print_puzzle_state(puzzle_width, puzzle_height, current_state)
@@ -339,8 +339,9 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         (inputs, targets) = data
         outputs = model(inputs)
-        cell_loss = criterion(outputs[0], targets[0])
-        pixel_loss = criterion(outputs[1], targets[1])
+        # Use only the logits in the last row.
+        cell_loss = criterion(outputs[0][:, -1, :], targets[0])
+        pixel_loss = criterion(outputs[1][:, -1, :], targets[1])
         loss = cell_loss + pixel_loss
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -364,8 +365,8 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     for i in range(10):
         inputs = make_example_input_tensor(current_state).unsqueeze(0)
         outputs = model(inputs)
-        (action_cell, action_value) = (outputs[0][0].argmax(
-            dim=-1).item(), outputs[1][0].argmax(dim=-1).item())
+        action_cell = outputs[0][:, -1, :][0].argmax(dim=-1).item()
+        action_value = (outputs[1][:, -1, :][0].argmax(dim=-1).item())
         current_state = current_state.copy()
         current_state[action_cell] = action_value
         print("current_state after motor action")
