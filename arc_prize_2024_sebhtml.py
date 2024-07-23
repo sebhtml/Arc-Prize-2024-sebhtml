@@ -156,9 +156,8 @@ def make_example_input_tensor(input_text):
     tokens = [*input_text]
     tokens += [' '] * (context_size - len(tokens))
     tokens = list(map(ord, tokens))
+    # TODO call .to(device) in training loop
     item_input = torch.tensor(tokens).to(device)
-    item_input = F.one_hot(
-        item_input, num_classes=ascii_printable_size).float()
     return item_input
 
 
@@ -173,6 +172,7 @@ class MyDataset(Dataset):
         example = self.examples[idx]
         input_text = example[0]
         item_input = make_example_input_tensor(input_text)
+        # TODO call .to(device in training loop)
         action_value = torch.tensor(example[1]).to(device)
         action_value = F.one_hot(
             action_value, num_classes=puzzle_width * puzzle_height + 1).float()
@@ -220,8 +220,8 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 class DecoderOnlyTransformerModel(nn.Module):
     def __init__(self, num_classes, d_model, dropout, num_heads):
         super(DecoderOnlyTransformerModel, self).__init__()
-        self.embed = nn.Linear(in_features=ascii_printable_size,
-                               out_features=d_model, bias=False)
+        self.embed = nn.Embedding(num_embeddings=ascii_printable_size,
+                                  embedding_dim=d_model)
         self.dropout_1 = nn.Dropout(dropout)
         # TODO honours n_layers
         self.blocks = nn.Sequential(
@@ -282,7 +282,7 @@ def print_predicted_action_values():
         (inputs, targets) = data
         outputs = model(inputs)
         for idx in range(len(inputs)):
-            current_state = inputs[idx].argmax(dim=-1)
+            current_state = inputs[idx]
             target_action_value = targets[idx].argmax(dim=-1).item()
             # outputs = outputs[:, -1, :]
             print("outputs size")
