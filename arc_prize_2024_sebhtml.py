@@ -3,7 +3,8 @@
 # Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
 # References
-# - generate more examples
+# - TODO fix bug that causes the model to always generate action_value 44.
+# - TODO generate more examples
 # - TODO improve stopping criterion in auto-regressive AI
 # - TODO implement rotations
 # - TODO implement translations
@@ -81,18 +82,10 @@ def make_input_text(initial_state, current_state, cell, new_value):
 
 
 def get_winning_cells(example_output, current_state):
-    # print("get_winning_cells")
-    # print("example_output")
-    # print(example_output)
-    # print("current_state")
-    # print(current_state)
-
     winning_cells = 0
     for i in range(len(example_output)):
         if example_output[i] == current_state[i]:
             winning_cells += 1
-    # print("winning_cells")
-    # print(winning_cells)
     return winning_cells
 
 
@@ -114,11 +107,11 @@ def generate_action_examples(puzzle_example):
             current_state_tmp = current_state.copy()
             current_state_tmp[cell_addr] = cell_value
             action_value = get_winning_cells(example_output, current_state_tmp)
-            # print("input_text")
-            # print(input_text)
-            # print(f"action_value: {action_value}")
             example = (input_text, action_value)
             action_examples.append(example)
+            # TODO don't early return.
+            if len(action_examples) == 10:
+                return action_examples
             if action_value > current_action_value:
                 current_state = current_state_tmp
                 current_action_value = action_value
@@ -265,7 +258,7 @@ class DecoderOnlyTransformerModel(nn.Module):
         )
         self.ln = nn.LayerNorm(normalized_shape=d_model)
 
-        self.action_value_lin = nn.Linear(
+        self.lin = nn.Linear(
             in_features=d_model,
             out_features=action_value_bins)
         self.softmax = nn.Softmax(dim=-1)
@@ -275,7 +268,10 @@ class DecoderOnlyTransformerModel(nn.Module):
         embed_drop = self.dropout_1(embed)
         transformed = self.blocks(embed_drop)
         transformed_ln = self.ln(transformed)
-        action_value = self.action_value_lin(transformed_ln)
+        # Input tensor size: (batch_size, context_size, vocab_size)
+        # Output tensor size: (batch_size, vocab_size)
+        pool = torch.mean(transformed_ln, dim=1)
+        action_value = self.lin(pool)
         softmax = self.softmax(action_value)
         return softmax
 
@@ -304,11 +300,7 @@ def print_predicted_action_values():
         for idx in range(len(inputs)):
             current_state = inputs[idx]
             target_action_value = targets[idx].argmax(dim=-1).item()
-            # outputs = outputs[:, -1, :]
-            print("outputs size")
-            print(outputs.size())
-            # take last row
-            output_action_value = outputs[idx][-1].argmax(dim=-1).item()
+            output_action_value = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")
             print("".join(list(map(chr, current_state.tolist()))))
@@ -342,7 +334,6 @@ puzzle_test_examples = load_puzzle_examples(
 
 
 def print_train_examples():
-
     print("Train Examples")
     print(len(train_action_examples))
     for (idx, example) in enumerate(train_action_examples):
@@ -366,8 +357,6 @@ def train():
             optimizer.zero_grad()
             (inputs, targets) = data
             outputs = model(inputs)
-            # Take last row
-            outputs = outputs[:, -1, :]
             loss = criterion(outputs, targets)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -395,8 +384,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
                 # TODO test all actions in one batch
                 inputs = make_example_input_tensor(input_text).unsqueeze(0)
                 outputs = model(inputs)
-                # action_value = (outputs[:, -1, :][0].argmax(dim=-1).item())
-                action_value = (outputs[0].argmax(dim=-1).item())
+                action_value = outputs[0].argmax(dim=-1).item()
                 # print(f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
                 if best_action_value == None or action_value > best_action_value:
                     best_action_value = action_value
@@ -419,8 +407,8 @@ train()
 
 # TODO predicted action-values currently suck. Fix it. Maybe it's because most of the moves are incorrect (46) so the model outputs 46 and like 95% of the
 # predictions are OK.
-# print("[after training] print_predicted_actions")
-# print_predicted_action_values()
+print("[after training] print_predicted_actions")
+print_predicted_action_values()
 
 
 def do_auto_regressive_prediction():
