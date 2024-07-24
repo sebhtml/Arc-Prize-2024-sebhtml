@@ -22,6 +22,10 @@ import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import json
 import torch
+import numpy as np
+import math
+import random
+import torch.nn.functional as F
 from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
@@ -53,6 +57,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 selected_puzzle_id = "3aa6fb7a"
 context_size = 160
+colors = 10
 puzzle_width = 7
 puzzle_height = 7
 vision_width = 7
@@ -63,11 +68,13 @@ num_heads = 8
 dropout = 0.1
 num_layers = 16
 ascii_printable_size = 128
+# TODO rename action_value_bins to num_classes
 action_value_bins = 50
-batch_size = 256
+batch_size = 64
 shuffle = True
-lr = 0.001
-num_epochs = 6
+lr = 1e-3
+num_epochs = 30
+PADDING_CHAR = '.'
 
 
 def make_input_text(initial_state, current_state, cell, new_value):
@@ -77,7 +84,8 @@ def make_input_text(initial_state, current_state, cell, new_value):
     text = ""
     text += "<|initial_state|>" + "\n" + initial_state_text + "\n"
     text += "<|current_state|>" + "\n" + current_state_text + "\n"
-    text += "<|action|>" + "\n" + str(cell) + " " + str(new_value) + "\n"
+    text += "<|action|>" + "\n" + \
+        str(cell).ljust(2, PADDING_CHAR) + " " + str(new_value) + "\n"
     return text
 
 
@@ -95,13 +103,21 @@ def generate_action_examples(puzzle_example):
     current_state = example_output.copy()
     # Clear initial current state
     for cell_addr in range(len(current_state)):
-        current_state[cell_addr] = 0
+        current_state[cell_addr] = random.randint(0, colors - 1)
     current_action_value = get_winning_cells(example_output, current_state)
+
+    # make a list of incorrect cells.
+    candidate_cell_addrs = []
     for cell_addr in range(len(current_state)):
-        for cell_value in range(num_classes):
-            # Skip if the move is illegal.
-            if current_state[cell_addr] == cell_value:
-                continue
+        if current_state[cell_addr] != example_output[cell_addr]:
+            candidate_cell_addrs.append(cell_addr)
+
+    np.random.shuffle(candidate_cell_addrs)
+
+    for cell_addr in candidate_cell_addrs:
+        candidate_cell_values = list(range(colors))
+        np.random.shuffle(candidate_cell_values)
+        for cell_value in candidate_cell_values:
             input_text = make_input_text(
                 example_input, current_state, cell_addr, cell_value)
             current_state_tmp = current_state.copy()
@@ -110,8 +126,8 @@ def generate_action_examples(puzzle_example):
             example = (input_text, action_value)
             action_examples.append(example)
             # TODO don't early return.
-            if len(action_examples) == 10:
-                return action_examples
+            # if len(action_examples) == 1:
+            # return action_examples
             if action_value > current_action_value:
                 current_state = current_state_tmp
                 current_action_value = action_value
@@ -149,6 +165,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
             example_output = puzzle_example["output"]
         else:
             example_output = get_puzzle_solution(venue, puzzle_id)
+        # TODO keep the rows instead of using chaining
         example_input = list(itertools.chain(*example_input))
         example_output = list(itertools.chain(*example_output))
 
@@ -160,14 +177,17 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 def generate_train_action_examples(puzzle_examples):
     train_examples = []
     for puzzle_example in puzzle_examples:
-        for action_example in generate_action_examples(puzzle_example):
-            train_examples.append(action_example)
+        for _ in range(1):
+            train_examples += generate_action_examples(puzzle_example)
+        # TODO don't break
+        break
     return train_examples
 
 
 def make_example_input_tensor(input_text):
     tokens = [*input_text]
-    tokens += [' '] * (context_size - len(tokens))
+    # add padding
+    tokens += [PADDING_CHAR] * (context_size - len(tokens))
     tokens = list(map(ord, tokens))
     # TODO call .to(device) in training loop
     item_input = torch.tensor(tokens).to(device)
@@ -215,19 +235,20 @@ class FeedForward(nn.Module):
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
     def __init__(self, d_model, num_heads, dropout):
         super(NonCausalSelfAttentionTransformerBlock, self).__init__()
-        self.multihead_attn = nn.MultiheadAttention(
-            embed_dim=d_model, num_heads=num_heads, dropout=dropout, batch_first=True)
+        self.attn = nn.MultiheadAttention(
+            d_model, num_heads, dropout, batch_first=True)
         self.ffwd = FeedForward(d_model, dropout)
-        self.ln1 = nn.LayerNorm(d_model)
-        self.ln2 = nn.LayerNorm(d_model)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
 
     def forward(self, src):
-        src_ln = self.ln1(src)
-        attn_output, attn_output_weights = self.multihead_attn(
+        src_ln = self.norm1(src)
+        # Self-attention
+        attn_output, attn_output_weights = self.attn(
             src_ln, src_ln, src_ln)
-        src_and_sa = self.ln2(src + attn_output)
-        src_and_sa_and_ffwd = src_and_sa + self.ffwd(src_and_sa)
-        return src_and_sa_and_ffwd
+        src_and_attn = self.norm2(src + attn_output)
+        src_and_attn_and_ffwd = src_and_attn + self.ffwd(src_and_attn)
+        return src_and_attn_and_ffwd
 
 
 class DecoderOnlyTransformerModel(nn.Module):
@@ -235,6 +256,8 @@ class DecoderOnlyTransformerModel(nn.Module):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=ascii_printable_size,
                                   embedding_dim=d_model)
+        self.cls_token_embedding = nn.Embedding(1, d_model)
+
         self.dropout_1 = nn.Dropout(dropout)
         # TODO honours n_layers
         self.blocks = nn.Sequential(
@@ -256,22 +279,36 @@ class DecoderOnlyTransformerModel(nn.Module):
             # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
             # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
         )
-        self.ln = nn.LayerNorm(normalized_shape=d_model)
+        self.norm = nn.LayerNorm(d_model)
 
-        self.lin = nn.Linear(
-            in_features=d_model,
-            out_features=action_value_bins)
+        self.classifier = nn.Linear(
+            in_features=d_model, out_features=action_value_bins)
+
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, src):
-        embed = self.embed(src)
-        embed_drop = self.dropout_1(embed)
+    def forward(self, x):
+        cls_token = self.cls_token_embedding(torch.zeros(
+            x.size(0), 1, dtype=torch.long, device=x.device))
+        x = self.embed(x)
+        x = torch.cat([cls_token, x], dim=1)
+        embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
-        transformed_ln = self.ln(transformed)
+        # print("transformed")
+        # print(transformed)
+        transformed_ln = self.norm(transformed)
+        # print("transformed_ln")
+        # print(transformed_ln)
         # Input tensor size: (batch_size, context_size, vocab_size)
         # Output tensor size: (batch_size, vocab_size)
-        pool = torch.mean(transformed_ln, dim=1)
-        action_value = self.lin(pool)
+        # pool = torch.mean(transformed_ln, dim=1)
+        # Use [CLS] token
+        last_hidden_states = transformed_ln
+        cls_token_embedding = last_hidden_states[:, 0, :]
+        # print("pool")
+        # print(pool)
+        logits = self.classifier(cls_token_embedding)
+        # TODO return softmax
+        return logits
         softmax = self.softmax(action_value)
         return softmax
 
@@ -297,7 +334,16 @@ def print_predicted_action_values():
     for data in train_loader:
         (inputs, targets) = data
         outputs = model(inputs)
+        # print("inputs size")
+        # print(inputs.size())
+        # print("targets size")
+        # print(targets.size())
+        # print("outputs size")
+        # print(outputs.size())
+        # print("outputs")
+        # print(outputs)
         for idx in range(len(inputs)):
+            print(f"idx: {idx} ")
             current_state = inputs[idx]
             target_action_value = targets[idx].argmax(dim=-1).item()
             output_action_value = outputs[idx].argmax(dim=-1).item()
@@ -351,19 +397,23 @@ train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 def train():
     model.to(device)
-    num_steps = num_epochs * len(train_action_examples) // batch_size
-    for step in range(num_steps):
+    num_steps = math.ceil(num_epochs * len(train_action_examples) / batch_size)
+    step = 0
+    # num_steps = 100
+    print(f"num_steps {num_steps}")
+    while step < num_steps:
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
+            step += 1
             grad_l2_norm = get_grad_norm(model)
             print(
-                f"Step: {step + 1}/{num_steps}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
+                f"Step: {step}/{num_steps}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):
