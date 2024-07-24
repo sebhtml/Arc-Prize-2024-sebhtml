@@ -1,4 +1,4 @@
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.066533Z","iopub.execute_input":"2024-07-23T13:47:56.067166Z","iopub.status.idle":"2024-07-23T13:47:56.071486Z","shell.execute_reply.started":"2024-07-23T13:47:56.067134Z","shell.execute_reply":"2024-07-23T13:47:56.070491Z"}}
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:41.982336Z","iopub.execute_input":"2024-07-24T13:09:41.982722Z","iopub.status.idle":"2024-07-24T13:09:41.987008Z","shell.execute_reply.started":"2024-07-24T13:09:41.982694Z","shell.execute_reply":"2024-07-24T13:09:41.986109Z"}}
 # Author: Sebastien Boisvert <sebhtml@protonmail.com>
 # Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
@@ -11,7 +11,7 @@
 
 # The model predicts (action_cell, action_value) (write <action_value> to cell <action_cell>)
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.073115Z","iopub.execute_input":"2024-07-23T13:47:56.073401Z","iopub.status.idle":"2024-07-23T13:47:56.082009Z","shell.execute_reply.started":"2024-07-23T13:47:56.073372Z","shell.execute_reply":"2024-07-23T13:47:56.081089Z"}}
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:41.992087Z","iopub.execute_input":"2024-07-24T13:09:41.992721Z","iopub.status.idle":"2024-07-24T13:09:42.000953Z","shell.execute_reply.started":"2024-07-24T13:09:41.992680Z","shell.execute_reply":"2024-07-24T13:09:42.000091Z"}}
 # https://www.kaggle.com/code/sebastien/arc-prize-2024-sebhtml/edit
 
 # This Python 3 environment comes with many helpful analytics libraries installed
@@ -37,7 +37,7 @@ import itertools
 print(f"torch.cuda.is_available {torch.cuda.is_available()}")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.083820Z","iopub.execute_input":"2024-07-23T13:47:56.084317Z","iopub.status.idle":"2024-07-23T13:47:56.106060Z","shell.execute_reply.started":"2024-07-23T13:47:56.084283Z","shell.execute_reply":"2024-07-23T13:47:56.105176Z"}}
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:42.002806Z","iopub.execute_input":"2024-07-24T13:09:42.003088Z","iopub.status.idle":"2024-07-24T13:09:42.027236Z","shell.execute_reply.started":"2024-07-24T13:09:42.003065Z","shell.execute_reply":"2024-07-24T13:09:42.026406Z"}}
 # Input data files are available in the read-only "../input/" directory
 # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
 
@@ -213,7 +213,7 @@ class MyDataset(Dataset):
         item = (item_input, action_value)
         return item
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-23T13:47:56.138797Z","iopub.execute_input":"2024-07-23T13:47:56.139043Z","iopub.status.idle":"2024-07-23T13:48:15.616393Z","shell.execute_reply.started":"2024-07-23T13:47:56.139021Z","shell.execute_reply":"2024-07-23T13:48:15.615185Z"}}
+# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:42.089700Z","iopub.execute_input":"2024-07-24T13:09:42.090047Z","iopub.status.idle":"2024-07-24T13:09:54.926456Z","shell.execute_reply.started":"2024-07-24T13:09:42.090021Z","shell.execute_reply":"2024-07-24T13:09:54.925515Z"}}
 
 
 class FeedForward(nn.Module):
@@ -256,7 +256,8 @@ class DecoderOnlyTransformerModel(nn.Module):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=ascii_printable_size,
                                   embedding_dim=d_model)
-        self.cls_token_embedding = nn.Embedding(1, d_model)
+        # self.cls_token_embedding = nn.Embedding(1, d_model)
+        self.gap = nn.AdaptiveAvgPool1d(1)
 
         self.dropout_1 = nn.Dropout(dropout)
         # TODO honours n_layers
@@ -287,10 +288,10 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x):
-        cls_token = self.cls_token_embedding(torch.zeros(
-            x.size(0), 1, dtype=torch.long, device=x.device))
+        # cls_token = self.cls_token_embedding(torch.zeros(
+        # x.size(0), 1, dtype=torch.long, device=x.device))
         x = self.embed(x)
-        x = torch.cat([cls_token, x], dim=1)
+        # x = torch.cat([cls_token, x], dim=1)
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
         # print("transformed")
@@ -302,11 +303,17 @@ class DecoderOnlyTransformerModel(nn.Module):
         # Output tensor size: (batch_size, vocab_size)
         # pool = torch.mean(transformed_ln, dim=1)
         # Use [CLS] token
-        last_hidden_states = transformed_ln
-        cls_token_embedding = last_hidden_states[:, 0, :]
+        last_hidden_state = transformed_ln
+        # print("last_hidden_state")
+        # print(last_hidden_state.size())
+        # cls_token_embedding = last_hidden_states[:, 0, :]
+        output = self.gap(last_hidden_state.transpose(1, 2))
+        output = output.squeeze(2)
+        # print("output")
+        # print(output.size())
         # print("pool")
         # print(pool)
-        logits = self.classifier(cls_token_embedding)
+        logits = self.classifier(output)
         # TODO return softmax
         return logits
         softmax = self.softmax(action_value)
