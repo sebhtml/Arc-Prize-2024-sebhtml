@@ -125,9 +125,6 @@ def generate_action_examples(puzzle_example):
             action_value = get_winning_cells(example_output, current_state_tmp)
             example = (input_text, action_value)
             action_examples.append(example)
-            # TODO don't early return.
-            # if len(action_examples) == 1:
-            # return action_examples
             if action_value > current_action_value:
                 current_state = current_state_tmp
                 current_action_value = action_value
@@ -256,7 +253,6 @@ class DecoderOnlyTransformerModel(nn.Module):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=ascii_printable_size,
                                   embedding_dim=d_model)
-        # self.cls_token_embedding = nn.Embedding(1, d_model)
         self.gap = nn.AdaptiveAvgPool1d(1)
 
         self.dropout_1 = nn.Dropout(dropout)
@@ -270,54 +266,22 @@ class DecoderOnlyTransformerModel(nn.Module):
                 d_model, num_heads, dropout),
             NonCausalSelfAttentionTransformerBlock(
                 d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(d_model, num_heads, dropout),
         )
         self.norm = nn.LayerNorm(d_model)
 
         self.classifier = nn.Linear(
             in_features=d_model, out_features=action_value_bins)
 
-        self.softmax = nn.Softmax(dim=-1)
-
     def forward(self, x):
-        # cls_token = self.cls_token_embedding(torch.zeros(
-        # x.size(0), 1, dtype=torch.long, device=x.device))
         x = self.embed(x)
-        # x = torch.cat([cls_token, x], dim=1)
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
-        # print("transformed")
-        # print(transformed)
         transformed_ln = self.norm(transformed)
-        # print("transformed_ln")
-        # print(transformed_ln)
-        # Input tensor size: (batch_size, context_size, vocab_size)
-        # Output tensor size: (batch_size, vocab_size)
-        # pool = torch.mean(transformed_ln, dim=1)
-        # Use [CLS] token
         last_hidden_state = transformed_ln
-        # print("last_hidden_state")
-        # print(last_hidden_state.size())
-        # cls_token_embedding = last_hidden_states[:, 0, :]
         output = self.gap(last_hidden_state.transpose(1, 2))
         output = output.squeeze(2)
-        # print("output")
-        # print(output.size())
-        # print("pool")
-        # print(pool)
         logits = self.classifier(output)
-        # TODO return softmax
         return logits
-        softmax = self.softmax(action_value)
-        return softmax
 
 
 def get_grad_norm(model):
@@ -330,9 +294,11 @@ def get_grad_norm(model):
     total_norm = 0
     for p in model.parameters():
         if p.grad is not None:
-            param_norm = p.grad.data.norm(2).item()**2  # Square for L2 norm
+            # Square for L2 norm
+            param_norm = p.grad.data.norm(2).item()**2
             total_norm += param_norm
-        total_norm = total_norm**0.5  # Take the square root for L2 norm
+        # Take the square root for L2 norm
+        total_norm = total_norm**0.5
 
     return total_norm
 
@@ -341,14 +307,6 @@ def print_predicted_action_values():
     for data in train_loader:
         (inputs, targets) = data
         outputs = model(inputs)
-        # print("inputs size")
-        # print(inputs.size())
-        # print("targets size")
-        # print(targets.size())
-        # print("outputs size")
-        # print(outputs.size())
-        # print("outputs")
-        # print(outputs)
         for idx in range(len(inputs)):
             print(f"idx: {idx} ")
             current_state = inputs[idx]
@@ -406,7 +364,6 @@ def train():
     model.to(device)
     num_steps = math.ceil(num_epochs * len(train_action_examples) / batch_size)
     step = 0
-    # num_steps = 100
     print(f"num_steps {num_steps}")
     while step < num_steps:
         for data in train_loader:
@@ -426,9 +383,7 @@ def train():
 def solve_puzzle_example_auto_regressive(input_state, current_state):
     print("AUTO-REGRESSIVE wannabe AGI megabot")
     print("input_state")
-    # print_puzzle_state(puzzle_width, puzzle_height, input_state)
     print("current_state on entry")
-    # print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
     for iteration in range(10):
         best_cell_addr = None
@@ -462,8 +417,6 @@ print(len(train_action_examples))
 
 train()
 
-# TODO predicted action-values currently suck. Fix it. Maybe it's because most of the moves are incorrect (46) so the model outputs 46 and like 95% of the
-# predictions are OK.
 print("[after training] print_predicted_actions")
 print_predicted_action_values()
 
