@@ -103,7 +103,7 @@ def generate_action_examples(puzzle_example):
     current_state = example_output.copy()
     # Clear initial current state
     for cell_addr in range(len(current_state)):
-        current_state[cell_addr] = random.randint(0, colors - 1)
+        current_state[cell_addr] = 0
     current_action_value = get_winning_cells(example_output, current_state)
 
     # make a list of incorrect cells.
@@ -174,7 +174,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 def generate_train_action_examples(puzzle_examples):
     train_examples = []
     for puzzle_example in puzzle_examples:
-        for _ in range(1):
+        for _ in range(32):
             train_examples += generate_action_examples(puzzle_example)
         # TODO don't break
         break
@@ -365,9 +365,10 @@ train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 def train():
-    num_steps = math.ceil(num_epochs * len(train_action_examples) / batch_size)
+    num_steps = num_epochs * math.ceil(len(train_action_examples) / batch_size)
     step = 0
-    while step < num_steps:
+    print(f"num_epochs {num_epochs}")
+    for _ in range(num_epochs):
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
