@@ -35,7 +35,7 @@ import sys
 import itertools
 
 print(f"torch.cuda.is_available {torch.cuda.is_available()}")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:42.002806Z","iopub.execute_input":"2024-07-24T13:09:42.003088Z","iopub.status.idle":"2024-07-24T13:09:42.027236Z","shell.execute_reply.started":"2024-07-24T13:09:42.003065Z","shell.execute_reply":"2024-07-24T13:09:42.026406Z"}}
 # Input data files are available in the read-only "../input/" directory
@@ -70,10 +70,10 @@ num_layers = 16
 ascii_printable_size = 128
 # TODO rename action_value_bins to num_classes
 action_value_bins = 50
-batch_size = 64
+batch_size = 512
 shuffle = True
 lr = 1e-3
-num_epochs = 30
+num_epochs = 100
 PADDING_CHAR = '.'
 
 
@@ -186,8 +186,7 @@ def make_example_input_tensor(input_text):
     # add padding
     tokens += [PADDING_CHAR] * (context_size - len(tokens))
     tokens = list(map(ord, tokens))
-    # TODO call .to(device) in training loop
-    item_input = torch.tensor(tokens).to(device)
+    item_input = torch.tensor(tokens)
     return item_input
 
 
@@ -202,8 +201,7 @@ class MyDataset(Dataset):
         example = self.examples[idx]
         input_text = example[0]
         item_input = make_example_input_tensor(input_text)
-        # TODO call .to(device in training loop)
-        action_value = torch.tensor(example[1]).to(device)
+        action_value = torch.tensor(example[1])
         action_value = F.one_hot(
             action_value, num_classes=puzzle_width * puzzle_height + 1).float()
 
@@ -306,6 +304,8 @@ def get_grad_norm(model):
 def print_predicted_action_values():
     for data in train_loader:
         (inputs, targets) = data
+        inputs = inputs.to(gpu_device)
+        targets = targets.to(gpu_device)
         outputs = model(inputs)
         for idx in range(len(inputs)):
             print(f"idx: {idx} ")
@@ -317,6 +317,9 @@ def print_predicted_action_values():
             print("".join(list(map(chr, current_state.tolist()))))
             print("target_action_value: " + str(target_action_value))
             print("output_action_value: " + str(output_action_value))
+        del inputs
+        del targets
+        del outputs
 
 
 def print_puzzle_state(puzzle_width, puzzle_height, puzzle_output):
@@ -330,6 +333,7 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_output):
 
 
 model = DecoderOnlyTransformerModel(num_classes, d_model, dropout, num_heads)
+model.to(gpu_device)
 
 criterion = nn.CrossEntropyLoss()
 model_total_params = sum(p.numel() for p in model.parameters())
@@ -361,14 +365,14 @@ train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 def train():
-    model.to(device)
     num_steps = math.ceil(num_epochs * len(train_action_examples) / batch_size)
     step = 0
-    print(f"num_steps {num_steps}")
     while step < num_steps:
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
+            inputs = inputs.to(gpu_device)
+            targets = targets.to(gpu_device)
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
@@ -378,6 +382,9 @@ def train():
             grad_l2_norm = get_grad_norm(model)
             print(
                 f"Step: {step}/{num_steps}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
+            del inputs
+            del targets
+            del outputs
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):
