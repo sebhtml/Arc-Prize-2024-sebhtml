@@ -3,13 +3,9 @@
 # Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
 # References
-# - TODO fix bug that causes the model to always generate action_value 44.
-# - TODO generate more examples
 # - TODO improve stopping criterion in auto-regressive AI
 # - TODO implement rotations
 # - TODO implement translations
-
-# The model predicts (action_cell, action_value) (write <action_value> to cell <action_cell>)
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:41.992087Z","iopub.execute_input":"2024-07-24T13:09:41.992721Z","iopub.status.idle":"2024-07-24T13:09:42.000953Z","shell.execute_reply.started":"2024-07-24T13:09:41.992680Z","shell.execute_reply":"2024-07-24T13:09:42.000091Z"}}
 # https://www.kaggle.com/code/sebastien/arc-prize-2024-sebhtml/edit
@@ -55,26 +51,25 @@ gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #
 # /kaggle/input/arc-prize-2024/sample_submission.json
 
+# Model configuration
 selected_puzzle_id = "3aa6fb7a"
 context_size = 160
-colors = 10
+cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
 vision_width = 7
 vision_height = 7
-num_classes = 10
-d_model = 256
+hidden_size = 256
 num_heads = 8
 dropout = 0.1
 num_layers = 16
-ascii_printable_size = 128
-# TODO rename action_value_bins to num_classes
-action_value_bins = 50
+vocab_size = 128
+num_classes = 50
 batch_size = 512
 shuffle = True
 lr = 1e-3
 num_epochs = 100
-PADDING_CHAR = '.'
+padding_char = '.'
 
 
 def make_input_text(initial_state, current_state, cell, new_value):
@@ -85,7 +80,7 @@ def make_input_text(initial_state, current_state, cell, new_value):
     text += "<|initial_state|>" + "\n" + initial_state_text + "\n"
     text += "<|current_state|>" + "\n" + current_state_text + "\n"
     text += "<|action|>" + "\n" + \
-        str(cell).ljust(2, PADDING_CHAR) + " " + str(new_value) + "\n"
+        str(cell).ljust(2, padding_char) + " " + str(new_value) + "\n"
     return text
 
 
@@ -106,7 +101,7 @@ def generate_action_examples(puzzle_example):
         current_state[cell_addr] = 0
     current_action_value = get_winning_cells(example_output, current_state)
 
-    # make a list of incorrect cells.
+    # Make a list of incorrect cells.
     candidate_cell_addrs = []
     for cell_addr in range(len(current_state)):
         if current_state[cell_addr] != example_output[cell_addr]:
@@ -115,7 +110,7 @@ def generate_action_examples(puzzle_example):
     np.random.shuffle(candidate_cell_addrs)
 
     for cell_addr in candidate_cell_addrs:
-        candidate_cell_values = list(range(colors))
+        candidate_cell_values = list(range(cell_value_size))
         np.random.shuffle(candidate_cell_values)
         for cell_value in candidate_cell_values:
             input_text = make_input_text(
@@ -176,15 +171,13 @@ def generate_train_action_examples(puzzle_examples):
     for puzzle_example in puzzle_examples:
         for _ in range(32):
             train_examples += generate_action_examples(puzzle_example)
-        # TODO don't break
-        break
     return train_examples
 
 
 def make_example_input_tensor(input_text):
     tokens = [*input_text]
-    # add padding
-    tokens += [PADDING_CHAR] * (context_size - len(tokens))
+    # Add padding
+    tokens += [padding_char] * (context_size - len(tokens))
     tokens = list(map(ord, tokens))
     item_input = torch.tensor(tokens)
     return item_input
@@ -228,13 +221,13 @@ class FeedForward(nn.Module):
 
 
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
-    def __init__(self, d_model, num_heads, dropout):
+    def __init__(self, hidden_size, num_heads, dropout):
         super(NonCausalSelfAttentionTransformerBlock, self).__init__()
         self.attn = nn.MultiheadAttention(
-            d_model, num_heads, dropout, batch_first=True)
-        self.ffwd = FeedForward(d_model, dropout)
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
+            hidden_size, num_heads, dropout, batch_first=True)
+        self.ffwd = FeedForward(hidden_size, dropout)
+        self.norm1 = nn.LayerNorm(hidden_size)
+        self.norm2 = nn.LayerNorm(hidden_size)
 
     def forward(self, src):
         src_ln = self.norm1(src)
@@ -247,28 +240,28 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 
 
 class DecoderOnlyTransformerModel(nn.Module):
-    def __init__(self, num_classes, d_model, dropout, num_heads):
+    def __init__(self, vocab_size, hidden_size, dropout, num_heads, num_classes):
         super(DecoderOnlyTransformerModel, self).__init__()
-        self.embed = nn.Embedding(num_embeddings=ascii_printable_size,
-                                  embedding_dim=d_model)
+        self.embed = nn.Embedding(num_embeddings=vocab_size,
+                                  embedding_dim=hidden_size)
         self.gap = nn.AdaptiveAvgPool1d(1)
 
         self.dropout_1 = nn.Dropout(dropout)
         # TODO honours n_layers
         self.blocks = nn.Sequential(
             NonCausalSelfAttentionTransformerBlock(
-                d_model, num_heads, dropout),
+                hidden_size, num_heads, dropout),
             NonCausalSelfAttentionTransformerBlock(
-                d_model, num_heads, dropout),
+                hidden_size, num_heads, dropout),
             NonCausalSelfAttentionTransformerBlock(
-                d_model, num_heads, dropout),
+                hidden_size, num_heads, dropout),
             NonCausalSelfAttentionTransformerBlock(
-                d_model, num_heads, dropout),
+                hidden_size, num_heads, dropout),
         )
-        self.norm = nn.LayerNorm(d_model)
+        self.norm = nn.LayerNorm(hidden_size)
 
         self.classifier = nn.Linear(
-            in_features=d_model, out_features=action_value_bins)
+            in_features=hidden_size, out_features=num_classes)
 
     def forward(self, x):
         x = self.embed(x)
@@ -332,13 +325,9 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_output):
         print(" |")
 
 
-model = DecoderOnlyTransformerModel(num_classes, d_model, dropout, num_heads)
+model = DecoderOnlyTransformerModel(
+    vocab_size, hidden_size, dropout, num_heads, num_classes)
 model.to(gpu_device)
-
-criterion = nn.CrossEntropyLoss()
-model_total_params = sum(p.numel() for p in model.parameters())
-print("Model parameters: " + str(model_total_params))
-optimizer = AdamW(model.parameters(), lr=lr)
 
 puzzle_train_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "train")
@@ -365,9 +354,14 @@ train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 def train():
+    criterion = nn.CrossEntropyLoss()
+    model_total_params = sum(p.numel() for p in model.parameters())
+    print("Model parameters: " + str(model_total_params))
+    optimizer = AdamW(model.parameters(), lr=lr)
+
+    print(f"num_epochs {num_epochs}")
     num_steps = num_epochs * math.ceil(len(train_action_examples) / batch_size)
     step = 0
-    print(f"num_epochs {num_epochs}")
     for _ in range(num_epochs):
         for data in train_loader:
             optimizer.zero_grad()
@@ -377,7 +371,7 @@ def train():
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             step += 1
             grad_l2_norm = get_grad_norm(model)
@@ -398,7 +392,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         best_cell_value = None
         best_action_value = None
         for cell_addr in range(len(current_state)):
-            for cell_value in range(num_classes):
+            for cell_value in range(cell_value_size):
                 input_text = make_input_text(
                     current_state, cell_addr, cell_value)
                 # TODO test all actions in one batch
@@ -429,7 +423,7 @@ print("[after training] print_predicted_actions")
 print_predicted_action_values()
 
 
-def do_auto_regressive_prediction():
+def do_auto_regressive_predictions():
     for puzzle_train_example_input, puzzle_train_example_output in puzzle_train_examples:
         print("train example")
         output = solve_puzzle_example_auto_regressive(
