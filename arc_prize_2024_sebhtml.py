@@ -3,7 +3,6 @@
 # Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
 # References
-# - TODO improve stopping criterion in auto-regressive AI
 # - TODO implement rotations
 # - TODO implement translations
 
@@ -60,9 +59,10 @@ puzzle_height = 7
 vision_width = 7
 vision_height = 7
 hidden_size = 256
+ffn_size = 384
 num_heads = 8
 dropout = 0.1
-num_layers = 16
+num_layers = 8
 vocab_size = 128
 num_classes = 50
 batch_size = 512
@@ -72,12 +72,12 @@ num_epochs = 100
 padding_char = '.'
 
 
-def make_input_text(initial_state, current_state, cell, new_value):
+def make_input_text(input_state, current_state, cell, new_value):
     # TODO use / to separate rows
-    initial_state_text = "".join(map(str, initial_state))
+    input_state_text = "".join(map(str, input_state))
     current_state_text = "".join(map(str, current_state))
     text = ""
-    text += "<|initial_state|>" + "\n" + initial_state_text + "\n"
+    text += "<|input_state|>" + "\n" + input_state_text + "\n"
     text += "<|current_state|>" + "\n" + current_state_text + "\n"
     text += "<|action|>" + "\n" + \
         str(cell).ljust(2, padding_char) + " " + str(new_value) + "\n"
@@ -92,13 +92,18 @@ def get_winning_cells(example_output, current_state):
     return winning_cells
 
 
+def get_starting_current_state(example_output):
+    current_state = example_output.copy()
+    # Clear state
+    for cell_addr in range(len(current_state)):
+        current_state[cell_addr] = 0
+    return current_state
+
+
 def generate_action_examples(puzzle_example):
     (example_input, example_output) = puzzle_example
     action_examples = []
-    current_state = example_output.copy()
-    # Clear initial current state
-    for cell_addr in range(len(current_state)):
-        current_state[cell_addr] = 0
+    current_state = get_starting_current_state(example_output)
     current_action_value = get_winning_cells(example_output, current_state)
 
     # Make a list of incorrect cells.
@@ -207,12 +212,12 @@ class MyDataset(Dataset):
 class FeedForward(nn.Module):
     """ a simple linear layer followed by a non-linearity """
 
-    def __init__(self, n_embd, dropout):
+    def __init__(self, hidden_size, ffn_size, dropout):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
+            nn.Linear(hidden_size, ffn_size),
             nn.GELU(),
-            nn.Linear(4 * n_embd, n_embd),
+            nn.Linear(ffn_size, hidden_size),
             nn.Dropout(dropout),
         )
 
@@ -221,11 +226,11 @@ class FeedForward(nn.Module):
 
 
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
-    def __init__(self, hidden_size, num_heads, dropout):
+    def __init__(self, hidden_size, ffn_size, num_heads, dropout):
         super(NonCausalSelfAttentionTransformerBlock, self).__init__()
         self.attn = nn.MultiheadAttention(
             hidden_size, num_heads, dropout, batch_first=True)
-        self.ffwd = FeedForward(hidden_size, dropout)
+        self.ffwd = FeedForward(hidden_size, ffn_size, dropout)
         self.norm1 = nn.LayerNorm(hidden_size)
         self.norm2 = nn.LayerNorm(hidden_size)
 
@@ -240,7 +245,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 
 
 class DecoderOnlyTransformerModel(nn.Module):
-    def __init__(self, vocab_size, hidden_size, dropout, num_heads, num_classes):
+    def __init__(self, vocab_size, hidden_size, ffn_size, dropout, num_heads, num_classes):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=vocab_size,
                                   embedding_dim=hidden_size)
@@ -250,13 +255,22 @@ class DecoderOnlyTransformerModel(nn.Module):
         # TODO honours n_layers
         self.blocks = nn.Sequential(
             NonCausalSelfAttentionTransformerBlock(
-                hidden_size, num_heads, dropout),
+                hidden_size, ffn_size, num_heads, dropout),
             NonCausalSelfAttentionTransformerBlock(
-                hidden_size, num_heads, dropout),
+                hidden_size, ffn_size, num_heads, dropout),
             NonCausalSelfAttentionTransformerBlock(
-                hidden_size, num_heads, dropout),
+                hidden_size, ffn_size, num_heads, dropout),
             NonCausalSelfAttentionTransformerBlock(
-                hidden_size, num_heads, dropout),
+                hidden_size, ffn_size, num_heads, dropout)
+            # TODO enable more layers
+            # NonCausalSelfAttentionTransformerBlock(
+            #    hidden_size, ffn_size,  num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(
+            #    hidden_size, ffn_size, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(
+            #    hidden_size, ffn_size, num_heads, dropout),
+            # NonCausalSelfAttentionTransformerBlock(
+            #    hidden_size, ffn_size, num_heads, dropout),
         )
         self.norm = nn.LayerNorm(hidden_size)
 
@@ -315,18 +329,18 @@ def print_predicted_action_values():
         del outputs
 
 
-def print_puzzle_state(puzzle_width, puzzle_height, puzzle_output):
+def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
     for row in range(puzzle_height):
         print("|", end="")
         for col in range(puzzle_width):
             cell = row * puzzle_width + col
-            value = puzzle_output[cell]
+            value = puzzle_state[cell]
             print(f" {value}", end="")
         print(" |")
 
 
 model = DecoderOnlyTransformerModel(
-    vocab_size, hidden_size, dropout, num_heads, num_classes)
+    vocab_size, hidden_size, ffn_size,  dropout, num_heads, num_classes)
 model.to(gpu_device)
 
 puzzle_train_examples = load_puzzle_examples(
@@ -354,6 +368,7 @@ train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 def train():
+    model.train()
     criterion = nn.CrossEntropyLoss()
     model_total_params = sum(p.numel() for p in model.parameters())
     print("Model parameters: " + str(model_total_params))
@@ -383,27 +398,39 @@ def train():
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):
+    model.eval()
     print("AUTO-REGRESSIVE wannabe AGI megabot")
     print("input_state")
+    print_puzzle_state(puzzle_width, puzzle_height, input_state)
     print("current_state on entry")
+    print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
-    for iteration in range(10):
+    # TODO improve stopping criterion in auto-regressive AI
+    for _ in range(10):
         best_cell_addr = None
         best_cell_value = None
         best_action_value = None
         for cell_addr in range(len(current_state)):
             for cell_value in range(cell_value_size):
+                if current_state[cell_addr] == cell_value:
+                    continue
                 input_text = make_input_text(
-                    current_state, cell_addr, cell_value)
+                    input_state, current_state, cell_addr, cell_value)
                 # TODO test all actions in one batch
                 inputs = make_example_input_tensor(input_text).unsqueeze(0)
+                inputs = inputs.to(gpu_device)
                 outputs = model(inputs)
                 action_value = outputs[0].argmax(dim=-1).item()
-                # print(f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
+                print(
+                    f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
                 if best_action_value == None or action_value > best_action_value:
                     best_action_value = action_value
                     best_cell_addr = cell_addr
                     best_cell_value = cell_value
+                del inputs
+                del outputs
+        print(
+            f"Applying action  cell_addr: {best_cell_addr}  cell_value: {best_cell_value}  action_value: {best_action_value}")
         current_state = current_state.copy()
         current_state[best_cell_addr] = best_cell_value
         print("current_state after motor action")
@@ -423,19 +450,22 @@ print("[after training] print_predicted_actions")
 print_predicted_action_values()
 
 
-def do_auto_regressive_predictions():
-    for puzzle_train_example_input, puzzle_train_example_output in puzzle_train_examples:
-        print("train example")
-        output = solve_puzzle_example_auto_regressive(
-            puzzle_train_example_input, puzzle_train_example_input)
+def apply_puzzle_action_value_policy(puzzle_examples):
+    for example_input, example_target in puzzle_examples:
+        print("example")
+        current_state = get_starting_current_state(example_target)
+        output_state = solve_puzzle_example_auto_regressive(
+            example_input, current_state)
+        print("final output_state")
+        print_puzzle_state(puzzle_width, puzzle_height, output_state)
         print("Expected output")
         print_puzzle_state(puzzle_width, puzzle_height,
-                           puzzle_train_example_output)
+                           example_target)
+        # TODO don't break
+        break
 
-    for puzzle_test_example_input, puzzle_test_example_output in puzzle_test_examples:
-        print("test example")
-        output = solve_puzzle_example_auto_regressive(
-            puzzle_test_example_input, puzzle_test_example_input)
-        print("Expected output")
-        print_puzzle_state(puzzle_width, puzzle_height,
-                           puzzle_test_example_output)
+
+apply_puzzle_action_value_policy(puzzle_train_examples)
+
+# TODO check if the auto-regressive inference AI is able to predict the output for the test example.
+# apply_puzzle_action_value_policy(puzzle_test_examples)
