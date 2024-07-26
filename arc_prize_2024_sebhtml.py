@@ -123,7 +123,7 @@ def generate_action_examples(puzzle_example):
     (example_input, example_output) = puzzle_example
     action_examples = []
     current_state = get_starting_current_state(example_output)
-    current_action_value = get_winning_cells(example_output, current_state)
+    current_action_value = None
 
     # Make a list of incorrect cells.
     candidate_cell_addrs = list_different_cells(current_state, example_output)
@@ -137,13 +137,13 @@ def generate_action_examples(puzzle_example):
         for cell_value in candidate_cell_values:
             input_text = make_input_text(
                 example_input, current_state, row, col, cell_value)
-            current_state_tmp = copy.deepcopy(current_state)
-            current_state_tmp[row][col] = cell_value
-            action_value = get_winning_cells(example_output, current_state_tmp)
+            next_state = copy.deepcopy(current_state)
+            next_state[row][col] = cell_value
+            action_value = get_winning_cells(example_output, next_state)
             example = (input_text, action_value)
             action_examples.append(example)
-            if action_value > current_action_value:
-                current_state = current_state_tmp
+            if current_action_value is None or action_value > current_action_value:
+                current_state = next_state
                 current_action_value = action_value
 
     return action_examples
