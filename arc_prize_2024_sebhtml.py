@@ -62,13 +62,13 @@ vision_height = 7
 hidden_size = 256
 ffn_size = 384
 num_heads = 8
-dropout = 0.1
+dropout = 0.1  # TODO change dropout to 0.5
 num_layers = 8
 vocab_size = 128
 num_classes = 50
 batch_size = 512
 shuffle = True
-lr = 1e-3
+lr = 1e-3  # TODO change lr to 1e-4
 num_epochs = 100
 padding_char = '.'
 
@@ -354,6 +354,7 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
 
 model = DecoderOnlyTransformerModel(
     vocab_size, hidden_size, ffn_size,  dropout, num_heads, num_classes)
+# TODO use torch.compile()
 model.to(gpu_device)
 
 puzzle_train_examples = load_puzzle_examples(
@@ -420,38 +421,39 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
 
     # TODO improve stopping criterion in auto-regressive AI
     for _ in range(10):
-        best_cell_addr = None
+        best_cell_row = None
+        best_cell_col = None
         best_cell_value = None
         best_action_value = None
-        cell_addrs = []
+        candidate_cell_addrs = []
         for row in range(len(current_state)):
             for col in range(len(current_state[row])):
-                cell_addrs.push([row, col])
-        for addr in cell_addrs:
-            row, col = addr
-            for cell_value in range(cell_value_size):
-                if current_state[row][col] == cell_value:
-                    continue
-                input_text = make_input_text(
-                    input_state, current_state, row, col, cell_value)
-                # TODO test all actions in one batch
-                inputs = make_example_input_tensor(input_text).unsqueeze(0)
-                inputs = inputs.to(gpu_device)
-                outputs = model(inputs)
-                action_value = outputs[0].argmax(dim=-1).item()
-                # print(
-                # f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
-                if best_action_value == None or action_value > best_action_value:
-                    best_action_value = action_value
-                    best_cell_addr = [row, col]
-                    best_cell_value = cell_value
-                del inputs
-                del outputs
+                for cell_value in range(cell_value_size):
+                    if current_state[row][col] != cell_value:
+                        candidate_cell_addrs.append([row, col, cell_value])
+        np.random.shuffle(candidate_cell_addrs)
+
+        for row, col, cell_value in candidate_cell_addrs:
+            input_text = make_input_text(
+                input_state, current_state, row, col, cell_value)
+            # TODO test all actions in one batch
+            inputs = make_example_input_tensor(input_text).unsqueeze(0)
+            inputs = inputs.to(gpu_device)
+            outputs = model(inputs)
+            action_value = outputs[0].argmax(dim=-1).item()
+            # print(
+            # f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
+            if best_action_value == None or action_value > best_action_value:
+                best_action_value = action_value
+                best_cell_row = row
+                best_cell_col = col
+                best_cell_value = cell_value
+            del inputs
+            del outputs
         print(
-            f"Applying action  cell_addr: {best_cell_addr}  cell_value: {best_cell_value}  action_value: {best_action_value}")
+            f"Applying action  best_cell_row: {best_cell_row}  best_cell_col: {best_cell_col}  cell_value: {best_cell_value}  action_value: {best_action_value}")
         current_state = copy.deepcopy(current_state)
-        row, col = best_cell_addr
-        current_state[row][col] = best_cell_value
+        current_state[best_cell_row][best_cell_col] = best_cell_value
         print("current_state after motor action")
         print_puzzle_state(puzzle_width, puzzle_height, current_state)
     return current_state
@@ -466,7 +468,7 @@ print(len(train_action_examples))
 train()
 
 print("[after training] print_predicted_actions")
-print_predicted_action_values()
+# print_predicted_action_values()
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
@@ -485,7 +487,7 @@ def apply_puzzle_action_value_policy(puzzle_examples):
 
 
 # TODO make it work on the train examples
-# apply_puzzle_action_value_policy(puzzle_train_examples)
+apply_puzzle_action_value_policy(puzzle_train_examples)
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
