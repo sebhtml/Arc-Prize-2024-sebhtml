@@ -18,6 +18,7 @@ import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import json
 import torch
 import numpy as np
+import copy
 import math
 import random
 import torch.nn.functional as F
@@ -73,15 +74,14 @@ padding_char = '.'
 
 
 def state_to_text(state):
-    return "".join(map(str, state))
+    return "/".join(map(lambda row: "".join(map(str, row)), state))
 
 
-def make_input_text(input_state, current_state, cell, new_value):
-    # TODO use / to separate rows
+def make_input_text(input_state, current_state, row, col, new_value):
     input_state_text = state_to_text(input_state)
     current_state_text = state_to_text(current_state)
-    next_state = current_state.copy()
-    next_state[cell] = new_value
+    next_state = copy.deepcopy(current_state)
+    next_state[row][col] = new_value
     next_state_text = state_to_text(next_state)
     text = ""
     text += "<|input..|>" + "\n" + input_state_text + "\n"
@@ -92,18 +92,31 @@ def make_input_text(input_state, current_state, cell, new_value):
 
 def get_winning_cells(example_output, current_state):
     winning_cells = 0
-    for i in range(len(example_output)):
-        if example_output[i] == current_state[i]:
-            winning_cells += 1
+    for row in range(len(current_state)):
+        for col in range(len(current_state[row])):
+            if example_output[row][col] == current_state[row][col]:
+                winning_cells += 1
     return winning_cells
 
 
 def get_starting_current_state(example_output):
-    current_state = example_output.copy()
+    current_state = copy.deepcopy(example_output)
     # Clear state
-    for cell_addr in range(len(current_state)):
-        current_state[cell_addr] = 0
+    for row in range(len(current_state)):
+        for col in range(len(current_state[row])):
+            current_state[row][col] = 0
     return current_state
+
+
+def list_different_cells(current_state, example_output):
+    """
+    """
+    candidate_cell_addrs = []
+    for row in range(len(current_state)):
+        for col in range(len(current_state[row])):
+            if current_state[row][col] != example_output[row][col]:
+                candidate_cell_addrs.append([row, col])
+    return candidate_cell_addrs
 
 
 def generate_action_examples(puzzle_example):
@@ -113,22 +126,19 @@ def generate_action_examples(puzzle_example):
     current_action_value = get_winning_cells(example_output, current_state)
 
     # Make a list of incorrect cells.
-    candidate_cell_addrs = []
-    for cell_addr in range(len(current_state)):
-        if current_state[cell_addr] != example_output[cell_addr]:
-            candidate_cell_addrs.append(cell_addr)
-
+    candidate_cell_addrs = list_different_cells(current_state, example_output)
     np.random.shuffle(candidate_cell_addrs)
 
-    for cell_addr in candidate_cell_addrs:
+    for addr in candidate_cell_addrs:
+        row, col = addr
         candidate_cell_values = list(
-            filter(lambda x: x != current_state[cell_addr], range(cell_value_size)))
+            filter(lambda x: x != current_state[row][col], range(cell_value_size)))
         np.random.shuffle(candidate_cell_values)
         for cell_value in candidate_cell_values:
             input_text = make_input_text(
-                example_input, current_state, cell_addr, cell_value)
-            current_state_tmp = current_state.copy()
-            current_state_tmp[cell_addr] = cell_value
+                example_input, current_state, row, col, cell_value)
+            current_state_tmp = copy.deepcopy(current_state)
+            current_state_tmp[row][col] = cell_value
             action_value = get_winning_cells(example_output, current_state_tmp)
             example = (input_text, action_value)
             action_examples.append(example)
@@ -169,9 +179,6 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
             example_output = puzzle_example["output"]
         else:
             example_output = get_puzzle_solution(venue, puzzle_id)
-        # TODO keep the rows instead of using chaining
-        example_input = list(itertools.chain(*example_input))
-        example_output = list(itertools.chain(*example_output))
 
         example = (example_input, example_output)
         puzzle_venue_examples.append(example)
@@ -205,8 +212,6 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         example = self.examples[idx]
         input_text = example[0]
-        # print("input_text")
-        # print(input_text)
         item_input = make_example_input_tensor(input_text)
         action_value = torch.tensor(example[1])
         action_value = F.one_hot(
@@ -342,8 +347,7 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
     for row in range(puzzle_height):
         print("|", end="")
         for col in range(puzzle_width):
-            cell = row * puzzle_width + col
-            value = puzzle_state[cell]
+            value = puzzle_state[row][col]
             print(f" {value}", end="")
         print(" |")
 
@@ -419,12 +423,17 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         best_cell_addr = None
         best_cell_value = None
         best_action_value = None
-        for cell_addr in range(len(current_state)):
+        cell_addrs = []
+        for row in range(len(current_state)):
+            for col in range(len(current_state[row])):
+                cell_addrs.push([row, col])
+        for addr in cell_addrs:
+            row, col = addr
             for cell_value in range(cell_value_size):
-                if current_state[cell_addr] == cell_value:
+                if current_state[row][col] == cell_value:
                     continue
                 input_text = make_input_text(
-                    input_state, current_state, cell_addr, cell_value)
+                    input_state, current_state, row, col, cell_value)
                 # TODO test all actions in one batch
                 inputs = make_example_input_tensor(input_text).unsqueeze(0)
                 inputs = inputs.to(gpu_device)
@@ -434,14 +443,15 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
                 # f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
                 if best_action_value == None or action_value > best_action_value:
                     best_action_value = action_value
-                    best_cell_addr = cell_addr
+                    best_cell_addr = [row, col]
                     best_cell_value = cell_value
                 del inputs
                 del outputs
         print(
             f"Applying action  cell_addr: {best_cell_addr}  cell_value: {best_cell_value}  action_value: {best_action_value}")
-        current_state = current_state.copy()
-        current_state[best_cell_addr] = best_cell_value
+        current_state = copy.deepcopy(current_state)
+        row, col = best_cell_addr
+        current_state[row][col] = best_cell_value
         print("current_state after motor action")
         print_puzzle_state(puzzle_width, puzzle_height, current_state)
     return current_state
@@ -456,7 +466,7 @@ print(len(train_action_examples))
 train()
 
 print("[after training] print_predicted_actions")
-# print_predicted_action_values()
+print_predicted_action_values()
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
