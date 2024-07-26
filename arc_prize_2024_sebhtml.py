@@ -52,7 +52,7 @@ gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 160
+context_size = 192
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
@@ -72,15 +72,21 @@ num_epochs = 100
 padding_char = '.'
 
 
+def state_to_text(state):
+    return "".join(map(str, state))
+
+
 def make_input_text(input_state, current_state, cell, new_value):
     # TODO use / to separate rows
-    input_state_text = "".join(map(str, input_state))
-    current_state_text = "".join(map(str, current_state))
+    input_state_text = state_to_text(input_state)
+    current_state_text = state_to_text(current_state)
+    next_state = current_state.copy()
+    next_state[cell] = new_value
+    next_state_text = state_to_text(next_state)
     text = ""
-    text += "<|input_state|>" + "\n" + input_state_text + "\n"
-    text += "<|current_state|>" + "\n" + current_state_text + "\n"
-    text += "<|action|>" + "\n" + \
-        str(cell).ljust(2, padding_char) + " " + str(new_value) + "\n"
+    text += "<|input..|>" + "\n" + input_state_text + "\n"
+    text += "<|current|>" + "\n" + current_state_text + "\n"
+    text += "<|next...|>" + "\n" + next_state_text + "\n"
     return text
 
 
@@ -115,7 +121,8 @@ def generate_action_examples(puzzle_example):
     np.random.shuffle(candidate_cell_addrs)
 
     for cell_addr in candidate_cell_addrs:
-        candidate_cell_values = list(range(cell_value_size))
+        candidate_cell_values = list(
+            filter(lambda x: x != current_state[cell_addr], range(cell_value_size)))
         np.random.shuffle(candidate_cell_values)
         for cell_value in candidate_cell_values:
             input_text = make_input_text(
@@ -198,6 +205,8 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         example = self.examples[idx]
         input_text = example[0]
+        # print("input_text")
+        # print(input_text)
         item_input = make_example_input_tensor(input_text)
         action_value = torch.tensor(example[1])
         action_value = F.one_hot(
@@ -421,8 +430,8 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
                 inputs = inputs.to(gpu_device)
                 outputs = model(inputs)
                 action_value = outputs[0].argmax(dim=-1).item()
-                print(
-                    f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
+                # print(
+                # f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
                 if best_action_value == None or action_value > best_action_value:
                     best_action_value = action_value
                     best_cell_addr = cell_addr
@@ -447,7 +456,7 @@ print(len(train_action_examples))
 train()
 
 print("[after training] print_predicted_actions")
-print_predicted_action_values()
+# print_predicted_action_values()
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
@@ -465,7 +474,8 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         break
 
 
-apply_puzzle_action_value_policy(puzzle_train_examples)
+# TODO make it work on the train examples
+# apply_puzzle_action_value_policy(puzzle_train_examples)
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
