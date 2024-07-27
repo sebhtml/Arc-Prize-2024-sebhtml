@@ -69,7 +69,7 @@ num_classes = 50
 batch_size = 512
 shuffle = True
 lr = 1e-3  # TODO change lr to 1e-4
-num_epochs = 100
+num_epochs = 100 # TODO reduce number of epochs.
 padding_char = '.'
 
 
@@ -108,14 +108,17 @@ def get_starting_current_state(example_output):
     return current_state
 
 
-def list_different_cells(current_state, example_output):
+def generate_cell_actions(current_state, cell_value_size):
     """
+    It is illegal to assign a value to a cell if that cell already has this value.
     """
     candidate_cell_addrs = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            if current_state[row][col] != example_output[row][col]:
-                candidate_cell_addrs.append([row, col])
+            for cell_value in range(cell_value_size):
+                if current_state[row][col] != cell_value:
+                    candidate_cell_addrs.append([row, col, cell_value])
+    np.random.shuffle(candidate_cell_addrs)
     return candidate_cell_addrs
 
 
@@ -126,25 +129,20 @@ def generate_action_examples(puzzle_example):
     current_action_value = None
 
     # Make a list of incorrect cells.
-    candidate_cell_addrs = list_different_cells(current_state, example_output)
-    np.random.shuffle(candidate_cell_addrs)
+    candidate_cell_addrs = generate_cell_actions(
+        current_state, cell_value_size)
 
-    for addr in candidate_cell_addrs:
-        row, col = addr
-        candidate_cell_values = list(
-            filter(lambda x: x != current_state[row][col], range(cell_value_size)))
-        np.random.shuffle(candidate_cell_values)
-        for cell_value in candidate_cell_values:
-            input_text = make_input_text(
-                example_input, current_state, row, col, cell_value)
-            next_state = copy.deepcopy(current_state)
-            next_state[row][col] = cell_value
-            action_value = get_winning_cells(example_output, next_state)
-            example = (input_text, action_value)
-            action_examples.append(example)
-            if current_action_value is None or action_value > current_action_value:
-                current_state = next_state
-                current_action_value = action_value
+    for row, col, cell_value in candidate_cell_addrs:
+        input_text = make_input_text(
+            example_input, current_state, row, col, cell_value)
+        next_state = copy.deepcopy(current_state)
+        next_state[row][col] = cell_value
+        action_value = get_winning_cells(example_output, next_state)
+        example = (input_text, action_value)
+        action_examples.append(example)
+        if current_action_value is None or action_value > current_action_value:
+            current_state = next_state
+            current_action_value = action_value
 
     return action_examples
 
@@ -242,6 +240,8 @@ class FeedForward(nn.Module):
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
     def __init__(self, hidden_size, ffn_size, num_heads, dropout):
         super(NonCausalSelfAttentionTransformerBlock, self).__init__()
+        # TODO Re-implement Multihead attention with Rotary Positional Embedding (ROPE)
+        # https://www.kaggle.com/code/aeryss/rotary-postional-encoding-rope-pytorch
         self.attn = nn.MultiheadAttention(
             hidden_size, num_heads, dropout, batch_first=True)
         self.ffwd = FeedForward(hidden_size, ffn_size, dropout)
@@ -354,7 +354,9 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
 
 model = DecoderOnlyTransformerModel(
     vocab_size, hidden_size, ffn_size,  dropout, num_heads, num_classes)
-# TODO use torch.compile()
+# RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
+# Does not work on the NVIDIA P100
+# model = torch.compile(model)
 model.to(gpu_device)
 
 puzzle_train_examples = load_puzzle_examples(
@@ -386,6 +388,7 @@ def train():
     criterion = nn.CrossEntropyLoss()
     model_total_params = sum(p.numel() for p in model.parameters())
     print("Model parameters: " + str(model_total_params))
+    # TODO increase weight_decay to do L2 regularization.
     optimizer = AdamW(model.parameters(), lr=lr)
 
     print(f"num_epochs {num_epochs}")
@@ -425,13 +428,8 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         best_cell_col = None
         best_cell_value = None
         best_action_value = None
-        candidate_cell_addrs = []
-        for row in range(len(current_state)):
-            for col in range(len(current_state[row])):
-                for cell_value in range(cell_value_size):
-                    if current_state[row][col] != cell_value:
-                        candidate_cell_addrs.append([row, col, cell_value])
-        np.random.shuffle(candidate_cell_addrs)
+        candidate_cell_addrs = generate_cell_actions(
+            current_state, cell_value_size)
 
         for row, col, cell_value in candidate_cell_addrs:
             input_text = make_input_text(
@@ -468,7 +466,7 @@ print(len(train_action_examples))
 train()
 
 print("[after training] print_predicted_actions")
-# print_predicted_action_values()
+#print_predicted_action_values()
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
@@ -482,8 +480,6 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         print("Expected output")
         print_puzzle_state(puzzle_width, puzzle_height,
                            example_target)
-        # TODO don't break
-        break
 
 
 # TODO make it work on the train examples
