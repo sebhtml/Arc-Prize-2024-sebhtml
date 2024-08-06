@@ -68,14 +68,14 @@ vision_height = 7
 hidden_size = 256
 ffn_size = 256
 num_heads = 8
-dropout = 0.2  # TODO change dropout to 0.5
+dropout = 0.1
 num_layers = 8
 vocab_size = 128
 # TODO remove num_classes
-num_classes = 50  # TODO try 2
+num_classes = 50
 batch_size = 512
-lr = 0.0001  # 1e-3  # TODO change lr to 1e-4
-weight_decay = 0.2  # TODO increase weight decay
+lr = 0.0001
+weight_decay = 0.01
 num_epochs = 400
 padding_char = '.'
 
@@ -120,11 +120,6 @@ def generate_cell_actions(current_state, cell_value_size, example_output):
     """
     It is illegal to assign a value to a cell if that cell already has this value.
     """
-    # print("generate_cell_actions")
-    # print("current_state")
-    # print(current_state)
-    # print("example_output")
-    # print(example_output)
     candidate_cell_addrs = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
@@ -138,8 +133,6 @@ def generate_cell_actions(current_state, cell_value_size, example_output):
                 if action_cell_value != example_output[row][col]:
                     continue
                 candidate_cell_addrs.append([row, col, action_cell_value])
-    # TODO the problem right now is that the actions seen during the training are different then those
-    # seen during the evaluation.
     # np.random.shuffle(candidate_cell_addrs)
     return candidate_cell_addrs
 
@@ -155,7 +148,6 @@ def generate_action_examples(puzzle_example, num_classes):
         candidate_cell_addrs = generate_cell_actions(
             current_state, cell_value_size, example_output)
 
-        # print("begin scan")
         for row, col, cell_value in candidate_cell_addrs:
             next_state = copy.deepcopy(current_state)
             next_state[row][col] = cell_value
@@ -166,30 +158,11 @@ def generate_action_examples(puzzle_example, num_classes):
             action_value = get_winning_cells(
                 example_output, next_state)
             example = (input_text, output_text)
-            # m = hashlib.sha256()
-            # m.update(input_text.encode('ascii'))
-            # hash = m.hexdigest()
-            # print("<input_text>")
-            # print(input_text)
-            # print("</input_text>")
-            # print("<output_text>")
-            # print(output_text)
-            # print("</output_text>")
-            # print(f"input_text sha256 {hash}")
             action_examples.append(example)
             if action_value > best_action_value:
                 best_next_state = next_state
-                # print(f"DEBUG best_action_value old {best_action_value} new {action_value}")
                 best_action_value = action_value
-                # print("input_text")
-                # print(input_text)
-                # print("output_text")
-                # print(output_text)
-                # break
-                # TODO don't return here
-                return action_examples
 
-        # print("end scan")
         current_state = best_next_state
 
     print()
@@ -531,7 +504,6 @@ def train():
     criterion = nn.CrossEntropyLoss()
     model_total_params = sum(p.numel() for p in model.parameters())
     print("Model parameters: " + str(model_total_params))
-    # TODO increase weight_decay to do L2 regularization.
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     print(f"num_epochs {num_epochs}")
@@ -545,20 +517,7 @@ def train():
             inputs = inputs.to(gpu_device)
             targets = targets.to(gpu_device)
             outputs = model(inputs)
-            # print("TRAIN inputs")
-            # print(inputs[0].tolist())
-            # print("".join(list(map(chr, inputs[0].tolist()))))
-            # print("TRAIN outputs")
-            # print(outputs[0].argmax(-1).tolist())
-            # print("".join(list(map(chr, outputs[0].argmax(-1).tolist()))))
-            # print(list(map(chr, outputs[0].argmax(-1).tolist())))
-            # print("TRAIN targets")
-            # print(targets[0].argmax(-1).tolist())
-            # print("".join(list(map(chr, targets[0].argmax(-1).tolist()))))
-            # print(list(map(chr, targets[0].argmax(-1).tolist())))
             loss = criterion(outputs, targets)
-            # print("loss")
-            # print(loss)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -599,15 +558,6 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
             print(inputs.size())
             inputs = inputs.to(gpu_device)
             outputs = model(inputs)
-            # TODO the problem is that I get the same action_value everytime.
-            # 2469.2s	10789	Testing action  row: 3  col: 0  cell_value: 7 action_value: 103
-            # 2469.2s	10790	Testing action  row: 3  col: 0  cell_value: 8 action_value: 103
-            # 2469.2s	10791	Testing action  row: 3  col: 0  cell_value: 9 action_value: 103
-            # 2469.2s	10792	Testing action  row: 3  col: 1  cell_value: 1 action_value: 103
-            # 2469.2s	10793	Testing action  row: 3  col: 1  cell_value: 2 action_value: 103
-            # 2469.2s	10794	Testing action  row: 3  col: 1  cell_value: 3 action_value: 103
-            # 2469.2s	10795	Testing action  row: 3  col: 1  cell_value: 4 action_value: 103
-            # 2469.2s	10796	Testing action  row: 3  col: 1  cell_value: 5 action_value: 103
             print("outputs size")
             print(outputs.size())
             print("outputs")
