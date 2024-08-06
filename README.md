@@ -9,3 +9,4 @@
 
 - autopep8
 - https://peps.python.org/pep-0008/
+- autopep8 -i arc_prize_2024_sebhtml.py

@@ -1,16 +1,22 @@
+# Hardware used:
 
-# - TODO make the AI work on 1 traing sample
+# Legion
+# CPU: AMD Ryzen 7 7840HS w/ Radeon 780M Graphics
+# GPU: NVIDIA GeForce RTX 4060 8188MiB
+# RAM: MemTotal:       32023592 kB
+
+# Kaggle
+# CPU:
+# GPU: NVIDIA P100
+# RAM:
+
 # - TODO add noise in input
 # - TODO implement rotations
 # - TODO implement translations
 
-# TODO make it work on the train examples
-# apply_puzzle_action_value_policy(puzzle_train_examples)
-
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:41.992087Z","iopub.execute_input":"2024-07-24T13:09:41.992721Z","iopub.status.idle":"2024-07-24T13:09:42.000953Z","shell.execute_reply.started":"2024-07-24T13:09:41.992680Z","shell.execute_reply":"2024-07-24T13:09:42.000091Z"}}
 # https://www.kaggle.com/code/sebastien/arc-prize-2024-sebhtml/edit
 
 # This Python 3 environment comes with many helpful analytics libraries installed
@@ -288,7 +294,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
         return src_and_attn_and_ffwd
 
 
-def get_positional_encoding(max_seq_len, embed_dim):
+class PositionalEncoding(nn.Module):
     """
     Generates positional encoding for a given sequence length and embedding dimension.
 
@@ -300,15 +306,21 @@ def get_positional_encoding(max_seq_len, embed_dim):
         Positional encoding tensor.
     """
 
-    pe = torch.zeros(max_seq_len, embed_dim)
-    position = torch.arange(0, max_seq_len, dtype=torch.float).unsqueeze(1)
-    div_term = torch.exp(torch.arange(0, embed_dim, 2).float()
-                         * (-math.log(10000.0) / embed_dim))
+    def __init__(self, max_seq_len, embed_dim):
+        super(PositionalEncoding, self).__init__()
 
-    pe[:, 0::2] = torch.sin(position * div_term)
-    pe[:, 1::2] = torch.cos(position * div_term)
+        pe = torch.zeros(max_seq_len, embed_dim)
+        position = torch.arange(0, max_seq_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, embed_dim, 2).float()
+                             * (-math.log(10000.0) / embed_dim))
 
-    return pe
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.to(gpu_device)
+        self.pe = pe
+
+    def forward(self, x):
+        return x + self.pe
 
 
 class DecoderOnlyTransformerModel(nn.Module):
@@ -316,7 +328,7 @@ class DecoderOnlyTransformerModel(nn.Module):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=vocab_size,
                                   embedding_dim=hidden_size)
-        self.pos_encoding = get_positional_encoding(context_size, hidden_size)
+        self.pos_encoding = PositionalEncoding(context_size, hidden_size)
         # TODO use RotaryEmbedding
         # self.rotary_emb = RotaryEmbedding(dim=hidden_size)
         # self.gap = nn.AdaptiveAvgPool1d(1)
@@ -349,7 +361,7 @@ class DecoderOnlyTransformerModel(nn.Module):
 
     def forward(self, x):
         x = self.embed(x)
-        x = x + self.pos_encoding
+        x = self.pos_encoding(x)
         # TODO apply the rotations to your queries and keys after the heads have been split out, but prior to the dot product and subsequent softmax (attention)
         # see https://github.com/lucidrains/rotary-embedding-torch
         # x = self.rotary_emb(x)
