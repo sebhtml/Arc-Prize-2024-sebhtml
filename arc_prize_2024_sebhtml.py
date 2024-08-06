@@ -1,10 +1,14 @@
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:41.982336Z","iopub.execute_input":"2024-07-24T13:09:41.982722Z","iopub.status.idle":"2024-07-24T13:09:41.987008Z","shell.execute_reply.started":"2024-07-24T13:09:41.982694Z","shell.execute_reply":"2024-07-24T13:09:41.986109Z"}}
-# Author: Sebastien Boisvert <sebhtml@protonmail.com>
-# Git repository: https://github.com/sebhtml/Arc-Prize-2024-sebhtml
 
-# References
+# - TODO make the AI work on 1 traing sample
+# - TODO add noise in input
 # - TODO implement rotations
 # - TODO implement translations
+
+# TODO make it work on the train examples
+# apply_puzzle_action_value_policy(puzzle_train_examples)
+
+# TODO check if the auto-regressive inference AI is able to predict the output for the test example.
+# apply_puzzle_action_value_policy(puzzle_test_examples)
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:41.992087Z","iopub.execute_input":"2024-07-24T13:09:41.992721Z","iopub.status.idle":"2024-07-24T13:09:42.000953Z","shell.execute_reply.started":"2024-07-24T13:09:41.992680Z","shell.execute_reply":"2024-07-24T13:09:42.000091Z"}}
 # https://www.kaggle.com/code/sebastien/arc-prize-2024-sebhtml/edit
@@ -15,16 +19,18 @@
 
 import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
+import hashlib
 import json
 import torch
 import numpy as np
 import copy
 import math
 import random
+# from rotary_embedding_torch import RotaryEmbedding
 import torch.nn.functional as F
 from torch import nn
 from torch.optim import AdamW
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.nn import functional as F
 import os
 import sys
@@ -53,23 +59,24 @@ gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 192
+context_size = 10
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
 vision_width = 7
 vision_height = 7
 hidden_size = 256
-ffn_size = 384
+ffn_size = 256
 num_heads = 8
-dropout = 0.1  # TODO change dropout to 0.5
+dropout = 0.2  # TODO change dropout to 0.5
 num_layers = 8
 vocab_size = 128
-num_classes = 50
+# TODO remove num_classes
+num_classes = 50  # TODO try 2
 batch_size = 512
-shuffle = True
-lr = 1e-3  # TODO change lr to 1e-4
-num_epochs = 100 # TODO reduce number of epochs.
+lr = 0.0001  # 1e-3  # TODO change lr to 1e-4
+weight_decay = 0.2  # TODO increase weight decay
+num_epochs = 400
 padding_char = '.'
 
 
@@ -77,24 +84,30 @@ def state_to_text(state):
     return "/".join(map(lambda row: "".join(map(str, row)), state))
 
 
-def make_input_text(input_state, current_state, row, col, new_value):
+def make_state_text(input_state, current_state):
     input_state_text = state_to_text(input_state)
     current_state_text = state_to_text(current_state)
-    next_state = copy.deepcopy(current_state)
-    next_state[row][col] = new_value
-    next_state_text = state_to_text(next_state)
+    # TODO remove the next line
+    # print("DEBUG")
+    # print(current_state_text)
+    # current_state_text = "0000000/0800000/0000000/0000000/0000000/0000000/0000000"
+    # next_state_text = state_to_text(next_state)
     text = ""
-    text += "<|input..|>" + "\n" + input_state_text + "\n"
-    text += "<|current|>" + "\n" + current_state_text + "\n"
-    text += "<|next...|>" + "\n" + next_state_text + "\n"
+    # text += "<|input..|>" + "\n" + input_state_text + "\n"
+    # text += "<|current|>" + "\n"
+    text += current_state_text + "\n"
+    # text += "<|next...|>" + "\n" + next_state_text + "\n"
     return text
 
 
-def get_winning_cells(example_output, current_state):
+def get_winning_cells(example_output, next_state):
+    """
+    Count the number of correct cells.
+    """
     winning_cells = 0
-    for row in range(len(current_state)):
-        for col in range(len(current_state[row])):
-            if example_output[row][col] == current_state[row][col]:
+    for row in range(len(next_state)):
+        for col in range(len(next_state[row])):
+            if example_output[row][col] == next_state[row][col]:
                 winning_cells += 1
     return winning_cells
 
@@ -108,42 +121,83 @@ def get_starting_current_state(example_output):
     return current_state
 
 
-def generate_cell_actions(current_state, cell_value_size):
+def generate_cell_actions(current_state, cell_value_size, example_output):
     """
     It is illegal to assign a value to a cell if that cell already has this value.
     """
+    # print("generate_cell_actions")
+    # print("current_state")
+    # print(current_state)
+    # print("example_output")
+    # print(example_output)
     candidate_cell_addrs = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            for cell_value in range(cell_value_size):
-                if current_state[row][col] != cell_value:
-                    candidate_cell_addrs.append([row, col, cell_value])
-    np.random.shuffle(candidate_cell_addrs)
+            # The action cell value can not change the current cell value if the current cell value is the target cell value.
+            if current_state[row][col] == example_output[row][col]:
+                continue
+            for action_cell_value in range(cell_value_size):
+                # The action cell value can not be the current cell value.
+                if current_state[row][col] == action_cell_value:
+                    continue
+                if action_cell_value != example_output[row][col]:
+                    continue
+                candidate_cell_addrs.append([row, col, action_cell_value])
+    # TODO the problem right now is that the actions seen during the training are different then those
+    # seen during the evaluation.
+    # np.random.shuffle(candidate_cell_addrs)
     return candidate_cell_addrs
 
 
-def generate_action_examples(puzzle_example):
+def generate_action_examples(puzzle_example, num_classes):
     (example_input, example_output) = puzzle_example
     action_examples = []
     current_state = get_starting_current_state(example_output)
-    current_action_value = None
 
-    # Make a list of incorrect cells.
-    candidate_cell_addrs = generate_cell_actions(
-        current_state, cell_value_size)
+    while current_state != example_output:
+        best_next_state = current_state
+        best_action_value = get_winning_cells(example_output, best_next_state)
+        candidate_cell_addrs = generate_cell_actions(
+            current_state, cell_value_size, example_output)
 
-    for row, col, cell_value in candidate_cell_addrs:
-        input_text = make_input_text(
-            example_input, current_state, row, col, cell_value)
-        next_state = copy.deepcopy(current_state)
-        next_state[row][col] = cell_value
-        action_value = get_winning_cells(example_output, next_state)
-        example = (input_text, action_value)
-        action_examples.append(example)
-        if current_action_value is None or action_value > current_action_value:
-            current_state = next_state
-            current_action_value = action_value
+        # print("begin scan")
+        for row, col, cell_value in candidate_cell_addrs:
+            next_state = copy.deepcopy(current_state)
+            next_state[row][col] = cell_value
+            input_text = make_state_text(
+                example_input, current_state)
+            output_text = make_state_text(
+                example_input, next_state)
+            action_value = get_winning_cells(
+                example_output, next_state)
+            example = (input_text, output_text)
+            m = hashlib.sha256()
+            m.update(input_text.encode('ascii'))
+            hash = m.hexdigest()
+            print("<input_text>")
+            print(input_text)
+            print("</input_text>")
+            print("<output_text>")
+            print(output_text)
+            print("</output_text>")
+            print(f"input_text sha256 {hash}")
+            action_examples.append(example)
+            if action_value > best_action_value:
+                best_next_state = next_state
+                # print(f"DEBUG best_action_value old {best_action_value} new {action_value}")
+                best_action_value = action_value
+                # print("input_text")
+                # print(input_text)
+                # print("output_text")
+                # print(output_text)
+                # break
+                # TODO don't return here
+                return action_examples
 
+        # print("end scan")
+        current_state = best_next_state
+
+    print()
     return action_examples
 
 
@@ -180,24 +234,41 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 
         example = (example_input, example_output)
         puzzle_venue_examples.append(example)
+        # TODO don't break
+        break
     return puzzle_venue_examples
 
 
-def generate_train_action_examples(puzzle_examples):
+def generate_train_action_examples(puzzle_examples, num_classes):
+    print("puzzle_examples")
+    print(len(puzzle_examples))
     train_examples = []
     for puzzle_example in puzzle_examples:
-        for _ in range(32):
-            train_examples += generate_action_examples(puzzle_example)
+        # TODO use range(32)
+        for _ in range(1):
+            action_examples = generate_action_examples(
+                puzzle_example, num_classes)
+            # print("action_examples")
+            # print(len(action_examples))
+            train_examples += action_examples
+        # TODO don't break
+        break
     return train_examples
 
 
-def make_example_input_tensor(input_text):
+def make_sample_tensor(input_text):
     tokens = [*input_text]
     # Add padding
     tokens += [padding_char] * (context_size - len(tokens))
     tokens = list(map(ord, tokens))
     item_input = torch.tensor(tokens)
     return item_input
+
+
+def make_sample_text(tensor):
+    the_list = tensor.tolist()
+    text = "".join(list(map(chr, the_list)))
+    return text
 
 
 class MyDataset(Dataset):
@@ -210,12 +281,17 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         example = self.examples[idx]
         input_text = example[0]
-        item_input = make_example_input_tensor(input_text)
-        action_value = torch.tensor(example[1])
-        action_value = F.one_hot(
-            action_value, num_classes=puzzle_width * puzzle_height + 1).float()
+        target_text = example[1]
+        item_input = make_sample_tensor(input_text)
+        item_target = make_sample_tensor(target_text)
+        item_target = F.one_hot(
+            item_target, num_classes=vocab_size).float()
+        # action_value = example[1]
+        # action_value = torch.tensor(action_value)
+        # action_value = F.one_hot(
+        # action_value, num_classes=num_classes).float()
 
-        item = (item_input, action_value)
+        item = (item_input, item_target)
         return item
 
 # %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:42.089700Z","iopub.execute_input":"2024-07-24T13:09:42.090047Z","iopub.status.idle":"2024-07-24T13:09:54.926456Z","shell.execute_reply.started":"2024-07-24T13:09:42.090021Z","shell.execute_reply":"2024-07-24T13:09:54.925515Z"}}
@@ -253,17 +329,46 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
         # Self-attention
         attn_output, attn_output_weights = self.attn(
             src_ln, src_ln, src_ln)
+        # print("attn_output for '0' and '8'")
+        # print(attn_output.tolist()[0][9][48])
+        # print(attn_output.tolist()[0][9][56])
         src_and_attn = self.norm2(src + attn_output)
         src_and_attn_and_ffwd = src_and_attn + self.ffwd(src_and_attn)
         return src_and_attn_and_ffwd
 
 
+def get_positional_encoding(max_seq_len, embed_dim):
+    """
+    Generates positional encoding for a given sequence length and embedding dimension.
+
+    Args:
+        max_seq_len: Maximum sequence length.
+        embed_dim: Embedding dimension.
+
+    Returns:
+        Positional encoding tensor.
+    """
+
+    pe = torch.zeros(max_seq_len, embed_dim)
+    position = torch.arange(0, max_seq_len, dtype=torch.float).unsqueeze(1)
+    div_term = torch.exp(torch.arange(0, embed_dim, 2).float()
+                         * (-math.log(10000.0) / embed_dim))
+
+    pe[:, 0::2] = torch.sin(position * div_term)
+    pe[:, 1::2] = torch.cos(position * div_term)
+
+    return pe
+
+
 class DecoderOnlyTransformerModel(nn.Module):
-    def __init__(self, vocab_size, hidden_size, ffn_size, dropout, num_heads, num_classes):
+    def __init__(self, vocab_size, hidden_size, ffn_size, dropout, num_heads, context_size):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=vocab_size,
                                   embedding_dim=hidden_size)
-        self.gap = nn.AdaptiveAvgPool1d(1)
+        self.pos_encoding = get_positional_encoding(context_size, hidden_size)
+        # TODO use RotaryEmbedding
+        # self.rotary_emb = RotaryEmbedding(dim=hidden_size)
+        # self.gap = nn.AdaptiveAvgPool1d(1)
 
         self.dropout_1 = nn.Dropout(dropout)
         # TODO honours n_layers
@@ -278,28 +383,37 @@ class DecoderOnlyTransformerModel(nn.Module):
                 hidden_size, ffn_size, num_heads, dropout)
             # TODO enable more layers
             # NonCausalSelfAttentionTransformerBlock(
-            #    hidden_size, ffn_size,  num_heads, dropout),
+            # hidden_size, ffn_size,  num_heads, dropout),
             # NonCausalSelfAttentionTransformerBlock(
-            #    hidden_size, ffn_size, num_heads, dropout),
+            # hidden_size, ffn_size, num_heads, dropout),
             # NonCausalSelfAttentionTransformerBlock(
-            #    hidden_size, ffn_size, num_heads, dropout),
+            # hidden_size, ffn_size, num_heads, dropout),
             # NonCausalSelfAttentionTransformerBlock(
-            #    hidden_size, ffn_size, num_heads, dropout),
+            # hidden_size, ffn_size, num_heads, dropout)
         )
         self.norm = nn.LayerNorm(hidden_size)
 
         self.classifier = nn.Linear(
-            in_features=hidden_size, out_features=num_classes)
+            in_features=hidden_size, out_features=vocab_size)
 
     def forward(self, x):
         x = self.embed(x)
+        x = x + self.pos_encoding
+        # print("Embedding")
+        # print(x.size())
+        # TODO apply the rotations to your queries and keys after the heads have been split out, but prior to the dot product and subsequent softmax (attention)
+        # see https://github.com/lucidrains/rotary-embedding-torch
+        # x = self.rotary_emb(x)
+        # print("RotaryEmbedding")
+        # print(x.size())
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
         transformed_ln = self.norm(transformed)
         last_hidden_state = transformed_ln
-        output = self.gap(last_hidden_state.transpose(1, 2))
-        output = output.squeeze(2)
-        logits = self.classifier(output)
+        # output = self.gap(last_hidden_state.transpose(1, 2))
+        # output = output.squeeze(2)
+        # pooled = x.mean(dim=1)
+        logits = self.classifier(last_hidden_state)
         return logits
 
 
@@ -322,25 +436,34 @@ def get_grad_norm(model):
     return total_norm
 
 
-def print_predicted_action_values():
+def print_model_outputs():
     for data in train_loader:
         (inputs, targets) = data
         inputs = inputs.to(gpu_device)
         targets = targets.to(gpu_device)
         outputs = model(inputs)
+        print("inputs size")
+        print(inputs.size())
         for idx in range(len(inputs)):
+            print("--------------------")
             print(f"idx: {idx} ")
-            current_state = inputs[idx]
-            target_action_value = targets[idx].argmax(dim=-1).item()
-            output_action_value = outputs[idx].argmax(dim=-1).item()
+            input = inputs[idx]
+            target = targets[idx].argmax(dim=-1)  # .item()
+            target = make_sample_text(target)
+            output = outputs[idx].argmax(dim=-1)  # .item()
+            output = make_sample_text(output)
             print("Example: " + str(idx))
             print("input")
-            print("".join(list(map(chr, current_state.tolist()))))
-            print("target_action_value: " + str(target_action_value))
-            print("output_action_value: " + str(output_action_value))
+            print("".join(list(map(chr, input.tolist()))))
+            print("target: ")
+            print(target)
+            print("output: ")
+            print(output)
         del inputs
         del targets
         del outputs
+        # Only check first batch.
+        break
 
 
 def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
@@ -353,7 +476,7 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
 
 
 model = DecoderOnlyTransformerModel(
-    vocab_size, hidden_size, ffn_size,  dropout, num_heads, num_classes)
+    vocab_size, hidden_size, ffn_size,  dropout, num_heads, context_size)
 # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
 # Does not work on the NVIDIA P100
 # model = torch.compile(model)
@@ -361,26 +484,50 @@ model.to(gpu_device)
 
 puzzle_train_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "train")
-train_action_examples = generate_train_action_examples(puzzle_train_examples)
+# train_action_examples = generate_train_action_examples(puzzle_train_examples, num_classes)
+train_action_examples = [
+    ["banana....", "fruit....."], ["cucumber..", "vegetable."]]
 
 puzzle_test_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "test")
 
 
-def print_train_examples():
+def print_train_examples(train_action_examples):
     print("Train Examples")
     print(len(train_action_examples))
     for (idx, example) in enumerate(train_action_examples):
+        print("---------------------------")
         print("Example: " + str(idx))
-        current_state = example[0]
-        action_value = example[1]
-        print("input")
-        print(current_state)
-        print("action_value: " + str(action_value))
+        sample_input = example[0]
+        sample_target = example[1]
+        print("sample_input")
+        print(sample_input)
+        print("sample_target")
+        print(sample_target)
+        # print("action_value: " + str(action_value))
 
 
+# Create a dataset.
 dataset = MyDataset(train_action_examples)
-train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+# Create a sampler.
+# labels = list(map(lambda x: x[1], train_action_examples))
+# class_counts = torch.bincount(torch.tensor(labels))
+
+# print("class_counts")
+# for i in range(num_classes):
+# print(f"{i} -> {class_counts[i]}")
+
+# class_weights = 1.0 / class_counts
+# weights = class_weights[labels]
+
+
+# sampler = WeightedRandomSampler(
+# weights, num_samples=len(dataset), replacement=True)
+
+# Create a data loader.
+train_loader = DataLoader(dataset, batch_size=batch_size  # , sampler=sampler
+                          )
 
 
 def train():
@@ -389,10 +536,11 @@ def train():
     model_total_params = sum(p.numel() for p in model.parameters())
     print("Model parameters: " + str(model_total_params))
     # TODO increase weight_decay to do L2 regularization.
-    optimizer = AdamW(model.parameters(), lr=lr)
+    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     print(f"num_epochs {num_epochs}")
     num_steps = num_epochs * math.ceil(len(train_action_examples) / batch_size)
+    print(f"num_steps {num_steps}")
     step = 0
     for _ in range(num_epochs):
         for data in train_loader:
@@ -401,7 +549,20 @@ def train():
             inputs = inputs.to(gpu_device)
             targets = targets.to(gpu_device)
             outputs = model(inputs)
+            # print("TRAIN inputs")
+            # print(inputs[0].tolist())
+            # print("".join(list(map(chr, inputs[0].tolist()))))
+            # print("TRAIN outputs")
+            # print(outputs[0].argmax(-1).tolist())
+            # print("".join(list(map(chr, outputs[0].argmax(-1).tolist()))))
+            # print(list(map(chr, outputs[0].argmax(-1).tolist())))
+            # print("TRAIN targets")
+            # print(targets[0].argmax(-1).tolist())
+            # print("".join(list(map(chr, targets[0].argmax(-1).tolist()))))
+            # print(list(map(chr, targets[0].argmax(-1).tolist())))
             loss = criterion(outputs, targets)
+            # print("loss")
+            # print(loss)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -423,37 +584,52 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
     # TODO improve stopping criterion in auto-regressive AI
-    for _ in range(10):
-        best_cell_row = None
-        best_cell_col = None
-        best_cell_value = None
+    for _ in range(3):
+        best_next_state = None
         best_action_value = None
         candidate_cell_addrs = generate_cell_actions(
             current_state, cell_value_size)
 
         for row, col, cell_value in candidate_cell_addrs:
-            input_text = make_input_text(
-                input_state, current_state, row, col, cell_value)
+            next_state = copy.deepcopy(current_state)
+            next_state[row][col] = cell_value
+            input_text = make_state_text(
+                input_state, current_state, next_state)
+            print("input_text")
+            print(input_text)
             # TODO test all actions in one batch
-            inputs = make_example_input_tensor(input_text).unsqueeze(0)
+            inputs = make_sample_tensor(input_text).unsqueeze(0)
+            print("inputs size")
+            print(inputs.size())
             inputs = inputs.to(gpu_device)
             outputs = model(inputs)
+            # TODO the problem is that I get the same action_value everytime.
+            # 2469.2s	10789	Testing action  row: 3  col: 0  cell_value: 7 action_value: 103
+            # 2469.2s	10790	Testing action  row: 3  col: 0  cell_value: 8 action_value: 103
+            # 2469.2s	10791	Testing action  row: 3  col: 0  cell_value: 9 action_value: 103
+            # 2469.2s	10792	Testing action  row: 3  col: 1  cell_value: 1 action_value: 103
+            # 2469.2s	10793	Testing action  row: 3  col: 1  cell_value: 2 action_value: 103
+            # 2469.2s	10794	Testing action  row: 3  col: 1  cell_value: 3 action_value: 103
+            # 2469.2s	10795	Testing action  row: 3  col: 1  cell_value: 4 action_value: 103
+            # 2469.2s	10796	Testing action  row: 3  col: 1  cell_value: 5 action_value: 103
+            print("outputs size")
+            print(outputs.size())
+            print("outputs")
+            print(outputs)
             action_value = outputs[0].argmax(dim=-1).item()
-            # print(
-            # f"Testing action  cell_addr: {cell_addr}  cell_value: {cell_value}  action_value: {action_value}")
+            print(
+                f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
             if best_action_value == None or action_value > best_action_value:
+                best_next_state = next_state
                 best_action_value = action_value
-                best_cell_row = row
-                best_cell_col = col
-                best_cell_value = cell_value
             del inputs
             del outputs
-        print(
-            f"Applying action  best_cell_row: {best_cell_row}  best_cell_col: {best_cell_col}  cell_value: {best_cell_value}  action_value: {best_action_value}")
-        current_state = copy.deepcopy(current_state)
-        current_state[best_cell_row][best_cell_col] = best_cell_value
+        current_state = best_next_state
+        print(f"best_next_state with {best_action_value}")
         print("current_state after motor action")
         print_puzzle_state(puzzle_width, puzzle_height, current_state)
+        # TODO don't break.
+        break
     return current_state
 
 
@@ -463,10 +639,14 @@ print(len(puzzle_train_examples))
 print("train_action_examples")
 print(len(train_action_examples))
 
+print("train_action_examples")
+print_train_examples(train_action_examples)
+
+
 train()
 
-print("[after training] print_predicted_actions")
-#print_predicted_action_values()
+print("[after training] print_model_outputs")
+print_model_outputs()
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
@@ -480,10 +660,12 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         print("Expected output")
         print_puzzle_state(puzzle_width, puzzle_height,
                            example_target)
+        # TODO don't break
+        break
 
 
 # TODO make it work on the train examples
-apply_puzzle_action_value_policy(puzzle_train_examples)
+# apply_puzzle_action_value_policy(puzzle_train_examples)
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
