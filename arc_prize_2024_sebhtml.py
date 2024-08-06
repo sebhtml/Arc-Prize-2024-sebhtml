@@ -39,7 +39,6 @@ import itertools
 print(f"torch.cuda.is_available {torch.cuda.is_available()}")
 gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:42.002806Z","iopub.execute_input":"2024-07-24T13:09:42.003088Z","iopub.status.idle":"2024-07-24T13:09:42.027236Z","shell.execute_reply.started":"2024-07-24T13:09:42.003065Z","shell.execute_reply":"2024-07-24T13:09:42.026406Z"}}
 # Input data files are available in the read-only "../input/" directory
 # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
 
@@ -71,8 +70,6 @@ num_heads = 8
 dropout = 0.1
 num_layers = 8
 vocab_size = 128
-# TODO remove num_classes
-num_classes = 50
 batch_size = 512
 lr = 0.0001
 weight_decay = 0.01
@@ -133,11 +130,11 @@ def generate_cell_actions(current_state, cell_value_size, example_output):
                 if action_cell_value != example_output[row][col]:
                     continue
                 candidate_cell_addrs.append([row, col, action_cell_value])
-    # np.random.shuffle(candidate_cell_addrs)
+    np.random.shuffle(candidate_cell_addrs)
     return candidate_cell_addrs
 
 
-def generate_action_examples(puzzle_example, num_classes):
+def generate_action_examples(puzzle_example):
     (example_input, example_output) = puzzle_example
     action_examples = []
     current_state = get_starting_current_state(example_output)
@@ -165,7 +162,6 @@ def generate_action_examples(puzzle_example, num_classes):
 
         current_state = best_next_state
 
-    print()
     return action_examples
 
 
@@ -207,7 +203,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
     return puzzle_venue_examples
 
 
-def generate_train_action_examples(puzzle_examples, num_classes):
+def generate_train_action_examples(puzzle_examples):
     print("puzzle_examples")
     print(len(puzzle_examples))
     train_examples = []
@@ -215,12 +211,8 @@ def generate_train_action_examples(puzzle_examples, num_classes):
         # TODO use range(32)
         for _ in range(1):
             action_examples = generate_action_examples(
-                puzzle_example, num_classes)
-            # print("action_examples")
-            # print(len(action_examples))
+                puzzle_example)
             train_examples += action_examples
-        # TODO don't break
-        break
     return train_examples
 
 
@@ -254,15 +246,9 @@ class MyDataset(Dataset):
         item_target = make_sample_tensor(target_text)
         item_target = F.one_hot(
             item_target, num_classes=vocab_size).float()
-        # action_value = example[1]
-        # action_value = torch.tensor(action_value)
-        # action_value = F.one_hot(
-        # action_value, num_classes=num_classes).float()
 
         item = (item_input, item_target)
         return item
-
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2024-07-24T13:09:42.089700Z","iopub.execute_input":"2024-07-24T13:09:42.090047Z","iopub.status.idle":"2024-07-24T13:09:54.926456Z","shell.execute_reply.started":"2024-07-24T13:09:42.090021Z","shell.execute_reply":"2024-07-24T13:09:54.925515Z"}}
 
 
 class FeedForward(nn.Module):
@@ -297,9 +283,6 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
         # Self-attention
         attn_output, attn_output_weights = self.attn(
             src_ln, src_ln, src_ln)
-        # print("attn_output for '0' and '8'")
-        # print(attn_output.tolist()[0][9][48])
-        # print(attn_output.tolist()[0][9][56])
         src_and_attn = self.norm2(src + attn_output)
         src_and_attn_and_ffwd = src_and_attn + self.ffwd(src_and_attn)
         return src_and_attn_and_ffwd
@@ -367,20 +350,13 @@ class DecoderOnlyTransformerModel(nn.Module):
     def forward(self, x):
         x = self.embed(x)
         x = x + self.pos_encoding
-        # print("Embedding")
-        # print(x.size())
         # TODO apply the rotations to your queries and keys after the heads have been split out, but prior to the dot product and subsequent softmax (attention)
         # see https://github.com/lucidrains/rotary-embedding-torch
         # x = self.rotary_emb(x)
-        # print("RotaryEmbedding")
-        # print(x.size())
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
         transformed_ln = self.norm(transformed)
         last_hidden_state = transformed_ln
-        # output = self.gap(last_hidden_state.transpose(1, 2))
-        # output = output.squeeze(2)
-        # pooled = x.mean(dim=1)
         logits = self.classifier(last_hidden_state)
         return logits
 
@@ -416,9 +392,9 @@ def print_model_outputs():
             print("--------------------")
             print(f"idx: {idx} ")
             input = inputs[idx]
-            target = targets[idx].argmax(dim=-1)  # .item()
+            target = targets[idx].argmax(dim=-1)
             target = make_sample_text(target)
-            output = outputs[idx].argmax(dim=-1)  # .item()
+            output = outputs[idx].argmax(dim=-1)
             output = make_sample_text(output)
             print("Example: " + str(idx))
             print("input")
@@ -453,9 +429,7 @@ model.to(gpu_device)
 puzzle_train_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "train")
 train_action_examples = generate_train_action_examples(
-    puzzle_train_examples, num_classes)
-# train_action_examples = [
-#    ["banana....", "fruit....."], ["cucumber..", "vegetable."]]
+    puzzle_train_examples)
 
 puzzle_test_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "test")
@@ -473,30 +447,13 @@ def print_train_examples(train_action_examples):
         print(sample_input)
         print("sample_target")
         print(sample_target)
-        # print("action_value: " + str(action_value))
 
 
 # Create a dataset.
 dataset = MyDataset(train_action_examples)
 
-# Create a sampler.
-# labels = list(map(lambda x: x[1], train_action_examples))
-# class_counts = torch.bincount(torch.tensor(labels))
-
-# print("class_counts")
-# for i in range(num_classes):
-# print(f"{i} -> {class_counts[i]}")
-
-# class_weights = 1.0 / class_counts
-# weights = class_weights[labels]
-
-
-# sampler = WeightedRandomSampler(
-# weights, num_samples=len(dataset), replacement=True)
-
 # Create a data loader.
-train_loader = DataLoader(dataset, batch_size=batch_size  # , sampler=sampler
-                          )
+train_loader = DataLoader(dataset, batch_size=batch_size)
 
 
 def train():
