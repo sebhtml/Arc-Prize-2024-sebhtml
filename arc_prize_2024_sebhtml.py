@@ -59,7 +59,7 @@ gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 56
+context_size = 136
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
@@ -87,16 +87,11 @@ def state_to_text(state):
 def make_state_text(input_state, current_state):
     input_state_text = state_to_text(input_state)
     current_state_text = state_to_text(current_state)
-    # TODO remove the next line
-    # print("DEBUG")
-    # print(current_state_text)
-    # current_state_text = "0000000/0800000/0000000/0000000/0000000/0000000/0000000"
-    # next_state_text = state_to_text(next_state)
     text = ""
-    # text += "<|input..|>" + "\n" + input_state_text + "\n"
-    # text += "<|current|>" + "\n"
+    text += "<|input..|>" + "\n"
+    text += input_state_text + "\n"
+    text += "<|current|>" + "\n"
     text += current_state_text + "\n"
-    # text += "<|next...|>" + "\n" + next_state_text + "\n"
     return text
 
 
