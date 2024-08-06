@@ -59,7 +59,7 @@ gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 10
+context_size = 56
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
@@ -171,16 +171,16 @@ def generate_action_examples(puzzle_example, num_classes):
             action_value = get_winning_cells(
                 example_output, next_state)
             example = (input_text, output_text)
-            m = hashlib.sha256()
-            m.update(input_text.encode('ascii'))
-            hash = m.hexdigest()
-            print("<input_text>")
-            print(input_text)
-            print("</input_text>")
-            print("<output_text>")
-            print(output_text)
-            print("</output_text>")
-            print(f"input_text sha256 {hash}")
+            # m = hashlib.sha256()
+            # m.update(input_text.encode('ascii'))
+            # hash = m.hexdigest()
+            # print("<input_text>")
+            # print(input_text)
+            # print("</input_text>")
+            # print("<output_text>")
+            # print(output_text)
+            # print("</output_text>")
+            # print(f"input_text sha256 {hash}")
             action_examples.append(example)
             if action_value > best_action_value:
                 best_next_state = next_state
@@ -484,9 +484,10 @@ model.to(gpu_device)
 
 puzzle_train_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "train")
-# train_action_examples = generate_train_action_examples(puzzle_train_examples, num_classes)
-train_action_examples = [
-    ["banana....", "fruit....."], ["cucumber..", "vegetable."]]
+train_action_examples = generate_train_action_examples(
+    puzzle_train_examples, num_classes)
+# train_action_examples = [
+#    ["banana....", "fruit....."], ["cucumber..", "vegetable."]]
 
 puzzle_test_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "test")
