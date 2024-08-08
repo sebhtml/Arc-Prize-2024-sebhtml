@@ -26,6 +26,10 @@
 # It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
 # For example, here's several helpful packages to load
 
+# This software used reinforcement learning.
+# It uses Q-learning.
+# See https://en.wikipedia.org/wiki/Q-learning
+
 import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import hashlib
@@ -67,7 +71,7 @@ gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 192
+context_size = 144  # 128 + 16
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
@@ -84,33 +88,40 @@ batch_size = 512
 lr = 0.0001
 weight_decay = 0.01
 num_epochs = 400
-padding_char = '.'
+padding_char = ' '
 
 
 def state_to_text(state):
-    return "/".join(map(lambda row: "".join(map(str, row)), state))
-
-# Q-network
-# Q(s, a)
-# - s contains the state which is (input_state, current_state)
-# - a contains the action which is (next_state)
-# TODO encode the action using 3 integers: x, y, pixel
+    return "\n".join(map(lambda row: "".join(map(str, row)), state))
 
 
-def make_state_text(input_state, current_state, next_state):
+def make_state_text(input_state, current_state, row, col, cell_value):
+    """
+    Q-network
+    Q(s, a)
+    - s contains the state which is (input_state, current_state)
+    - a contains the action which is (next_state)
+    """
     input_state_text = state_to_text(input_state)
     current_state_text = state_to_text(current_state)
-    next_state_text = state_to_text(next_state)
 
+    # state s
     s = ""
     s += "<|inp|>" + "\n"
     s += input_state_text + "\n"
+
     s += "<|cur|>" + "\n"
     s += current_state_text + "\n"
 
+    # action a
     a = ""
     a += "<|act|>" + "\n"
-    a += next_state_text + "\n"
+    a += str(row).rjust(2, padding_char)
+    a += " "
+    a += str(col).rjust(2, padding_char)
+    a += " "
+    a += str(cell_value)
+    a += "\n"
 
     text = s + a
 
@@ -119,6 +130,7 @@ def make_state_text(input_state, current_state, next_state):
 
 def get_winning_cells(example_output, next_state):
     """
+    Q(s, a)
     Count the number of correct cells.
     """
     winning_cells = 0
@@ -174,7 +186,7 @@ def generate_action_examples(puzzle_example):
             next_state = copy.deepcopy(current_state)
             next_state[row][col] = cell_value
             input_text = make_state_text(
-                example_input, current_state, next_state)
+                example_input, current_state, row, col, cell_value)
             action_value = get_winning_cells(
                 example_output, next_state)
             example = (input_text, action_value)
