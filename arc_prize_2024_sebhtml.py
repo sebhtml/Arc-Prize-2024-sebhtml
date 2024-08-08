@@ -177,8 +177,8 @@ def generate_action_examples(puzzle_example):
     current_state = get_starting_current_state(example_output)
 
     while current_state != example_output:
-        best_next_state = current_state
-        best_action_value = get_winning_cells(example_output, best_next_state)
+        best_next_state = None
+        best_action_value = None
         candidate_cell_addrs = generate_cell_actions(
             current_state, cell_value_size, example_output)
 
@@ -191,7 +191,7 @@ def generate_action_examples(puzzle_example):
                 example_output, next_state)
             example = (input_text, action_value)
             action_examples.append(example)
-            if action_value > best_action_value:
+            if best_action_value == None or action_value > best_action_value:
                 best_next_state = next_state
                 best_action_value = action_value
 
