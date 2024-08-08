@@ -10,6 +10,8 @@
 # GPU: NVIDIA P100
 # RAM:
 
+# - TODO add class QLearningState
+# - TODO add class QLearningActionValue
 # - TODO use xformers from Meta Platforms.
 # - TODO honours n_layers
 # - TODO implement translations
@@ -92,9 +94,18 @@ padding_char = ' '
 
 class QLearningAction:
     def __init__(self, row, col, cell_value):
-        self.row = row
-        self.col = col
-        self.cell_value = cell_value
+        self.__row = row
+        self.__col = col
+        self.__cell_value = cell_value
+
+    def row(self) -> int:
+        return self.__row
+
+    def col(self) -> int:
+        return self.__col
+
+    def cell_value(self) -> int:
+        return self.__cell_value
 
 
 def state_to_text(state) -> str:
@@ -120,16 +131,13 @@ def make_state_text(input_state, current_state, action: QLearningAction) -> str:
     s += current_state_text + "\n"
 
     # action a
-    row = action.row
-    col = action.col
-    cell_value = action.cell_value
     a = ""
     a += "<|act|>" + "\n"
-    a += str(row).rjust(2, padding_char)
+    a += str(action.row()).rjust(2, padding_char)
     a += " "
-    a += str(col).rjust(2, padding_char)
+    a += str(action.col()).rjust(2, padding_char)
     a += " "
-    a += str(cell_value)
+    a += str(action.cell_value())
     a += "\n"
 
     text = s + a
@@ -159,11 +167,11 @@ def get_starting_current_state(example_output):
     return current_state
 
 
-def generate_cell_actions(current_state, cell_value_size, example_output):
+def generate_cell_actions(current_state, cell_value_size, example_output) -> list[QLearningAction]:
     """
     It is illegal to assign a value to a cell if that cell already has this value.
     """
-    candidate_cell_addrs = []
+    candidate_actions = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
             # The action cell value can not change the current cell value if the current cell value is the target cell value.
@@ -175,9 +183,10 @@ def generate_cell_actions(current_state, cell_value_size, example_output):
                     continue
                 if action_cell_value != example_output[row][col]:
                     continue
-                candidate_cell_addrs.append([row, col, action_cell_value])
-    np.random.shuffle(candidate_cell_addrs)
-    return candidate_cell_addrs
+                action = QLearningAction(row, col, action_cell_value)
+                candidate_actions.append(action)
+    np.random.shuffle(candidate_actions)
+    return candidate_actions
 
 
 def generate_action_examples(puzzle_example):
@@ -188,15 +197,17 @@ def generate_action_examples(puzzle_example):
     while current_state != example_output:
         best_next_state = None
         best_action_value = None
-        candidate_cell_addrs = generate_cell_actions(
+        candidate_actions = generate_cell_actions(
             current_state, cell_value_size, example_output)
 
-        for row, col, cell_value in candidate_cell_addrs:
+        for candidate_action in candidate_actions:
             next_state = copy.deepcopy(current_state)
+            row = candidate_action.row()
+            col = candidate_action.col()
+            cell_value = candidate_action.cell_value()
             next_state[row][col] = cell_value
-            action = QLearningAction(row, col, cell_value)
             input_text = make_state_text(
-                example_input, current_state, action)
+                example_input, current_state, candidate_action)
             action_value = get_winning_cells(
                 example_output, next_state)
             example = (input_text, action_value)
@@ -549,14 +560,17 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     for _ in range(10):
         best_next_state = None
         best_action_value = None
-        candidate_cell_addrs = generate_cell_actions(
+        candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
 
-        for row, col, cell_value in candidate_cell_addrs:
+        for candidate_action in candidate_actions:
             next_state = copy.deepcopy(current_state)
+            row = candidate_action.row()
+            col = candidate_action.col()
+            cell_value = candidate_action.cell_value()
             next_state[row][col] = cell_value
             input_text = make_state_text(
-                input_state, current_state, next_state)
+                input_state, current_state, candidate_action)
             print("input_text")
             print(input_text)
             # TODO test all actions in one batch
