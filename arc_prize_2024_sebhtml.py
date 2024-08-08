@@ -10,8 +10,9 @@
 # GPU: NVIDIA P100
 # RAM:
 
+# - TODO pass s, a to Q(s, a) in make_state_text
+# - TODO use xformers from Meta Platforms.
 # - TODO honours n_layers
-# - TODO use masked loss function to only do one change at a time
 # - TODO implement translations
 # - TODO implement rotations
 # - TODO add noise in input
@@ -66,7 +67,7 @@ gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 136
+context_size = 192
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
@@ -74,6 +75,7 @@ vision_width = 7
 vision_height = 7
 hidden_size = 256
 ffn_size = 256
+num_classes = 50
 num_heads = 8
 dropout = 0.1
 num_layers = 4
@@ -88,15 +90,30 @@ padding_char = '.'
 def state_to_text(state):
     return "/".join(map(lambda row: "".join(map(str, row)), state))
 
+# Q-network
+# Q(s, a)
+# - s contains the state which is (input_state, current_state)
+# - a contains the action which is (next_state)
+# TODO encode the action using 3 integers: x, y, pixel
 
-def make_state_text(input_state, current_state):
+
+def make_state_text(input_state, current_state, next_state):
     input_state_text = state_to_text(input_state)
     current_state_text = state_to_text(current_state)
-    text = ""
-    text += "<|input..|>" + "\n"
-    text += input_state_text + "\n"
-    text += "<|current|>" + "\n"
-    text += current_state_text + "\n"
+    next_state_text = state_to_text(next_state)
+
+    s = ""
+    s += "<|inp|>" + "\n"
+    s += input_state_text + "\n"
+    s += "<|cur|>" + "\n"
+    s += current_state_text + "\n"
+
+    a = ""
+    a += "<|act|>" + "\n"
+    a += next_state_text + "\n"
+
+    text = s + a
+
     return text
 
 
@@ -157,12 +174,10 @@ def generate_action_examples(puzzle_example):
             next_state = copy.deepcopy(current_state)
             next_state[row][col] = cell_value
             input_text = make_state_text(
-                example_input, current_state)
-            output_text = make_state_text(
-                example_input, next_state)
+                example_input, current_state, next_state)
             action_value = get_winning_cells(
                 example_output, next_state)
-            example = (input_text, output_text)
+            example = (input_text, action_value)
             action_examples.append(example)
             if action_value > best_action_value:
                 best_next_state = next_state
@@ -245,14 +260,16 @@ class MyDataset(Dataset):
 
     def __getitem__(self, idx):
         example = self.examples[idx]
-        input_text = example[0]
-        target_text = example[1]
-        item_input = make_sample_tensor(input_text)
-        item_target = make_sample_tensor(target_text)
-        item_target = F.one_hot(
-            item_target, num_classes=vocab_size).float()
 
-        item = (item_input, item_target)
+        input_text = example[0]
+        item_input = make_sample_tensor(input_text)
+
+        action_value = example[1]
+        action_value = torch.tensor(action_value)
+        action_value = F.one_hot(
+            action_value, num_classes=num_classes).float()
+
+        item = (item_input, action_value)
         return item
 
 
@@ -353,8 +370,10 @@ class DecoderOnlyTransformerModel(nn.Module):
         )
         self.norm = nn.LayerNorm(hidden_size)
 
+        self.gap = nn.AdaptiveAvgPool1d(1)
+
         self.classifier = nn.Linear(
-            in_features=hidden_size, out_features=vocab_size)
+            in_features=hidden_size, out_features=num_classes)
 
     def forward(self, x):
         x = self.embed(x)
@@ -366,7 +385,9 @@ class DecoderOnlyTransformerModel(nn.Module):
         transformed = self.blocks(embed_drop)
         transformed_ln = self.norm(transformed)
         last_hidden_state = transformed_ln
-        logits = self.classifier(last_hidden_state)
+        output = self.gap(last_hidden_state.transpose(1, 2))
+        output = output.squeeze(2)
+        logits = self.classifier(output)
         return logits
 
 
@@ -401,10 +422,8 @@ def print_model_outputs():
             print("--------------------")
             print(f"idx: {idx} ")
             input = inputs[idx]
-            target = targets[idx].argmax(dim=-1)
-            target = make_sample_text(target)
-            output = outputs[idx].argmax(dim=-1)
-            output = make_sample_text(output)
+            target = targets[idx].argmax(dim=-1).item()
+            output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")
             print("".join(list(map(chr, input.tolist()))))
@@ -505,7 +524,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
     # TODO improve stopping criterion in auto-regressive AI
-    for _ in range(3):
+    for _ in range(10):
         best_next_state = None
         best_action_value = None
         candidate_cell_addrs = generate_cell_actions(
@@ -575,8 +594,7 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         # TODO don't break
         break
 
-
-# TODO make it work on the train examples
+#
 # apply_puzzle_action_value_policy(puzzle_train_examples)
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
