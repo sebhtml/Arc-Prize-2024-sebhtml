@@ -10,7 +10,6 @@
 # GPU: NVIDIA P100
 # RAM:
 
-# - TODO pass s, a to Q(s, a) in make_state_text
 # - TODO use xformers from Meta Platforms.
 # - TODO honours n_layers
 # - TODO implement translations
@@ -91,11 +90,18 @@ num_epochs = 400
 padding_char = ' '
 
 
-def state_to_text(state):
+class QLearningAction:
+    def __init__(self, row, col, cell_value):
+        self.row = row
+        self.col = col
+        self.cell_value = cell_value
+
+
+def state_to_text(state) -> str:
     return "\n".join(map(lambda row: "".join(map(str, row)), state))
 
 
-def make_state_text(input_state, current_state, row, col, cell_value):
+def make_state_text(input_state, current_state, action: QLearningAction) -> str:
     """
     Q-network
     Q(s, a)
@@ -114,6 +120,9 @@ def make_state_text(input_state, current_state, row, col, cell_value):
     s += current_state_text + "\n"
 
     # action a
+    row = action.row
+    col = action.col
+    cell_value = action.cell_value
     a = ""
     a += "<|act|>" + "\n"
     a += str(row).rjust(2, padding_char)
@@ -185,8 +194,9 @@ def generate_action_examples(puzzle_example):
         for row, col, cell_value in candidate_cell_addrs:
             next_state = copy.deepcopy(current_state)
             next_state[row][col] = cell_value
+            action = QLearningAction(row, col, cell_value)
             input_text = make_state_text(
-                example_input, current_state, row, col, cell_value)
+                example_input, current_state, action)
             action_value = get_winning_cells(
                 example_output, next_state)
             example = (input_text, action_value)
