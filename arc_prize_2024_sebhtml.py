@@ -10,9 +10,11 @@
 # GPU: NVIDIA P100
 # RAM:
 
-# - TODO add noise in input
-# - TODO implement rotations
+# - TODO honours n_layers
+# - TODO use masked loss function to only do one change at a time
 # - TODO implement translations
+# - TODO implement rotations
+# - TODO add noise in input
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
@@ -74,7 +76,7 @@ hidden_size = 256
 ffn_size = 256
 num_heads = 8
 dropout = 0.1
-num_layers = 8
+num_layers = 4
 vocab_size = 128
 batch_size = 512
 lr = 0.0001
@@ -204,17 +206,14 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 
         example = (example_input, example_output)
         puzzle_venue_examples.append(example)
-        # TODO don't break
-        break
     return puzzle_venue_examples
 
 
 def generate_train_action_examples(puzzle_examples):
-    print("puzzle_examples")
-    print(len(puzzle_examples))
     train_examples = []
     for puzzle_example in puzzle_examples:
-        # TODO use range(32)
+        # TODO use range(1)
+        # for _ in range(32):
         for _ in range(1):
             action_examples = generate_action_examples(
                 puzzle_example)
@@ -331,7 +330,6 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.pos_encoding = PositionalEncoding(context_size, hidden_size)
         # TODO use RotaryEmbedding
         # self.rotary_emb = RotaryEmbedding(dim=hidden_size)
-        # self.gap = nn.AdaptiveAvgPool1d(1)
 
         self.dropout_1 = nn.Dropout(dropout)
         # TODO honours n_layers
@@ -344,7 +342,6 @@ class DecoderOnlyTransformerModel(nn.Module):
                 hidden_size, ffn_size, num_heads, dropout),
             NonCausalSelfAttentionTransformerBlock(
                 hidden_size, ffn_size, num_heads, dropout)
-            # TODO enable more layers
             # NonCausalSelfAttentionTransformerBlock(
             # hidden_size, ffn_size,  num_heads, dropout),
             # NonCausalSelfAttentionTransformerBlock(
@@ -479,7 +476,7 @@ def train():
     num_steps = num_epochs * math.ceil(len(train_action_examples) / batch_size)
     print(f"num_steps {num_steps}")
     step = 0
-    for _ in range(num_epochs):
+    for epoch in range(num_epochs):
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
@@ -493,7 +490,7 @@ def train():
             step += 1
             grad_l2_norm = get_grad_norm(model)
             print(
-                f"Step: {step}/{num_steps}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
+                f"Step: {step}/{num_steps}  epoch: {epoch}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
             del inputs
             del targets
             del outputs
