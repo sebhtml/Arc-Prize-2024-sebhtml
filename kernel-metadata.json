@@ -1,0 +1,15 @@
+{
+  "id": "sebastien/arc-prize-2024-sebhtml-py",
+  "title": "arc-prize-2024-sebhtml-py",
+  "code_file": "arc_prize_2024_sebhtml.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [],
+  "competition_sources": ["arc-prize-2024"],
+  "kernel_sources": [],
+  "model_sources": []
+}
