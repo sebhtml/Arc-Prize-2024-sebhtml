@@ -96,7 +96,7 @@ vocab_size = 128
 batch_size = 512
 lr = 0.0001
 weight_decay = 0.01
-num_epochs = 1  # 400
+num_epochs = 400
 padding_char = ' '
 
 
@@ -536,6 +536,8 @@ def train():
     num_steps = num_epochs * math.ceil(len(train_action_examples) / batch_size)
     print(f"num_steps {num_steps}")
     step = 0
+    steps = []
+    losses = []
     for epoch in range(num_epochs):
         for data in train_loader:
             optimizer.zero_grad()
@@ -549,12 +551,17 @@ def train():
             optimizer.step()
             step += 1
             grad_l2_norm = get_grad_norm(model)
+            loss = loss.cpu().item()
             # logger.info(
             print(
                 f"Step: {step}/{num_steps}  epoch: {epoch}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
+            steps.append(step)
+            losses.append(loss)
             del inputs
             del targets
             del outputs
+    df = pd.DataFrame(data={'step': steps, 'loss': losses})
+    df.to_csv('step_loss.csv', index=False)
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):

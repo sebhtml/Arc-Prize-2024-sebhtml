@@ -21,3 +21,5 @@ kaggle-status:
 kaggle-output:
 	kaggle kernels output -k sebastien/arc-prize-2024-sebhtml-py
 
+kaggle-files:
+	kaggle kernels files -k sebastien/arc-prize-2024-sebhtml-py
