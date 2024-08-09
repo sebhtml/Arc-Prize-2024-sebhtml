@@ -10,16 +10,17 @@
 # GPU: NVIDIA P100
 # RAM:
 
+# - TODO make TODO.md file
+# - TODO create loss.csv
+# - TODO make logger work
+# - TODO add class add class Experience with (s, a, r, s')
 # - TODO add class QLearningState
 # - TODO add class QLearningActionValue
 # - TODO use xformers from Meta Platforms.
 # - TODO honours n_layers
 # - TODO implement translations
 # - TODO implement rotations
-# - TODO add noise in input
-
-# TODO check if the auto-regressive inference AI is able to predict the output for the test example.
-# apply_puzzle_action_value_policy(puzzle_test_examples)
+# - TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 
 # https://www.kaggle.com/code/sebastien/arc-prize-2024-sebhtml/edit
 
@@ -49,6 +50,12 @@ from torch.nn import functional as F
 import os
 import sys
 import itertools
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='/kaggle/working/learning.log',
+                    encoding='utf-8', level=logging.DEBUG)
+logging.info("Created log file.")
 
 print(f"torch.cuda.is_available {torch.cuda.is_available()}")
 gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -81,6 +88,7 @@ vision_height = 7
 hidden_size = 256
 ffn_size = 256
 num_classes = 50
+shuffle = True
 num_heads = 8
 dropout = 0.1
 num_layers = 4
@@ -88,7 +96,7 @@ vocab_size = 128
 batch_size = 512
 lr = 0.0001
 weight_decay = 0.01
-num_epochs = 400
+num_epochs = 1  # 400
 padding_char = ' '
 
 
@@ -158,12 +166,12 @@ def get_winning_cells(example_output, next_state):
     return winning_cells
 
 
-def get_starting_current_state(example_output):
+def get_starting_current_state(example_output, cell_value_size):
     current_state = copy.deepcopy(example_output)
     # Clear state
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            current_state[row][col] = 0
+            current_state[row][col] = random.randrange(0, cell_value_size)
     return current_state
 
 
@@ -174,10 +182,12 @@ def generate_cell_actions(current_state, cell_value_size, example_output) -> lis
     candidate_actions = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
+            # TODO remove this restriction
             # The action cell value can not change the current cell value if the current cell value is the target cell value.
             if current_state[row][col] == example_output[row][col]:
                 continue
             for action_cell_value in range(cell_value_size):
+                # TODO remove this restriction
                 # The action cell value can not be the current cell value.
                 if current_state[row][col] == action_cell_value:
                     continue
@@ -189,10 +199,10 @@ def generate_cell_actions(current_state, cell_value_size, example_output) -> lis
     return candidate_actions
 
 
-def generate_action_examples(puzzle_example):
+def generate_action_examples(puzzle_example, cell_value_size):
     (example_input, example_output) = puzzle_example
     action_examples = []
-    current_state = get_starting_current_state(example_output)
+    current_state = get_starting_current_state(example_output, cell_value_size)
 
     while current_state != example_output:
         best_next_state = None
@@ -257,14 +267,12 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
     return puzzle_venue_examples
 
 
-def generate_train_action_examples(puzzle_examples):
+def generate_train_action_examples(puzzle_examples, cell_value_size):
     train_examples = []
     for puzzle_example in puzzle_examples:
-        # TODO use range(1)
-        # for _ in range(32):
-        for _ in range(1):
+        for _ in range(32):
             action_examples = generate_action_examples(
-                puzzle_example)
+                puzzle_example, cell_value_size)
             train_examples += action_examples
     return train_examples
 
@@ -490,7 +498,7 @@ model.to(gpu_device)
 puzzle_train_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "train")
 train_action_examples = generate_train_action_examples(
-    puzzle_train_examples)
+    puzzle_train_examples, cell_value_size)
 
 puzzle_test_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "test")
@@ -514,7 +522,7 @@ def print_train_examples(train_action_examples):
 dataset = MyDataset(train_action_examples)
 
 # Create a data loader.
-train_loader = DataLoader(dataset, batch_size=batch_size)
+train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 def train():
@@ -541,6 +549,7 @@ def train():
             optimizer.step()
             step += 1
             grad_l2_norm = get_grad_norm(model)
+            # logger.info(
             print(
                 f"Step: {step}/{num_steps}  epoch: {epoch}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
             del inputs
