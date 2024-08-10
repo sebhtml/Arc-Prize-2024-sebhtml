@@ -85,8 +85,8 @@ puzzle_width = 7
 puzzle_height = 7
 vision_width = 7
 vision_height = 7
-hidden_size = 256
-ffn_size = 256
+d_model = 256
+d_ff = 256  # TODO increase to 1024
 num_classes = 50
 shuffle = True
 num_heads = 8
@@ -321,6 +321,7 @@ class FeedForward(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(hidden_size, ffn_size),
+            # TODO add a max(0, .) before the GELU
             nn.GELU(),
             nn.Linear(ffn_size, hidden_size),
             nn.Dropout(dropout),
@@ -385,6 +386,7 @@ class DecoderOnlyTransformerModel(nn.Module):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=vocab_size,
                                   embedding_dim=hidden_size)
+        # TODO scale embed by \sqrt(d_model)
         self.pos_encoding = PositionalEncoding(context_size, hidden_size)
         # TODO use RotaryEmbedding
         # self.rotary_emb = RotaryEmbedding(dim=hidden_size)
@@ -489,7 +491,7 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
 
 
 model = DecoderOnlyTransformerModel(
-    vocab_size, hidden_size, ffn_size,  dropout, num_heads, context_size)
+    vocab_size, d_model, d_ff,  dropout, num_heads, context_size)
 # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
 # Does not work on the NVIDIA P100
 # model = torch.compile(model)
