@@ -182,20 +182,9 @@ def generate_cell_actions(current_state, cell_value_size, example_output) -> lis
     candidate_actions = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            # TODO remove this restriction
-            # The action cell value can not change the current cell value if the current cell value is the target cell value.
-            if current_state[row][col] == example_output[row][col]:
-                continue
-
-            for action_cell_value in range(cell_value_size):
-                # TODO remove this restriction
-                # The action cell value can not be the current cell value.
-                if current_state[row][col] == action_cell_value:
-                    continue
-                if action_cell_value != example_output[row][col]:
-                    continue
-
-                action = QLearningAction(row, col, action_cell_value)
+            target_value = example_output[row][col]
+            if current_state[row][col] != target_value:
+                action = QLearningAction(row, col, target_value)
                 candidate_actions.append(action)
     np.random.shuffle(candidate_actions)
     return candidate_actions
@@ -629,10 +618,10 @@ print("train_action_examples")
 print_train_examples(train_action_examples)
 
 
-train()
+# train()
 
-print("[after training] print_model_outputs")
-print_model_outputs()
+# print("[after training] print_model_outputs")
+# print_model_outputs()
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
