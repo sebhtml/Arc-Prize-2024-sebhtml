@@ -86,7 +86,7 @@ puzzle_height = 7
 vision_width = 7
 vision_height = 7
 d_model = 256
-d_ff = 256  # TODO increase to 1024
+d_ff = 1024
 num_classes = 50
 shuffle = True
 num_heads = 8
@@ -186,6 +186,7 @@ def generate_cell_actions(current_state, cell_value_size, example_output) -> lis
             # The action cell value can not change the current cell value if the current cell value is the target cell value.
             if current_state[row][col] == example_output[row][col]:
                 continue
+
             for action_cell_value in range(cell_value_size):
                 # TODO remove this restriction
                 # The action cell value can not be the current cell value.
@@ -193,6 +194,7 @@ def generate_cell_actions(current_state, cell_value_size, example_output) -> lis
                     continue
                 if action_cell_value != example_output[row][col]:
                     continue
+
                 action = QLearningAction(row, col, action_cell_value)
                 candidate_actions.append(action)
     np.random.shuffle(candidate_actions)
@@ -321,7 +323,6 @@ class FeedForward(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(hidden_size, ffn_size),
-            # TODO add a max(0, .) before the GELU
             nn.GELU(),
             nn.Linear(ffn_size, hidden_size),
             nn.Dropout(dropout),
@@ -386,7 +387,6 @@ class DecoderOnlyTransformerModel(nn.Module):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=vocab_size,
                                   embedding_dim=hidden_size)
-        # TODO scale embed by \sqrt(d_model)
         self.pos_encoding = PositionalEncoding(context_size, hidden_size)
         # TODO use RotaryEmbedding
         # self.rotary_emb = RotaryEmbedding(dim=hidden_size)
@@ -420,6 +420,7 @@ class DecoderOnlyTransformerModel(nn.Module):
 
     def forward(self, x):
         x = self.embed(x)
+        x = x / math.sqrt(d_model)
         x = self.pos_encoding(x)
         # TODO apply the rotations to your queries and keys after the heads have been split out, but prior to the dot product and subsequent softmax (attention)
         # see https://github.com/lucidrains/rotary-embedding-torch
