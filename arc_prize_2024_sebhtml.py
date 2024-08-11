@@ -10,13 +10,13 @@
 # GPU: NVIDIA P100
 # RAM:
 
+# - TODO use "Feed forward mechanisms" from xformers
+# - TODO use "Residual paths" from xformers
 # - TODO make TODO.md file
-# - TODO create loss.csv
 # - TODO make logger work
 # - TODO add class add class Experience with (s, a, r, s')
 # - TODO add class QLearningState
 # - TODO add class QLearningActionValue
-# - TODO use xformers from Meta Platforms.
 # - TODO honours n_layers
 # - TODO implement translations
 # - TODO implement rotations
@@ -32,6 +32,19 @@
 # It uses Q-learning.
 # See https://en.wikipedia.org/wiki/Q-learning
 
+import os  # nopep8
+os.system("pip uninstall fastai")  # nopep8
+os.system("pip install xformers")  # nopep8
+
+import logging
+import itertools
+import sys
+from torch.nn import functional as F
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
+from torch.optim import AdamW
+from torch import nn
+import torch.nn.functional as F
+from xformers.components import MultiHeadDispatch, build_attention
 import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import hashlib
@@ -41,16 +54,7 @@ import numpy as np
 import copy
 import math
 import random
-# from rotary_embedding_torch import RotaryEmbedding
-import torch.nn.functional as F
-from torch import nn
-from torch.optim import AdamW
-from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
-from torch.nn import functional as F
-import os
-import sys
-import itertools
-import logging
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='/kaggle/working/learning.log',
@@ -322,12 +326,25 @@ class FeedForward(nn.Module):
 
 
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
-    def __init__(self, hidden_size, ffn_size, num_heads, dropout):
+    def __init__(self, hidden_size, ffn_size, num_heads, dropout, context_size):
         super(NonCausalSelfAttentionTransformerBlock, self).__init__()
-        # TODO Re-implement Multihead attention with Rotary Positional Embedding (ROPE)
-        # https://www.kaggle.com/code/aeryss/rotary-postional-encoding-rope-pytorch
-        self.attn = nn.MultiheadAttention(
-            hidden_size, num_heads, dropout, batch_first=True)
+        my_config = {
+            # you can easily make this dependent on a file, sweep,..
+            "name": "scaled_dot_product",
+            "dropout": dropout,
+            "seq_len": context_size,
+            "causal": False,
+        }
+        attention = build_attention(my_config)
+        self.attn = MultiHeadDispatch(
+            seq_len=context_size,
+            dim_model=hidden_size,
+            residual_dropout=dropout,
+            num_heads=num_heads,
+            attention=attention,
+            use_rotary_embeddings=True,
+        ).to(gpu_device)
+
         self.ffwd = FeedForward(hidden_size, ffn_size, dropout)
         self.norm1 = nn.LayerNorm(hidden_size)
         self.norm2 = nn.LayerNorm(hidden_size)
@@ -335,40 +352,11 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
     def forward(self, src):
         src_ln = self.norm1(src)
         # Self-attention
-        attn_output, attn_output_weights = self.attn(
-            src_ln, src_ln, src_ln)
+        attn_output = self.attn(
+            query=src_ln, key=src_ln, value=src_ln)
         src_and_attn = self.norm2(src + attn_output)
         src_and_attn_and_ffwd = src_and_attn + self.ffwd(src_and_attn)
         return src_and_attn_and_ffwd
-
-
-class PositionalEncoding(nn.Module):
-    """
-    Generates positional encoding for a given sequence length and embedding dimension.
-
-    Args:
-        max_seq_len: Maximum sequence length.
-        embed_dim: Embedding dimension.
-
-    Returns:
-        Positional encoding tensor.
-    """
-
-    def __init__(self, max_seq_len, embed_dim):
-        super(PositionalEncoding, self).__init__()
-
-        pe = torch.zeros(max_seq_len, embed_dim)
-        position = torch.arange(0, max_seq_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, embed_dim, 2).float()
-                             * (-math.log(10000.0) / embed_dim))
-
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.to(gpu_device)
-        self.pe = pe
-
-    def forward(self, x):
-        return x + self.pe
 
 
 class DecoderOnlyTransformerModel(nn.Module):
@@ -376,21 +364,18 @@ class DecoderOnlyTransformerModel(nn.Module):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=vocab_size,
                                   embedding_dim=hidden_size)
-        self.pos_encoding = PositionalEncoding(context_size, hidden_size)
-        # TODO use RotaryEmbedding
-        # self.rotary_emb = RotaryEmbedding(dim=hidden_size)
 
         self.dropout_1 = nn.Dropout(dropout)
         # TODO honours n_layers
         self.blocks = nn.Sequential(
             NonCausalSelfAttentionTransformerBlock(
-                hidden_size, ffn_size, num_heads, dropout),
+                hidden_size, ffn_size, num_heads, dropout, context_size),
             NonCausalSelfAttentionTransformerBlock(
-                hidden_size, ffn_size, num_heads, dropout),
+                hidden_size, ffn_size, num_heads, dropout, context_size),
             NonCausalSelfAttentionTransformerBlock(
-                hidden_size, ffn_size, num_heads, dropout),
+                hidden_size, ffn_size, num_heads, dropout, context_size),
             NonCausalSelfAttentionTransformerBlock(
-                hidden_size, ffn_size, num_heads, dropout)
+                hidden_size, ffn_size, num_heads, dropout, context_size)
             # NonCausalSelfAttentionTransformerBlock(
             # hidden_size, ffn_size,  num_heads, dropout),
             # NonCausalSelfAttentionTransformerBlock(
@@ -410,10 +395,6 @@ class DecoderOnlyTransformerModel(nn.Module):
     def forward(self, x):
         x = self.embed(x)
         x = x / math.sqrt(d_model)
-        x = self.pos_encoding(x)
-        # TODO apply the rotations to your queries and keys after the heads have been split out, but prior to the dot product and subsequent softmax (attention)
-        # see https://github.com/lucidrains/rotary-embedding-torch
-        # x = self.rotary_emb(x)
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
         transformed_ln = self.norm(transformed)
@@ -618,10 +599,10 @@ print("train_action_examples")
 print_train_examples(train_action_examples)
 
 
-# train()
+train()
 
-# print("[after training] print_model_outputs")
-# print_model_outputs()
+print("[after training] print_model_outputs")
+print_model_outputs()
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
