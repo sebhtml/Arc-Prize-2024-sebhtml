@@ -100,7 +100,7 @@ vocab_size = 128
 batch_size = 512
 lr = 0.0001
 weight_decay = 0.01
-num_epochs = 400
+num_epochs = 200
 padding_char = ' '
 
 
@@ -309,20 +309,35 @@ class MyDataset(Dataset):
         return item
 
 
-class FeedForward(nn.Module):
-    """ a simple linear layer followed by a non-linearity """
-
-    def __init__(self, hidden_size, ffn_size, dropout):
+class SwiGLU(nn.Module):
+    def __init__(self, dim):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(hidden_size, ffn_size),
-            nn.GELU(),
-            nn.Linear(ffn_size, hidden_size),
-            nn.Dropout(dropout),
-        )
+        self.proj = nn.Linear(dim, dim * 2)
 
     def forward(self, x):
-        return self.net(x)
+        x, gate = self.proj(x).chunk(2, dim=-1)
+        return x * gate.sigmoid()
+
+
+class FeedForward(nn.Module):
+    def __init__(self, dim, hidden_dim, dropout):
+        super().__init__()
+        self.fc1 = nn.Linear(dim, hidden_dim)
+        self.swiglu = SwiGLU(hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, dim)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        # print(x.size())
+        x = self.fc1(x)
+        # print(x.size())
+        x = self.swiglu(x)
+        # print(x.size())
+        x = self.dropout(x)
+        # print(x.size())
+        x = self.fc2(x)
+        # print(x.size())
+        return x
 
 
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
