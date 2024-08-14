@@ -10,59 +10,53 @@
 # GPU: NVIDIA P100
 # RAM:
 
+# - TODO use RMSNorm from xformers
 # - TODO use "Feed forward mechanisms" from xformers
 # - TODO use "Residual paths" from xformers
-# - TODO make TODO.md file
-# - TODO make logger work
+# - TODO honours n_layers
 # - TODO add class add class Experience with (s, a, r, s')
 # - TODO add class QLearningState
 # - TODO add class QLearningActionValue
-# - TODO honours n_layers
 # - TODO implement translations
 # - TODO implement rotations
 # - TODO check if the auto-regressive inference AI is able to predict the output for the test example.
-
-# https://www.kaggle.com/code/sebastien/arc-prize-2024-sebhtml/edit
-
-# This Python 3 environment comes with many helpful analytics libraries installed
-# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
-# For example, here's several helpful packages to load
 
 # This software used reinforcement learning.
 # It uses Q-learning.
 # See https://en.wikipedia.org/wiki/Q-learning
 
 import os  # nopep8
-os.system("pip uninstall fastai")  # nopep8
-os.system("pip install xformers")  # nopep8
+# os.system("pip uninstall fastai torchvision torchaudio")  # nopep8
+# For TPUs # nopep8
+# os.system(   # nopep8
+#    "pip install torch~=2.4.0 torch_xla[tpu]~=2.4.0 -f https://storage.googleapis.com/libtpu-releases/index.html")   # nopep8
+# os.system("pip install xformers")  # nopep8
 
-import logging
-import itertools
-import sys
-from torch.nn import functional as F
-from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
-from torch.optim import AdamW
-from torch import nn
-import torch.nn.functional as F
-from xformers.components import MultiHeadDispatch, build_attention
-import numpy as np  # linear algebra
-import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
-import hashlib
-import json
-import torch
-import numpy as np
-import copy
-import math
+
+# import torch_xla
+# import torch_xla.core.xla_model as xm
 import random
+import math
+import copy
+import numpy as np
+import torch
+import json
+import hashlib
+import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
+import numpy as np  # linear algebra
+from xformers.components import MultiHeadDispatch, build_attention
+import torch.nn.functional as F
+from torch import nn
+from torch.optim import AdamW
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
+from torch.nn import functional as F
+import sys
+import itertools
+import logging
 
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(filename='/kaggle/working/learning.log',
-                    encoding='utf-8', level=logging.DEBUG)
-logging.info("Created log file.")
-
-print(f"torch.cuda.is_available {torch.cuda.is_available()}")
-gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda")
+# device = xm.xla_device()
+# device = torch.device("cpu")
 
 # Input data files are available in the read-only "../input/" directory
 # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
@@ -81,6 +75,14 @@ gpu_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #
 # /kaggle/input/arc-prize-2024/sample_submission.json
 
+# Paths
+# On Kaggle
+# kaggle_input_path = "/kaggle/input/arc-prize-2024/"
+# workspace_path = "/workspace/working/"
+# On runpod
+kaggle_input_path = "/workspace/kaggle-input/"
+workspace_path = "/workspace/working/"
+
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
 context_size = 144  # 128 + 16
@@ -97,11 +99,21 @@ num_heads = 8
 dropout = 0.1
 num_layers = 4
 vocab_size = 128
+# For batch_size:
+# - 8192 for the TPU machine since "TPU-v3-8" has 330 GB RAM
+# - 512 for TPU-v3-8 with 1 TPU
+# - 512 for the NVIDIA P100 GPU since "P100" has 16 GB VRAM
+# - 1024 for CPU since "CPU" has 29 GB RAM
 batch_size = 512
 lr = 0.0001
 weight_decay = 0.01
 num_epochs = 200
 padding_char = ' '
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename=f"{workspace_path}learning.log",
+                    encoding='utf-8', level=logging.DEBUG)
+logging.info("Created log file.")
 
 
 class QLearningAction:
@@ -227,7 +239,7 @@ def generate_action_examples(puzzle_example, cell_value_size):
 
 
 def get_puzzle_solution(venue, puzzle_id):
-    solutions_file = f"/kaggle/input/arc-prize-2024/arc-agi_{venue}_solutions.json"
+    solutions_file = f"{kaggle_input_path}arc-agi_{venue}_solutions.json"
     f = open(solutions_file)
     solutions_data = json.load(f)
     solution = solutions_data[puzzle_id][0]
@@ -240,7 +252,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
     - example_type is "train" or "test"
     Note that for the "test" venue, no solutions are provided.
     """
-    challenges_file = f"/kaggle/input/arc-prize-2024/arc-agi_{venue}_challenges.json"
+    challenges_file = f"{kaggle_input_path}arc-agi_{venue}_challenges.json"
     f = open(challenges_file)
     challenges_data = json.load(f)
     puzzle_challenges_data = challenges_data[puzzle_id]
@@ -310,13 +322,21 @@ class MyDataset(Dataset):
 
 
 class SwiGLU(nn.Module):
+    """
+    swiGLU = (x * U) * swish(x * V)
+    Note that in PyTorch, the name of Swish is SILU
+    """
+
     def __init__(self, dim):
         super().__init__()
-        self.proj = nn.Linear(dim, dim * 2)
+        self.swish = nn.SiLU()
+        self.input_proj = nn.Linear(dim, dim, bias=False)
+        self.gate_proj = nn.Linear(dim, dim, bias=False)
 
     def forward(self, x):
-        x, gate = self.proj(x).chunk(2, dim=-1)
-        return x * gate.sigmoid()
+        input = self.input_proj(x)
+        gate = self.swish(self.gate_proj(x))
+        return input * gate
 
 
 class FeedForward(nn.Module):
@@ -328,15 +348,10 @@ class FeedForward(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # print(x.size())
         x = self.fc1(x)
-        # print(x.size())
         x = self.swiglu(x)
-        # print(x.size())
         x = self.dropout(x)
-        # print(x.size())
         x = self.fc2(x)
-        # print(x.size())
         return x
 
 
@@ -358,7 +373,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
             num_heads=num_heads,
             attention=attention,
             use_rotary_embeddings=True,
-        ).to(gpu_device)
+        ).to(device)
 
         self.ffwd = FeedForward(hidden_size, ffn_size, dropout)
         self.norm1 = nn.LayerNorm(hidden_size)
@@ -442,8 +457,8 @@ def get_grad_norm(model):
 def print_model_outputs():
     for data in train_loader:
         (inputs, targets) = data
-        inputs = inputs.to(gpu_device)
-        targets = targets.to(gpu_device)
+        inputs = inputs.to(device)
+        targets = targets.to(device)
         outputs = model(inputs)
         print("inputs size")
         print(inputs.size())
@@ -481,7 +496,7 @@ model = DecoderOnlyTransformerModel(
 # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
 # Does not work on the NVIDIA P100
 # model = torch.compile(model)
-model.to(gpu_device)
+model.to(device)
 
 puzzle_train_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "train")
@@ -530,19 +545,18 @@ def train():
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
-            inputs = inputs.to(gpu_device)
-            targets = targets.to(gpu_device)
+            inputs = inputs.to(device)
+            targets = targets.to(device)
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             step += 1
-            grad_l2_norm = get_grad_norm(model)
             loss = loss.cpu().item()
-            # logger.info(
+            # current_memory_allocated = torch.cuda.memory_allocated()
             print(
-                f"Step: {step}/{num_steps}  epoch: {epoch}  grad_norm: {grad_l2_norm:.8f}  loss: {loss:.8f}")
+                f"Step: {step}/{num_steps}  epoch: {epoch}  loss: {loss:.8f}")
             steps.append(step)
             losses.append(loss)
             del inputs
@@ -581,7 +595,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
             inputs = make_sample_tensor(input_text).unsqueeze(0)
             print("inputs size")
             print(inputs.size())
-            inputs = inputs.to(gpu_device)
+            inputs = inputs.to(device)
             outputs = model(inputs)
             print("outputs size")
             print(outputs.size())
