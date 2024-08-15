@@ -10,7 +10,6 @@
 # GPU: NVIDIA P100
 # RAM:
 
-# - TODO use RMSNorm from xformers
 # - TODO use "Feed forward mechanisms" from xformers
 # - TODO use "Residual paths" from xformers
 # - TODO honours n_layers
@@ -375,17 +374,17 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
             use_rotary_embeddings=True,
         ).to(device)
 
-        self.ffwd = FeedForward(hidden_size, ffn_size, dropout)
-        self.norm1 = nn.LayerNorm(hidden_size)
-        self.norm2 = nn.LayerNorm(hidden_size)
+        self.ffn = FeedForward(hidden_size, ffn_size, dropout)
+        self.attention_norm = nn.RMSNorm(hidden_size)
+        self.ffn_norm = nn.RMSNorm(hidden_size)
 
     def forward(self, src):
-        src_ln = self.norm1(src)
+        src_ln = self.attention_norm(src)
         # Self-attention
         attn_output = self.attn(
             query=src_ln, key=src_ln, value=src_ln)
-        src_and_attn = self.norm2(src + attn_output)
-        src_and_attn_and_ffwd = src_and_attn + self.ffwd(src_and_attn)
+        src_and_attn = self.ffn_norm(src + attn_output)
+        src_and_attn_and_ffwd = src_and_attn + self.ffn(src_and_attn)
         return src_and_attn_and_ffwd
 
 
@@ -415,7 +414,7 @@ class DecoderOnlyTransformerModel(nn.Module):
             # NonCausalSelfAttentionTransformerBlock(
             # hidden_size, ffn_size, num_heads, dropout)
         )
-        self.norm = nn.LayerNorm(hidden_size)
+        self.norm = nn.RMSNorm(hidden_size)
 
         self.gap = nn.AdaptiveAvgPool1d(1)
 
