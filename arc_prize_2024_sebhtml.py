@@ -10,6 +10,10 @@
 # GPU: NVIDIA P100
 # RAM:
 
+# Runpod
+# - NVIDIA A40 48 GB VRAM
+# - NVIDIA RTX A4000 16 GB VRAM
+
 # - TODO use "Feed forward mechanisms" from xformers
 # - TODO use "Residual paths" from xformers
 # - TODO honours n_layers
@@ -76,11 +80,12 @@ device = torch.device("cuda")
 
 # Paths
 # On Kaggle
-# kaggle_input_path = "/kaggle/input/arc-prize-2024/"
-# workspace_path = "/workspace/working/"
+# kaggle_input_path = "/kaggle/input/arc-prize-2024"
+# logs_path = "/workspace/logs"
 # On runpod
-kaggle_input_path = "/workspace/kaggle-input/"
-workspace_path = "/workspace/working/"
+kaggle_input_path = "/workspace/kaggle-input"
+logs_path = "/workspace/logs"
+models_path = "/workspace/models"
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
@@ -103,14 +108,17 @@ vocab_size = 128
 # - 512 for TPU-v3-8 with 1 TPU
 # - 512 for the NVIDIA P100 GPU since "P100" has 16 GB VRAM
 # - 1024 for CPU since "CPU" has 29 GB RAM
-batch_size = 512
+# On runpod:
+# - 1536 with NVIDIA A40 (48 GB VRAM)
+# - 512 with NVIDIA A4000 (16 GB VRAM)
+batch_size = 1536
 lr = 0.0001
 weight_decay = 0.01
 num_epochs = 200
 padding_char = ' '
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename=f"{workspace_path}learning.log",
+logging.basicConfig(filename=f"{logs_path}/2024-08-15-learning.log",
                     encoding='utf-8', level=logging.DEBUG)
 logging.info("Created log file.")
 
@@ -238,7 +246,7 @@ def generate_action_examples(puzzle_example, cell_value_size):
 
 
 def get_puzzle_solution(venue, puzzle_id):
-    solutions_file = f"{kaggle_input_path}arc-agi_{venue}_solutions.json"
+    solutions_file = f"{kaggle_input_path}/arc-agi_{venue}_solutions.json"
     f = open(solutions_file)
     solutions_data = json.load(f)
     solution = solutions_data[puzzle_id][0]
@@ -251,7 +259,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
     - example_type is "train" or "test"
     Note that for the "test" venue, no solutions are provided.
     """
-    challenges_file = f"{kaggle_input_path}arc-agi_{venue}_challenges.json"
+    challenges_file = f"{kaggle_input_path}/arc-agi_{venue}_challenges.json"
     f = open(challenges_file)
     challenges_data = json.load(f)
     puzzle_challenges_data = challenges_data[puzzle_id]
@@ -628,6 +636,8 @@ print_train_examples(train_action_examples)
 
 
 train()
+
+torch.save(model.state_dict(),f"{models_path}/2024-08-15-model_state_dict.pth")
 
 print("[after training] print_model_outputs")
 print_model_outputs()
