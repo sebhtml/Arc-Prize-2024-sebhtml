@@ -637,7 +637,8 @@ print_train_examples(train_action_examples)
 
 train()
 
-torch.save(model.state_dict(),f"{models_path}/2024-08-15-model_state_dict.pth")
+torch.save(model.state_dict(),
+           f"{models_path}/2024-08-15-model_state_dict.pth")
 
 print("[after training] print_model_outputs")
 print_model_outputs()
