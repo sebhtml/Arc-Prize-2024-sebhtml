@@ -114,8 +114,10 @@ vocab_size = 128
 batch_size = 1536
 lr = 0.0001
 weight_decay = 0.01
-num_epochs = 200
+num_epochs = 2
 padding_char = ' '
+load_model = False
+# load_model = True
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename=f"{logs_path}/2024-08-15-learning.log",
@@ -194,21 +196,18 @@ def get_starting_current_state(example_output, cell_value_size):
     # Clear state
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            current_state[row][col] = random.randrange(0, cell_value_size)
+            current_state[row][col] = 0  # random.randrange(0, cell_value_size)
     return current_state
 
 
-def generate_cell_actions(current_state, cell_value_size, example_output) -> list[QLearningAction]:
-    """
-    It is illegal to assign a value to a cell if that cell already has this value.
-    """
+def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
     candidate_actions = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            target_value = example_output[row][col]
-            if current_state[row][col] != target_value:
-                action = QLearningAction(row, col, target_value)
-                candidate_actions.append(action)
+            for new_value in range(cell_value_size):
+                if current_state[row][col] != new_value:
+                    action = QLearningAction(row, col, new_value)
+                    candidate_actions.append(action)
     np.random.shuffle(candidate_actions)
     return candidate_actions
 
@@ -222,7 +221,7 @@ def generate_action_examples(puzzle_example, cell_value_size):
         best_next_state = None
         best_action_value = None
         candidate_actions = generate_cell_actions(
-            current_state, cell_value_size, example_output)
+            current_state, cell_value_size)
 
         for candidate_action in candidate_actions:
             next_state = copy.deepcopy(current_state)
@@ -284,7 +283,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 def generate_train_action_examples(puzzle_examples, cell_value_size):
     train_examples = []
     for puzzle_example in puzzle_examples:
-        for _ in range(32):
+        for _ in range(400):
             action_examples = generate_action_examples(
                 puzzle_example, cell_value_size)
             train_examples += action_examples
@@ -582,7 +581,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
     # TODO improve stopping criterion in auto-regressive AI
-    for _ in range(10):
+    for _ in range(32):
         best_next_state = None
         best_action_value = None
         candidate_actions = generate_cell_actions(
@@ -620,8 +619,6 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         print(f"best_next_state with {best_action_value}")
         print("current_state after motor action")
         print_puzzle_state(puzzle_width, puzzle_height, current_state)
-        # TODO don't break.
-        break
     return current_state
 
 
@@ -634,11 +631,17 @@ print(len(train_action_examples))
 print("train_action_examples")
 print_train_examples(train_action_examples)
 
+model_file_path = f"{models_path}/2024-08-30-model_state_dict.pth"
 
-train()
-
-torch.save(model.state_dict(),
-           f"{models_path}/2024-08-15-model_state_dict.pth")
+if load_model:
+    print("Loading model")
+    state_dict = torch.load(model_file_path, weights_only=True)
+    model.load_state_dict(state_dict)
+else:
+    print("Training model")
+    train()
+    torch.save(model.state_dict(),
+               model_file_path)
 
 print("[after training] print_model_outputs")
 print_model_outputs()
@@ -647,7 +650,8 @@ print_model_outputs()
 def apply_puzzle_action_value_policy(puzzle_examples):
     for example_input, example_target in puzzle_examples:
         print("example")
-        current_state = get_starting_current_state(example_target)
+        current_state = get_starting_current_state(
+            example_target, cell_value_size)
         output_state = solve_puzzle_example_auto_regressive(
             example_input, current_state)
         print("final output_state")
@@ -658,8 +662,9 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         # TODO don't break
         break
 
+
 #
-# apply_puzzle_action_value_policy(puzzle_train_examples)
+apply_puzzle_action_value_policy(puzzle_train_examples)
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
