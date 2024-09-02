@@ -118,7 +118,6 @@ num_epochs = 2
 padding_char = ' '
 stop_after_generating_samples = False
 load_model = False
-# load_model = True
 use_noiser_for_initial_state = True
 
 logger = logging.getLogger(__name__)
@@ -143,8 +142,30 @@ class QLearningAction:
         return self.__cell_value
 
 
+class Cell:
+    def __init__(self, value):
+        self.__value = value
+        self.__changes = 0
+
+    def value(self) -> int:
+        return self.__value
+
+    def changes(self) -> int:
+        return self.__changes
+
+    def set_value(self, value):
+        self.__value = value
+        self.__changes += 1
+
+
 def state_to_text(state) -> str:
-    return "\n".join(map(lambda row: "".join(map(str, row)), state))
+    output = ""
+    for row in range(len(state)):
+        for col in range(len(state[row])):
+            value = state[row][col].value()
+            output += str(value)
+        output += "\n"
+    return output
 
 
 def make_state_text(input_state, current_state, action: QLearningAction) -> str:
@@ -188,36 +209,40 @@ def get_winning_cells(example_output, next_state):
     winning_cells = 0
     for row in range(len(next_state)):
         for col in range(len(next_state[row])):
-            if example_output[row][col] == next_state[row][col]:
+            if example_output[row][col] == next_state[row][col].value():
                 winning_cells += 1
     return winning_cells
 
 
-def generate_initial_cell_value() -> int:
-    if use_noiser_for_initial_state:
+def generate_initial_cell_value(state, row, col, mode) -> int:
+    if mode == "randomize":
         return random.randrange(0, cell_value_size)
-    else:
+    elif mode == "identity":
+        return state[row][col]
+    elif mode == "default":
         return 0
 
 
-def get_starting_current_state(example_output, cell_value_size):
-    current_state = copy.deepcopy(example_output)
-    # Clear state
+def get_starting_current_state(state, cell_value_size, mode):
+    current_state = copy.deepcopy(state)
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            current_state[row][col] = generate_initial_cell_value()
+            value = generate_initial_cell_value(current_state, row, col, mode)
+            current_state[row][col] = Cell(value)
     return current_state
 
 
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
     candidate_actions = []
+    assert current_state != None
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
+            # A cell can only be changed once.
+            if current_state[row][col].changes() > 0:
+                continue
             for new_value in range(cell_value_size):
-                # TODO allow existing value to be used in action
-                if current_state[row][col] != new_value:
-                    action = QLearningAction(row, col, new_value)
-                    candidate_actions.append(action)
+                action = QLearningAction(row, col, new_value)
+                candidate_actions.append(action)
     np.random.shuffle(candidate_actions)
     return candidate_actions
 
@@ -225,7 +250,12 @@ def generate_cell_actions(current_state, cell_value_size) -> list[QLearningActio
 def generate_action_examples(puzzle_example, cell_value_size):
     (example_input, example_output) = puzzle_example
     action_examples = []
-    current_state = get_starting_current_state(example_output, cell_value_size)
+    example_input = get_starting_current_state(
+        example_input, cell_value_size, "identity")
+    current_state = get_starting_current_state(
+        example_output, cell_value_size, "randomize")
+
+    assert current_state != None
 
     while current_state != example_output:
         best_next_state = None
@@ -233,14 +263,19 @@ def generate_action_examples(puzzle_example, cell_value_size):
         candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
 
+        if len(candidate_actions) == 0:
+            break
+
+        # print(f"candidate_actions {len(candidate_actions)}")
         for candidate_action in candidate_actions:
             next_state = copy.deepcopy(current_state)
             row = candidate_action.row()
             col = candidate_action.col()
             cell_value = candidate_action.cell_value()
-            next_state[row][col] = cell_value
+            next_state[row][col].set_value(cell_value)
             input_text = make_state_text(
                 example_input, current_state, candidate_action)
+            # TODO use Q*(s, a) for the action-value.
             action_value = get_winning_cells(
                 example_output, next_state)
             example = (input_text, action_value)
@@ -249,7 +284,11 @@ def generate_action_examples(puzzle_example, cell_value_size):
                 best_next_state = next_state
                 best_action_value = action_value
 
+        assert best_next_state != None
         current_state = best_next_state
+        assert current_state != None
+
+    # print("DONE")
 
     return action_examples
 
@@ -502,7 +541,7 @@ def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
     for row in range(puzzle_height):
         print("|", end="")
         for col in range(puzzle_width):
-            value = puzzle_state[row][col]
+            value = puzzle_state[row][col].value()
             print(f" {value}", end="")
         print(" |")
 
@@ -590,8 +629,8 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     print("current_state on entry")
     print_puzzle_state(puzzle_width, puzzle_height, current_state)
 
-    # TODO improve stopping criterion in auto-regressive AI
-    for _ in range(32):
+    # Each cell is allowed to change exactly once.
+    for _ in range(puzzle_width * puzzle_height):
         best_next_state = None
         best_action_value = None
         candidate_actions = generate_cell_actions(
@@ -602,7 +641,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
             row = candidate_action.row()
             col = candidate_action.col()
             cell_value = candidate_action.cell_value()
-            next_state[row][col] = cell_value
+            next_state[row][col].set_value(cell_value)
             input_text = make_state_text(
                 input_state, current_state, candidate_action)
             print("input_text")
@@ -663,8 +702,10 @@ print_model_outputs()
 def apply_puzzle_action_value_policy(puzzle_examples):
     for example_input, example_target in puzzle_examples:
         print("example")
+        example_input = get_starting_current_state(
+            example_input, cell_value_size, "identity")
         current_state = get_starting_current_state(
-            example_target, cell_value_size)
+            example_target, cell_value_size, "randomize")
         output_state = solve_puzzle_example_auto_regressive(
             example_input, current_state)
         print("final output_state")
