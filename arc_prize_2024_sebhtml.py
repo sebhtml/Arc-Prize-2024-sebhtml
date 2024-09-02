@@ -116,8 +116,10 @@ lr = 0.0001
 weight_decay = 0.01
 num_epochs = 2
 padding_char = ' '
+stop_after_generating_samples = False
 load_model = False
 # load_model = True
+use_noiser_for_initial_state = True
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename=f"{logs_path}/2024-08-15-learning.log",
@@ -191,12 +193,19 @@ def get_winning_cells(example_output, next_state):
     return winning_cells
 
 
+def generate_initial_cell_value() -> int:
+    if use_noiser_for_initial_state:
+        return random.randrange(0, cell_value_size)
+    else:
+        return 0
+
+
 def get_starting_current_state(example_output, cell_value_size):
     current_state = copy.deepcopy(example_output)
     # Clear state
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            current_state[row][col] = 0  # random.randrange(0, cell_value_size)
+            current_state[row][col] = generate_initial_cell_value()
     return current_state
 
 
@@ -205,6 +214,7 @@ def generate_cell_actions(current_state, cell_value_size) -> list[QLearningActio
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
             for new_value in range(cell_value_size):
+                # TODO allow existing value to be used in action
                 if current_state[row][col] != new_value:
                     action = QLearningAction(row, col, new_value)
                     candidate_actions.append(action)
@@ -283,7 +293,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 def generate_train_action_examples(puzzle_examples, cell_value_size):
     train_examples = []
     for puzzle_example in puzzle_examples:
-        for _ in range(400):
+        for _ in range(87):
             action_examples = generate_action_examples(
                 puzzle_example, cell_value_size)
             train_examples += action_examples
@@ -630,6 +640,9 @@ print(len(train_action_examples))
 
 print("train_action_examples")
 print_train_examples(train_action_examples)
+
+if stop_after_generating_samples:
+    sys.exit(42)
 
 model_file_path = f"{models_path}/2024-08-30-model_state_dict.pth"
 
