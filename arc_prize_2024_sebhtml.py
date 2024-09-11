@@ -97,7 +97,8 @@ vision_width = 7
 vision_height = 7
 d_model = 256
 d_ff = 1024
-num_classes = 50
+max_action_value = 38.888276046713464
+num_classes = 128
 shuffle = True
 num_heads = 8
 dropout = 0.1
@@ -114,6 +115,7 @@ vocab_size = 128
 batch_size = 1536
 lr = 0.0001
 weight_decay = 0.01
+discount = 0.99
 num_epochs = 2
 padding_char = ' '
 stop_after_generating_samples = False
@@ -121,7 +123,7 @@ load_model = False
 use_noiser_for_initial_state = True
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename=f"{logs_path}/2024-08-15-learning.log",
+logging.basicConfig(filename=f"{logs_path}/2024-09-02-learning.log",
                     encoding='utf-8', level=logging.DEBUG)
 logging.info("Created log file.")
 
@@ -201,17 +203,31 @@ def make_state_text(input_state, current_state, action: QLearningAction) -> str:
     return text
 
 
-def get_winning_cells(example_output, next_state):
+def get_q_star_action_value(state, action: QLearningAction, example_output, discount) -> int:
     """
-    Q(s, a)
-    Count the number of correct cells.
+    - discount is gamma
+    - Q*(s, a) = gamma^0 * r_{t+1} + gamma^1* r_{t+1} + gamma^2 * r_{t+2} + ...
     """
-    winning_cells = 0
-    for row in range(len(next_state)):
-        for col in range(len(next_state[row])):
-            if example_output[row][col] == next_state[row][col].value():
-                winning_cells += 1
-    return winning_cells
+    # Immediate reward is not discounted.
+    immediate_reward = 0.0
+    if action.cell_value() == example_output[action.row()][action.col()]:
+        immediate_reward = 1.0
+    # Discounted future rewards
+    maximum_sum_of_discounted_future_rewards = 0.0
+    t = 1
+    for row in range(len(state)):
+        for col in range(len(state[row])):
+            if row == action.row() and col == action.col():
+                continue
+            if state[row][col].changes() == 1:
+                continue
+            future_reward = 1.0
+            discounted_reward = discount**t * future_reward
+            maximum_sum_of_discounted_future_rewards += discounted_reward
+            t += 1
+
+    action_value = immediate_reward + maximum_sum_of_discounted_future_rewards
+    return action_value
 
 
 def generate_initial_cell_value(state, row, col, mode) -> int:
@@ -275,9 +291,9 @@ def generate_action_examples(puzzle_example, cell_value_size):
             next_state[row][col].set_value(cell_value)
             input_text = make_state_text(
                 example_input, current_state, candidate_action)
-            # TODO use Q*(s, a) for the action-value.
-            action_value = get_winning_cells(
-                example_output, next_state)
+            # Use Q*(s, a) for the action-value.
+            action_value = get_q_star_action_value(
+                current_state, candidate_action, example_output, discount)
             example = (input_text, action_value)
             action_examples.append(example)
             if best_action_value == None or action_value > best_action_value:
@@ -368,6 +384,9 @@ class MyDataset(Dataset):
         item_input = make_sample_tensor(input_text)
 
         action_value = example[1]
+        # convert action_value to { 0, 1, ..., num_classes - 1 }
+        action_value = math.floor(
+            (action_value / max_action_value) * (num_classes - 1))
         action_value = torch.tensor(action_value)
         action_value = F.one_hot(
             action_value, num_classes=num_classes).float()
@@ -683,7 +702,7 @@ print_train_examples(train_action_examples)
 if stop_after_generating_samples:
     sys.exit(42)
 
-model_file_path = f"{models_path}/2024-08-30-model_state_dict.pth"
+model_file_path = f"{models_path}/2024-09-02-model_state_dict.pth"
 
 if load_model:
     print("Loading model")
