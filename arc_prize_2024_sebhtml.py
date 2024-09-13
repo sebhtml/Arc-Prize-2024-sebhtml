@@ -1,3 +1,8 @@
+# Author:
+# Sebastien Boisvert <sebhtml@protonmail.com>
+#
+#
+
 # Hardware used:
 
 # Legion
@@ -96,7 +101,7 @@ puzzle_height = 7
 vision_width = 7
 vision_height = 7
 d_model = 256
-d_ff = 1024
+d_ff = 768
 max_action_value = 38.888276046713464
 num_classes = 128
 shuffle = True
@@ -112,20 +117,21 @@ vocab_size = 128
 # On runpod:
 # - 1536 with NVIDIA A40 (48 GB VRAM)
 # - 512 with NVIDIA A4000 (16 GB VRAM)
-batch_size = 1536
+batch_size = 1024
 lr = 0.0001
 weight_decay = 0.01
 discount = 0.99
 num_epochs = 2
+sample_augmentation_multiplier = 87  # 87
 padding_char = ' '
 stop_after_generating_samples = False
 load_model = False
-use_noiser_for_initial_state = True
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(filename=f"{logs_path}/2024-09-02-learning.log",
-                    encoding='utf-8', level=logging.DEBUG)
-logging.info("Created log file.")
+# Available modes are:
+# - randomize
+# - identity
+# - zero
+input_gen_mode = "identity"
+current_gen_mode = "zero"
 
 
 class QLearningAction:
@@ -160,11 +166,15 @@ class Cell:
         self.__changes += 1
 
 
-def state_to_text(state) -> str:
+def state_to_text(state, field) -> str:
     output = ""
     for row in range(len(state)):
         for col in range(len(state[row])):
-            value = state[row][col].value()
+            value = None
+            if field == "value":
+                value = state[row][col].value()
+            elif field == "changed":
+                value = "_" if state[row][col].changes() == 0 else "X"
             output += str(value)
         output += "\n"
     return output
@@ -177,16 +187,20 @@ def make_state_text(input_state, current_state, action: QLearningAction) -> str:
     - s contains the state which is (input_state, current_state)
     - a contains the action which is (next_state)
     """
-    input_state_text = state_to_text(input_state)
-    current_state_text = state_to_text(current_state)
 
     # state s
+    input_state_text = state_to_text(input_state, "value")
     s = ""
     s += "<|inp|>" + "\n"
     s += input_state_text + "\n"
 
+    current_state_value_text = state_to_text(current_state, "value")
     s += "<|cur|>" + "\n"
-    s += current_state_text + "\n"
+    s += current_state_value_text + "\n"
+
+    current_state_changed_text = state_to_text(current_state, "changed")
+    s += "<|cha|>" + "\n"
+    s += current_state_changed_text + "\n"
 
     # action a
     a = ""
@@ -235,7 +249,7 @@ def generate_initial_cell_value(state, row, col, mode) -> int:
         return random.randrange(0, cell_value_size)
     elif mode == "identity":
         return state[row][col]
-    elif mode == "default":
+    elif mode == "zero":
         return 0
 
 
@@ -267,9 +281,9 @@ def generate_action_examples(puzzle_example, cell_value_size):
     (example_input, example_output) = puzzle_example
     action_examples = []
     example_input = get_starting_current_state(
-        example_input, cell_value_size, "identity")
+        example_input, cell_value_size, input_gen_mode)
     current_state = get_starting_current_state(
-        example_output, cell_value_size, "randomize")
+        example_output, cell_value_size, current_gen_mode)
 
     assert current_state != None
 
@@ -348,7 +362,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 def generate_train_action_examples(puzzle_examples, cell_value_size):
     train_examples = []
     for puzzle_example in puzzle_examples:
-        for _ in range(87):
+        for _ in range(sample_augmentation_multiplier):
             action_examples = generate_action_examples(
                 puzzle_example, cell_value_size)
             train_examples += action_examples
@@ -556,19 +570,23 @@ def print_model_outputs():
         break
 
 
-def print_puzzle_state(puzzle_width, puzzle_height, puzzle_state):
-    for row in range(puzzle_height):
-        print("|", end="")
-        for col in range(puzzle_width):
-            value = puzzle_state[row][col].value()
-            print(f" {value}", end="")
-        print(" |")
+def print_puzzle_state(current_state):
+    s = ""
+    current_state_value_text = state_to_text(current_state, "value")
+    s += "<|cur|>" + "\n"
+    s += current_state_value_text + "\n"
+
+    current_state_changed_text = state_to_text(current_state, "changed")
+    s += "<|cha|>" + "\n"
+    s += current_state_changed_text + "\n"
+    return s
 
 
 model = DecoderOnlyTransformerModel(
     vocab_size, d_model, d_ff,  dropout, num_heads, context_size)
 # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
-# Does not work on the NVIDIA P100
+# torch.compile does not work on the NVIDIA P100
+# torch.compile works on runpod.io with a NVIDIA A40
 # model = torch.compile(model)
 model.to(device)
 
@@ -644,9 +662,9 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     model.eval()
     print("AUTO-REGRESSIVE wannabe AGI megabot")
     print("input_state")
-    print_puzzle_state(puzzle_width, puzzle_height, input_state)
+    print_puzzle_state(input_state)
     print("current_state on entry")
-    print_puzzle_state(puzzle_width, puzzle_height, current_state)
+    print_puzzle_state(current_state)
 
     # Each cell is allowed to change exactly once.
     for _ in range(puzzle_width * puzzle_height):
@@ -686,7 +704,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         current_state = best_next_state
         print(f"best_next_state with {best_action_value}")
         print("current_state after motor action")
-        print_puzzle_state(puzzle_width, puzzle_height, current_state)
+        print_puzzle_state(current_state)
     return current_state
 
 
@@ -702,7 +720,7 @@ print_train_examples(train_action_examples)
 if stop_after_generating_samples:
     sys.exit(42)
 
-model_file_path = f"{models_path}/2024-09-02-model_state_dict.pth"
+model_file_path = f"{models_path}/2024-09-13-model_state_dict.pth"
 
 if load_model:
     print("Loading model")
@@ -722,22 +740,22 @@ def apply_puzzle_action_value_policy(puzzle_examples):
     for example_input, example_target in puzzle_examples:
         print("example")
         example_input = get_starting_current_state(
-            example_input, cell_value_size, "identity")
+            example_input, cell_value_size, input_gen_mode)
         current_state = get_starting_current_state(
-            example_target, cell_value_size, "randomize")
+            example_target, cell_value_size, current_gen_mode)
         output_state = solve_puzzle_example_auto_regressive(
             example_input, current_state)
         print("final output_state")
-        print_puzzle_state(puzzle_width, puzzle_height, output_state)
+        print_puzzle_state(output_state)
         print("Expected output")
-        print_puzzle_state(puzzle_width, puzzle_height,
-                           example_target)
+        print_puzzle_state(
+            example_target)
         # TODO don't break
         break
 
 
 #
-apply_puzzle_action_value_policy(puzzle_train_examples)
+# apply_puzzle_action_value_policy(puzzle_train_examples)
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
