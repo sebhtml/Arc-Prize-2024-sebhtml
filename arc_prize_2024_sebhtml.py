@@ -20,6 +20,8 @@
 # - NVIDIA RTX A4000 16 GB VRAM
 
 # - TODO honours n_layers
+# - TODO generate action_examples once and write them to disk
+
 # - TODO add class QLearningState
 # - TODO add class QLearningActionValue
 
@@ -63,9 +65,9 @@ from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.nn import functional as F
 import sys
 import itertools
-import logging
 
 device = torch.device("cuda")
+
 # device = xm.xla_device()
 # device = torch.device("cpu")
 
@@ -97,7 +99,7 @@ models_path = "/workspace/models"
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 144  # 128 + 16
+context_size = 211
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
@@ -125,10 +127,10 @@ lr = 0.0001
 weight_decay = 0.01
 discount = 0.99
 num_epochs = 2
-sample_augmentation_multiplier = 87  # 87
+sample_augmentation_multiplier = 87  # Use 1 for development
 padding_char = ' '
 stop_after_generating_samples = False
-load_model = True
+load_model = False
 # Available modes are:
 # - randomize
 # - identity
@@ -373,9 +375,10 @@ def generate_train_action_examples(puzzle_examples, cell_value_size):
 
 
 def make_sample_tensor(input_text):
+    if len(input_text) > context_size:
+        raise Exception(
+            f"text ({len(input_text)} chars) is too large to fit in context ! Increase context_size ({context_size})")
     tokens = [*input_text]
-    # Add padding
-    tokens += [padding_char] * (context_size - len(tokens))
     tokens = list(map(ord, tokens))
     item_input = torch.tensor(tokens)
     return item_input
@@ -710,7 +713,7 @@ print(len(puzzle_train_examples))
 if stop_after_generating_samples:
     sys.exit(42)
 
-model_file_path = f"{models_path}/2024-09-13-model_state_dict.pth"
+model_file_path = f"{models_path}/2024-09-21-model_state_dict.pth"
 
 if load_model:
     print("Loading model")
@@ -760,7 +763,7 @@ def apply_puzzle_action_value_policy(puzzle_examples):
 
 
 #
-apply_puzzle_action_value_policy(puzzle_train_examples)
+# apply_puzzle_action_value_policy(puzzle_train_examples)
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
