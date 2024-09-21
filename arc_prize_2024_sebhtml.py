@@ -19,14 +19,17 @@
 # - NVIDIA A40 48 GB VRAM
 # - NVIDIA RTX A4000 16 GB VRAM
 
-# - TODO use "Feed forward mechanisms" from xformers
-# - TODO use "Residual paths" from xformers
 # - TODO honours n_layers
-# - TODO add class add class Experience with (s, a, r, s')
 # - TODO add class QLearningState
 # - TODO add class QLearningActionValue
+
 # - TODO implement translations
 # - TODO implement rotations
+
+# - TODO use "Feed forward mechanisms" from xformers
+# - TODO use "Residual paths" from xformers
+# - TODO add class add class Experience with (s, a, r, s')
+
 # - TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 
 # This software used reinforcement learning.
@@ -125,7 +128,7 @@ num_epochs = 2
 sample_augmentation_multiplier = 87  # 87
 padding_char = ' '
 stop_after_generating_samples = False
-load_model = False
+load_model = True
 # Available modes are:
 # - randomize
 # - identity
@@ -592,8 +595,6 @@ model.to(device)
 
 puzzle_train_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "train")
-train_action_examples = generate_train_action_examples(
-    puzzle_train_examples, cell_value_size)
 
 puzzle_test_examples = load_puzzle_examples(
     "training", selected_puzzle_id, "test")
@@ -613,14 +614,8 @@ def print_train_examples(train_action_examples):
         print(sample_target)
 
 
-# Create a dataset.
-dataset = MyDataset(train_action_examples)
-
-# Create a data loader.
-train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
-
-
 def train():
+
     model.train()
     criterion = nn.CrossEntropyLoss()
     model_total_params = sum(p.numel() for p in model.parameters())
@@ -711,11 +706,6 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
 print("puzzle_train_examples")
 print(len(puzzle_train_examples))
 
-print("train_action_examples")
-print(len(train_action_examples))
-
-print("train_action_examples")
-print_train_examples(train_action_examples)
 
 if stop_after_generating_samples:
     sys.exit(42)
@@ -727,13 +717,28 @@ if load_model:
     state_dict = torch.load(model_file_path, weights_only=True)
     model.load_state_dict(state_dict)
 else:
+    train_action_examples = generate_train_action_examples(
+        puzzle_train_examples, cell_value_size)
+
+    print("train_action_examples")
+    print(len(train_action_examples))
+
+    print("train_action_examples")
+    print_train_examples(train_action_examples)
+
+    # Create a dataset.
+    dataset = MyDataset(train_action_examples)
+
+    # Create a data loader.
+    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
     print("Training model")
     train()
     torch.save(model.state_dict(),
                model_file_path)
 
-print("[after training] print_model_outputs")
-print_model_outputs()
+    print("[after training] print_model_outputs")
+    print_model_outputs()
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
@@ -755,7 +760,7 @@ def apply_puzzle_action_value_policy(puzzle_examples):
 
 
 #
-# apply_puzzle_action_value_policy(puzzle_train_examples)
+apply_puzzle_action_value_policy(puzzle_train_examples)
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
