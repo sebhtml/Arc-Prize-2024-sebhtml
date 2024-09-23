@@ -19,7 +19,8 @@
 # - NVIDIA A40 48 GB VRAM
 # - NVIDIA RTX A4000 16 GB VRAM
 
-# - TODO honours n_layers
+# - TODO check if the auto-regressive inference AI is able to predict the output for the train examples
+
 # - TODO generate action_examples once and write them to disk
 
 # - TODO add class QLearningState
@@ -127,7 +128,8 @@ lr = 0.0001
 weight_decay = 0.01
 discount = 0.99
 num_epochs = 2
-sample_augmentation_multiplier = 87  # Use 1 for development
+# Use 1 for development, for production, use 87.
+sample_augmentation_multiplier = 87
 padding_char = ' '
 stop_after_generating_samples = False
 load_model = False
@@ -484,31 +486,16 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 
 
 class DecoderOnlyTransformerModel(nn.Module):
-    def __init__(self, vocab_size, hidden_size, ffn_size, dropout, num_heads, context_size):
+    def __init__(self, vocab_size, hidden_size, ffn_size, dropout, num_heads, context_size, num_layers):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.embed = nn.Embedding(num_embeddings=vocab_size,
                                   embedding_dim=hidden_size)
 
         self.dropout_1 = nn.Dropout(dropout)
-        # TODO honours n_layers
-        self.blocks = nn.Sequential(
-            NonCausalSelfAttentionTransformerBlock(
-                hidden_size, ffn_size, num_heads, dropout, context_size),
-            NonCausalSelfAttentionTransformerBlock(
-                hidden_size, ffn_size, num_heads, dropout, context_size),
-            NonCausalSelfAttentionTransformerBlock(
-                hidden_size, ffn_size, num_heads, dropout, context_size),
-            NonCausalSelfAttentionTransformerBlock(
-                hidden_size, ffn_size, num_heads, dropout, context_size)
-            # NonCausalSelfAttentionTransformerBlock(
-            # hidden_size, ffn_size,  num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(
-            # hidden_size, ffn_size, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(
-            # hidden_size, ffn_size, num_heads, dropout),
-            # NonCausalSelfAttentionTransformerBlock(
-            # hidden_size, ffn_size, num_heads, dropout)
-        )
+        modules = [NonCausalSelfAttentionTransformerBlock(
+            hidden_size, ffn_size, num_heads, dropout, context_size) for _ in range(num_layers)]
+
+        self.blocks = nn.Sequential(*modules)
         self.norm = nn.RMSNorm(hidden_size)
 
         self.gap = nn.AdaptiveAvgPool1d(1)
@@ -589,7 +576,7 @@ def print_puzzle_state(current_state):
 
 
 model = DecoderOnlyTransformerModel(
-    vocab_size, d_model, d_ff,  dropout, num_heads, context_size)
+    vocab_size, d_model, d_ff,  dropout, num_heads, context_size, num_layers)
 # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
 # torch.compile does not work on the NVIDIA P100
 # torch.compile works on runpod.io with a NVIDIA A40
@@ -713,7 +700,7 @@ print(len(puzzle_train_examples))
 if stop_after_generating_samples:
     sys.exit(42)
 
-model_file_path = f"{models_path}/2024-09-21-model_state_dict.pth"
+model_file_path = f"{models_path}/2024-09-21-8-layers-context-210-model_state_dict.pth"
 
 if load_model:
     print("Loading model")
