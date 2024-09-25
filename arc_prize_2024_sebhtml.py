@@ -19,6 +19,9 @@
 # - NVIDIA A40 48 GB VRAM
 # - NVIDIA RTX A4000 16 GB VRAM
 
+# - TODO Use -1 for a mismatch and +1 for a match.
+# - TODO investigate model inference predicted action value using the function print_inferred_action_value.
+
 # - TODO check if the auto-regressive inference AI is able to predict the output for the train examples
 
 # - TODO generate action_examples once and write them to disk
@@ -644,6 +647,8 @@ def train():
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):
+    # Note that we can't put the model in evaluation mode because Dropout is important for
+    # the model to generalize well during inference according to my tests.
     model.eval()
     print("AUTO-REGRESSIVE wannabe AGI megabot")
     print("input_state")
@@ -749,8 +754,149 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         break
 
 
-#
+# Check if the auto-regressive inference AI is able to predict the output for the train examples.
 # apply_puzzle_action_value_policy(puzzle_train_examples)
+
+
+def infer_action_value(model, input_text):
+    inputs = make_sample_tensor(input_text).unsqueeze(0)
+    inputs = inputs.to(device)
+    outputs = model(inputs)
+    action_value = outputs[0].argmax(dim=-1).item()
+    return action_value
+
+
+def print_inferred_action_value(model, input_text):
+    action_value = infer_action_value(model, input_text)
+    print(f"action_value: {action_value}")
+
+
+input_text_with_action_value_50 = """<|inp|>
+0000000
+0800000
+0880000
+0000880
+0000080
+0000000
+0000000
+
+<|cur|>
+0000000
+0010000
+0880000
+0000000
+0000180
+0000000
+0000000
+
+<|cha|>
+XXX_XX_
+X_X____
+XXX____
+XXXX___
+_XXXXXX
+X_XX_XX
+XXX_XXX
+
+<|act|>
+0  6 7"""
+
+# print_inferred_action_value(model, input_text_with_action_value_50)
+
+input_text_with_action_value_50_modified = """<|inp|>
+0000000
+0800000
+0880000
+0000880
+0000080
+0000000
+0000000
+
+<|cur|>
+0000000
+0010000
+0880000
+0000000
+0000180
+0000000
+0000000
+
+<|cha|>
+XXX_XX_
+X_X____
+XXX____
+XXXX___
+_XXXXXX
+X_XX_XX
+XXX_XXX
+
+<|act|>
+0  6 9"""
+
+# print_inferred_action_value(model, input_text_with_action_value_50_modified)
+
+input_text_end_game = """<|inp|>
+0000000
+0800000
+0880000
+0000880
+0000080
+0000000
+0000000
+
+<|cur|>
+8189120
+0016858
+7064051
+1893332
+1007289
+0289648
+5762399
+
+<|cha|>
+XXXXXXX
+XXXXXXX
+X_XXXXX
+XXXXXXX
+XXXXXXX
+XXXXXXX
+XXXXXXX
+
+<|act|>
+ 2  1 4"""
+
+ex3 = """<|inp|>
+0000000
+0800000
+0880000
+0000880
+0000080
+0000000
+0000000
+
+<|cur|>
+0000000
+0000000
+0000000
+0000000
+0000000
+0000000
+0000000
+
+<|cha|>
+_______
+_______
+_______
+_______
+_______
+_______
+_______
+
+<|act|>
+ 1  1 8"""
+
+# print_inferred_action_value(model, ex3)
+
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
 # apply_puzzle_action_value_policy(puzzle_test_examples)
