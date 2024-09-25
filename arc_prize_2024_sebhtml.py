@@ -19,7 +19,9 @@
 # - NVIDIA A40 48 GB VRAM
 # - NVIDIA RTX A4000 16 GB VRAM
 
+# - TODO Add a class Tokenizer with methods encode and decode
 # - TODO Use -1 for a mismatch and +1 for a match.
+# - TODO make state_tokens smaller
 # - TODO investigate model inference predicted action value using the function print_inferred_action_value.
 
 # - TODO check if the auto-regressive inference AI is able to predict the output for the train examples
@@ -52,6 +54,7 @@ import os  # nopep8
 
 # import torch_xla
 # import torch_xla.core.xla_model as xm
+from typing import List
 import random
 import math
 import copy
@@ -100,15 +103,14 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
+model_file_path = f"{models_path}/2024-09-25-q-network.pth"
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 211
+context_size = 196
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
-vision_width = 7
-vision_height = 7
 d_model = 256
 d_ff = 768
 max_action_value = 38.888276046713464
@@ -117,7 +119,7 @@ shuffle = True
 num_heads = 8
 dropout = 0.1
 num_layers = 4
-vocab_size = 128
+vocab_size = puzzle_width * puzzle_height * cell_value_size
 # For batch_size:
 # - 8192 for the TPU machine since "TPU-v3-8" has 330 GB RAM
 # - 512 for TPU-v3-8 with 1 TPU
@@ -190,10 +192,10 @@ def state_to_text(state, field) -> str:
     return output
 
 
-def make_state_text(input_state, current_state, action: QLearningAction) -> str:
+def tokenize_sample_input(input_state, current_state, action: QLearningAction) -> List[int]:
     """
-    Q-network
-    Q(s, a)
+    Tokenize a sample input for the Q-network Q(s, a).
+    Note that:
     - s contains the state which is (input_state, current_state)
     - a contains the action which is (next_state)
     """
@@ -212,19 +214,17 @@ def make_state_text(input_state, current_state, action: QLearningAction) -> str:
     s += "<|cha|>" + "\n"
     s += current_state_changed_text + "\n"
 
+    state_tokens = list(map(ord, list(s)))
+
     # action a
-    a = ""
-    a += "<|act|>" + "\n"
-    a += str(action.row()).rjust(2, padding_char)
-    a += " "
-    a += str(action.col()).rjust(2, padding_char)
-    a += " "
-    a += str(action.cell_value())
-    a += "\n"
+    # For example, a puzzle with a grid 7x7 has 7*7*10 possible actions.
+    # Points (a, b, c) are in a coordinate system of size (WIDTH, HEIGHT, VALUES)
+    action_token = action.col() * puzzle_height * cell_value_size + \
+        action.row() * cell_value_size + action.cell_value()
 
-    text = s + a
+    tokens = state_tokens + [action_token]
 
-    return text
+    return tokens
 
 
 def get_q_star_action_value(state, action: QLearningAction, example_output, discount) -> int:
@@ -313,7 +313,7 @@ def generate_action_examples(puzzle_example, cell_value_size):
             col = candidate_action.col()
             cell_value = candidate_action.cell_value()
             next_state[row][col].set_value(cell_value)
-            input_text = make_state_text(
+            input_text = tokenize_sample_input(
                 example_input, current_state, candidate_action)
             # Use Q*(s, a) for the action-value.
             action_value = get_q_star_action_value(
@@ -379,13 +379,11 @@ def generate_train_action_examples(puzzle_examples, cell_value_size):
     return train_examples
 
 
-def make_sample_tensor(input_text):
-    if len(input_text) > context_size:
+def make_sample_tensor(input_tokens):
+    if len(input_tokens) > context_size:
         raise Exception(
-            f"text ({len(input_text)} chars) is too large to fit in context ! Increase context_size ({context_size})")
-    tokens = [*input_text]
-    tokens = list(map(ord, tokens))
-    item_input = torch.tensor(tokens)
+            f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
+    item_input = torch.tensor(input_tokens)
     return item_input
 
 
@@ -405,8 +403,8 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         example = self.examples[idx]
 
-        input_text = example[0]
-        item_input = make_sample_tensor(input_text)
+        input_tokens = example[0]
+        item_input = make_sample_tensor(input_tokens)
 
         action_value = example[1]
         # convert action_value to { 0, 1, ..., num_classes - 1 }
@@ -669,12 +667,12 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
             col = candidate_action.col()
             cell_value = candidate_action.cell_value()
             next_state[row][col].set_value(cell_value)
-            input_text = make_state_text(
+            input_tokens = tokenize_sample_input(
                 input_state, current_state, candidate_action)
             print("input_text")
-            print(input_text)
+            print(input_tokens)
             # TODO test all actions in one batch
-            inputs = make_sample_tensor(input_text).unsqueeze(0)
+            inputs = make_sample_tensor(input_tokens).unsqueeze(0)
             print("inputs size")
             print(inputs.size())
             inputs = inputs.to(device)
@@ -704,8 +702,6 @@ print(len(puzzle_train_examples))
 
 if stop_after_generating_samples:
     sys.exit(42)
-
-model_file_path = f"{models_path}/2024-09-21-8-layers-context-210-model_state_dict.pth"
 
 if load_model:
     print("Loading model")
