@@ -103,7 +103,7 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/2024-09-25-q-network.pth"
+model_file_path = f"{models_path}/2024-09-26-q-network.pth"
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
@@ -113,7 +113,6 @@ puzzle_width = 7
 puzzle_height = 7
 d_model = 256
 d_ff = 768
-max_action_value = 38.888276046713464
 num_classes = 128
 shuffle = True
 num_heads = 8
@@ -137,7 +136,7 @@ num_epochs = 2
 sample_augmentation_multiplier = 87
 padding_char = ' '
 stop_after_generating_samples = False
-load_model = False
+load_model = True
 # Available modes are:
 # - randomize
 # - identity
@@ -227,25 +226,36 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction) -
     return tokens
 
 
+def reward(expected_cell_value, cell_value) -> int:
+    if expected_cell_value == cell_value:
+        return 1.0
+    else:
+        return -1.0
+
+
 def get_q_star_action_value(state, action: QLearningAction, example_output, discount) -> int:
     """
     - discount is gamma
     - Q*(s, a) = gamma^0 * r_{t+1} + gamma^1* r_{t+1} + gamma^2 * r_{t+2} + ...
     """
     # Immediate reward is not discounted.
-    immediate_reward = 0.0
-    if action.cell_value() == example_output[action.row()][action.col()]:
-        immediate_reward = 1.0
+    immediate_reward = reward(
+        example_output[action.row()][action.col()], action.cell_value())
     # Discounted future rewards
     maximum_sum_of_discounted_future_rewards = 0.0
     t = 1
+    # TODO refactor loop to simply count the number of unchanged cells.
     for row in range(len(state)):
         for col in range(len(state[row])):
+            # Skip cell because it was already counted as the immediate reward.
             if row == action.row() and col == action.col():
                 continue
+            # A cell can only be changed once.
             if state[row][col].changes() == 1:
                 continue
-            future_reward = 1.0
+            # Maximize future expected discounted rewards
+            future_reward = reward(
+                example_output[row][col], example_output[row][col])
             discounted_reward = discount**t * future_reward
             maximum_sum_of_discounted_future_rewards += discounted_reward
             t += 1
@@ -397,6 +407,13 @@ class MyDataset(Dataset):
     def __init__(self, examples):
         self.examples = examples
 
+        # Compute minimum and maximum action value
+        action_values = list(map(lambda example: example[1], examples))
+        self._minimum_action_value = min(action_values)
+        self._maximum_action_value = max(action_values)
+        print(f"_minimum_action_value {self._minimum_action_value}")
+        print(f"_maximum_action_value {self._maximum_action_value}")
+
     def __len__(self):
         return len(self.examples)
 
@@ -408,13 +425,18 @@ class MyDataset(Dataset):
 
         action_value = example[1]
         # convert action_value to { 0, 1, ..., num_classes - 1 }
-        action_value = math.floor(
-            (action_value / max_action_value) * (num_classes - 1))
-        action_value = torch.tensor(action_value)
-        action_value = F.one_hot(
-            action_value, num_classes=num_classes).float()
+        # Example:
+        # action_value: 3.0
+        # _minimum_action_value: -4.0
+        # _maximum_action_value: 7.0
+        # action_value_bin = (3.0 - -4.0) / (7.0 - -4.0)
+        action_value_bin = math.floor(
+            ((action_value - self._minimum_action_value) / (self._maximum_action_value - self._minimum_action_value)) * (num_classes - 1))
+        action_value_bin = torch.tensor(action_value_bin)
+        action_value_bin = F.one_hot(
+            action_value_bin, num_classes=num_classes).float()
 
-        item = (item_input, action_value)
+        item = (item_input, action_value_bin)
         return item
 
 
@@ -599,6 +621,7 @@ def print_train_examples(train_action_examples):
         print("Example: " + str(idx))
         sample_input = example[0]
         sample_target = example[1]
+        # TODO use decode of the Tokenizer.
         print("sample_input")
         print(sample_input)
         print("sample_target")
@@ -700,9 +723,6 @@ print("puzzle_train_examples")
 print(len(puzzle_train_examples))
 
 
-if stop_after_generating_samples:
-    sys.exit(42)
-
 if load_model:
     print("Loading model")
     state_dict = torch.load(model_file_path, weights_only=True)
@@ -716,6 +736,9 @@ else:
 
     print("train_action_examples")
     print_train_examples(train_action_examples)
+
+    if stop_after_generating_samples:
+        sys.exit(42)
 
     # Create a dataset.
     dataset = MyDataset(train_action_examples)
@@ -751,7 +774,7 @@ def apply_puzzle_action_value_policy(puzzle_examples):
 
 
 # Check if the auto-regressive inference AI is able to predict the output for the train examples.
-# apply_puzzle_action_value_policy(puzzle_train_examples)
+apply_puzzle_action_value_policy(puzzle_train_examples)
 
 
 def infer_action_value(model, input_text):
