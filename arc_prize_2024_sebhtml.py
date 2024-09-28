@@ -107,7 +107,7 @@ model_file_path = f"{models_path}/2024-09-27-q-network.pth"
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
-context_size = 196
+context_size = 186  # multiple of 4
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
@@ -118,7 +118,7 @@ shuffle = True
 num_heads = 8
 dropout = 0.1
 num_layers = 4
-vocab_size = puzzle_width * puzzle_height * cell_value_size
+vocab_size = 128  # puzzle_width * puzzle_height * cell_value_size
 # For batch_size:
 # - 8192 for the TPU machine since "TPU-v3-8" has 330 GB RAM
 # - 512 for TPU-v3-8 with 1 TPU
@@ -133,7 +133,7 @@ weight_decay = 0.01
 discount = 0.99
 num_epochs = 2
 # Use 1 for development, for production, use 87.
-sample_augmentation_multiplier = 87
+sample_augmentation_multiplier = 87  # 1
 padding_char = ' '
 stop_after_generating_samples = False
 load_model = False
@@ -177,18 +177,51 @@ class Cell:
         self.__changes += 1
 
 
-def state_to_text(state, field) -> str:
+def input_state_to_text(state) -> str:
+    output = ""
+    for row in range(len(state)):
+        for col in range(len(state[row])):
+            value = state[row][col].value()
+            output += str(value)
+        output += "\n"
+    return output
+
+
+def current_state_to_text(state) -> str:
     output = ""
     for row in range(len(state)):
         for col in range(len(state[row])):
             value = None
-            if field == "value":
+            if state[row][col].changes() == 0:
+                value = '_'
+            else:
                 value = state[row][col].value()
-            elif field == "changed":
-                value = "_" if state[row][col].changes() == 0 else "X"
             output += str(value)
         output += "\n"
     return output
+
+
+def action_to_text(state, action: QLearningAction) -> str:
+    output = ""
+    for row in range(len(state)):
+        for col in range(len(state[row])):
+            value = None
+            if row == action.row() and col == action.col():
+                value = action.cell_value()
+            else:
+                value = '_'
+            output += str(value)
+        output += "\n"
+    return output
+
+
+def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value_size: int) -> int:
+    # action a
+    # For example, a puzzle with a grid 7x7 has 7*7*10 possible actions.
+    # Points (a, b, c) are in a coordinate system of size (WIDTH, HEIGHT, VALUES)
+    action_token = action.col() * puzzle_height * cell_value_size + \
+        action.row() * cell_value_size + action.cell_value()
+    return action_token
 
 
 def tokenize_sample_input(input_state, current_state, action: QLearningAction) -> List[int]:
@@ -200,30 +233,27 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction) -
     """
 
     # state s
-    input_state_text = state_to_text(input_state, "value")
+    input_state_text = input_state_to_text(input_state)
     s = ""
-    s += "<|inp|>" + "\n"
+    s += "ini" + "\n"
     s += input_state_text + "\n"
 
-    current_state_value_text = state_to_text(current_state, "value")
-    s += "<|cur|>" + "\n"
+    current_state_value_text = current_state_to_text(current_state)
+    s += "cur" + "\n"
     s += current_state_value_text + "\n"
 
-    current_state_changed_text = state_to_text(current_state, "changed")
-    s += "<|cha|>" + "\n"
-    s += current_state_changed_text + "\n"
+    action_text = action_to_text(current_state, action)
+    s += "act" + "\n"
+    s += action_text + "\n"
+    s += "   "
 
-    state_tokens = list(map(ord, list(s)))
-
-    # action a
-    # For example, a puzzle with a grid 7x7 has 7*7*10 possible actions.
-    # Points (a, b, c) are in a coordinate system of size (WIDTH, HEIGHT, VALUES)
-    action_token = action.col() * puzzle_height * cell_value_size + \
-        action.row() * cell_value_size + action.cell_value()
-
-    tokens = state_tokens + [action_token]
+    tokens = list(map(ord, list(s)))
 
     return tokens
+
+
+def tokens_to_text(tokens: List[int]) -> str:
+    return "".join(map(chr, tokens))
 
 
 def reward(expected_cell_value, cell_value) -> int:
@@ -588,16 +618,12 @@ def print_model_outputs():
         break
 
 
-def print_puzzle_state(current_state):
-    s = ""
-    current_state_value_text = state_to_text(current_state, "value")
+def print_current_state(current_state):
+    s: str = ""
+    current_state_value_text = current_state_to_text(current_state)
     s += "<|cur|>" + "\n"
     s += current_state_value_text + "\n"
-
-    current_state_changed_text = state_to_text(current_state, "changed")
-    s += "<|cha|>" + "\n"
-    s += current_state_changed_text + "\n"
-    return s
+    print(s)
 
 
 model = DecoderOnlyTransformerModel(
@@ -625,7 +651,7 @@ def print_train_examples(train_action_examples):
         sample_target = example[1]
         # TODO use decode of the Tokenizer.
         print("sample_input")
-        print(sample_input)
+        print(tokens_to_text(sample_input))
         print("sample_target")
         print(sample_target)
 
@@ -675,9 +701,9 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     model.eval()
     print("AUTO-REGRESSIVE wannabe AGI megabot")
     print("input_state")
-    print_puzzle_state(input_state)
+    print_current_state(input_state)
     print("current_state on entry")
-    print_puzzle_state(current_state)
+    print_current_state(current_state)
 
     # Each cell is allowed to change exactly once.
     for _ in range(puzzle_width * puzzle_height):
@@ -717,7 +743,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         current_state = best_next_state
         print(f"best_next_state with {best_action_value}")
         print("current_state after motor action")
-        print_puzzle_state(current_state)
+        print_current_state(current_state)
     return current_state
 
 
@@ -767,9 +793,9 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         output_state = solve_puzzle_example_auto_regressive(
             example_input, current_state)
         print("final output_state")
-        print_puzzle_state(output_state)
+        print_current_state(output_state)
         print("Expected output")
-        print_puzzle_state(
+        print_current_state(
             example_target)
         # TODO don't break
         break
