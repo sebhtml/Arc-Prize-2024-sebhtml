@@ -19,8 +19,8 @@
 # - NVIDIA A40 48 GB VRAM
 # - NVIDIA RTX A4000 16 GB VRAM
 
+# - TODO encode action as a 7x7 grid
 # - TODO Add a class Tokenizer with methods encode and decode
-# - TODO Use -1 for a mismatch and +1 for a match.
 # - TODO make state_tokens smaller
 # - TODO investigate model inference predicted action value using the function print_inferred_action_value.
 
@@ -103,7 +103,7 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/2024-09-26-q-network.pth"
+model_file_path = f"{models_path}/2024-09-27-q-network.pth"
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
@@ -136,7 +136,7 @@ num_epochs = 2
 sample_augmentation_multiplier = 87
 padding_char = ' '
 stop_after_generating_samples = False
-load_model = True
+load_model = False
 # Available modes are:
 # - randomize
 # - identity
@@ -376,6 +376,8 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 
         example = (example_input, example_output)
         puzzle_venue_examples.append(example)
+        # TODO don't break.
+        break
     return puzzle_venue_examples
 
 
