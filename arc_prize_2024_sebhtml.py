@@ -19,24 +19,6 @@
 # - NVIDIA A40 48 GB VRAM
 # - NVIDIA RTX A4000 16 GB VRAM
 
-# - TODO investigate model inference predicted action value using the function print_inferred_action_value.
-
-# - TODO check if the auto-regressive inference AI is able to predict the output for the train examples
-
-# - TODO generate action_examples once and write them to disk
-
-# - TODO add class QLearningState
-# - TODO add class QLearningActionValue
-
-# - TODO implement translations
-# - TODO implement rotations
-
-# - TODO use "Feed forward mechanisms" from xformers
-# - TODO use "Residual paths" from xformers
-# - TODO add class add class Experience with (s, a, r, s')
-
-# - TODO check if the auto-regressive inference AI is able to predict the output for the test example.
-
 # This software used reinforcement learning.
 # It uses Q-learning.
 # See https://en.wikipedia.org/wiki/Q-learning
