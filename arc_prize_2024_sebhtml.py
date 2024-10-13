@@ -19,9 +19,6 @@
 # - NVIDIA A40 48 GB VRAM
 # - NVIDIA RTX A4000 16 GB VRAM
 
-# - TODO encode action as a 7x7 grid
-# - TODO Add a class Tokenizer with methods encode and decode
-# - TODO make state_tokens smaller
 # - TODO investigate model inference predicted action value using the function print_inferred_action_value.
 
 # - TODO check if the auto-regressive inference AI is able to predict the output for the train examples
@@ -103,7 +100,7 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/2024-09-27-q-network.pth"
+model_file_path = f"{models_path}/2024-09-29-q-network.pth"
 
 # Model configuration
 selected_puzzle_id = "3aa6fb7a"
@@ -131,9 +128,9 @@ batch_size = 1024
 lr = 0.0001
 weight_decay = 0.01
 discount = 0.99
-num_epochs = 2
+num_epochs = 5
 # Use 1 for development, for production, use 87.
-sample_augmentation_multiplier = 87  # 1
+sample_augmentation_multiplier = 87
 padding_char = ' '
 stop_after_generating_samples = False
 load_model = False
@@ -224,7 +221,14 @@ def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value
     return action_token
 
 
-def tokenize_sample_input(input_state, current_state, action: QLearningAction) -> List[int]:
+class SampleInputTokens:
+    def __init__(self, input_state, current_state, action):
+        self._input_state = input_state
+        self._current_state = current_state
+        self._action = action
+
+
+def tokenize_sample_input(input_state, current_state, action: QLearningAction) -> SampleInputTokens:
     """
     Tokenize a sample input for the Q-network Q(s, a).
     Note that:
@@ -233,26 +237,32 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction) -
     """
 
     # state s
-    input_state_text = input_state_to_text(input_state)
-    s = ""
-    s += "ini" + "\n"
-    s += input_state_text + "\n"
+    input_state_text = ""
+    input_state_text += "ini" + "\n"
+    input_state_text += input_state_to_text(input_state)
 
-    current_state_value_text = current_state_to_text(current_state)
-    s += "cur" + "\n"
-    s += current_state_value_text + "\n"
+    current_state_text = ""
+    current_state_text += "cur" + "\n"
+    current_state_text += current_state_to_text(current_state)
 
-    action_text = action_to_text(current_state, action)
-    s += "act" + "\n"
-    s += action_text + "\n"
-    s += "   "
+    action_text = ""
+    action_text += "act" + "\n"
+    action_text += action_to_text(current_state, action)
 
-    tokens = list(map(ord, list(s)))
+    return SampleInputTokens(
+        text_to_tokens(input_state_text),
+        text_to_tokens(current_state_text),
+        text_to_tokens(action_text)
+    )
 
-    return tokens
+
+def text_to_tokens(s: str) -> List[int]:
+    return list(map(ord, list(s)))
 
 
-def tokens_to_text(tokens: List[int]) -> str:
+def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
+    tokens: List[int] = sample_input_tokens._input_state + \
+        sample_input_tokens._current_state + sample_input_tokens._action
     return "".join(map(chr, tokens))
 
 
@@ -421,11 +431,16 @@ def generate_train_action_examples(puzzle_examples, cell_value_size):
     return train_examples
 
 
-def make_sample_tensor(input_tokens):
+def make_sample_tensor(sample_input_tokens: SampleInputTokens):
+    input_tokens: List[int] = sample_input_tokens._input_state + \
+        sample_input_tokens._current_state + sample_input_tokens._action
     if len(input_tokens) > context_size:
         raise Exception(
             f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
-    item_input = torch.tensor(input_tokens)
+    item_input = [torch.tensor(sample_input_tokens._input_state),
+                  torch.tensor(sample_input_tokens._current_state),
+                  torch.tensor(sample_input_tokens._action)
+                  ]
     return item_input
 
 
@@ -462,6 +477,7 @@ class MyDataset(Dataset):
         # _minimum_action_value: -4.0
         # _maximum_action_value: 7.0
         # action_value_bin = (3.0 - -4.0) / (7.0 - -4.0)
+        # TODO move this code to a function.
         action_value_bin = math.floor(
             ((action_value - self._minimum_action_value) / (self._maximum_action_value - self._minimum_action_value)) * (num_classes - 1))
         action_value_bin = torch.tensor(action_value_bin)
@@ -543,8 +559,12 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 class DecoderOnlyTransformerModel(nn.Module):
     def __init__(self, vocab_size, hidden_size, ffn_size, dropout, num_heads, context_size, num_layers):
         super(DecoderOnlyTransformerModel, self).__init__()
-        self.embed = nn.Embedding(num_embeddings=vocab_size,
-                                  embedding_dim=hidden_size)
+        self.input_embed = nn.Embedding(num_embeddings=vocab_size,
+                                        embedding_dim=hidden_size)
+        self.current_embed = nn.Embedding(num_embeddings=vocab_size,
+                                          embedding_dim=hidden_size)
+        self.action_embed = nn.Embedding(num_embeddings=vocab_size,
+                                         embedding_dim=hidden_size)
 
         self.dropout_1 = nn.Dropout(dropout)
         modules = [NonCausalSelfAttentionTransformerBlock(
@@ -559,7 +579,10 @@ class DecoderOnlyTransformerModel(nn.Module):
             in_features=hidden_size, out_features=num_classes)
 
     def forward(self, x):
-        x = self.embed(x)
+        x0 = self.input_embed(x[0])
+        x1 = self.current_embed(x[1])
+        x2 = self.action_embed(x[2])
+        x = torch.cat([x0, x1, x2], dim=1)
         x = x / math.sqrt(d_model)
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
@@ -593,20 +616,19 @@ def get_grad_norm(model):
 def print_model_outputs():
     for data in train_loader:
         (inputs, targets) = data
-        inputs = inputs.to(device)
+        inputs = [t.to(device) for t in inputs]
         targets = targets.to(device)
         outputs = model(inputs)
-        print("inputs size")
-        print(inputs.size())
-        for idx in range(len(inputs)):
+        for idx in range(len(inputs[0])):
             print("--------------------")
             print(f"idx: {idx} ")
-            input = inputs[idx]
+            input = [inputs[0][idx], inputs[1][idx], inputs[2][idx]]
             target = targets[idx].argmax(dim=-1).item()
             output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")
-            print("".join(list(map(chr, input.tolist()))))
+            print("".join(
+                list(map(chr, input[0].tolist() + input[1].tolist() + input[2].tolist()))))
             print("target: ")
             print(target)
             print("output: ")
@@ -674,7 +696,7 @@ def train():
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
-            inputs = inputs.to(device)
+            inputs = [t.to(device) for t in inputs]
             targets = targets.to(device)
             outputs = model(inputs)
             loss = criterion(outputs, targets)
@@ -802,7 +824,7 @@ def apply_puzzle_action_value_policy(puzzle_examples):
 
 
 # Check if the auto-regressive inference AI is able to predict the output for the train examples.
-apply_puzzle_action_value_policy(puzzle_train_examples)
+# apply_puzzle_action_value_policy(puzzle_train_examples)
 
 
 def infer_action_value(model, input_text):
