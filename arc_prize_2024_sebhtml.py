@@ -85,17 +85,23 @@ models_path = "/workspace/models"
 model_file_path = f"{models_path}/2024-09-29-q-network.pth"
 
 # Model configuration
+# See https://arcprize.org/play?task=3aa6fb7a
 selected_puzzle_id = "3aa6fb7a"
-context_size = 186  # multiple of 4
+# multiple of 4 for NVIDIA cublas WMMA
+context_size = 188
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
+# Hidden size
 d_model = 256
+# Feed-forward size in transformer block
 d_ff = 768
 num_classes = 128
-shuffle = True
+shuffle_train_samples = True
+# In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
+max_grad_norm: float = 1.0
 num_heads = 8
-dropout = 0.1
+dropout = 0.2
 num_layers = 4
 vocab_size = 128  # puzzle_width * puzzle_height * cell_value_size
 # For batch_size:
@@ -108,11 +114,13 @@ vocab_size = 128  # puzzle_width * puzzle_height * cell_value_size
 # - 512 with NVIDIA A4000 (16 GB VRAM)
 batch_size = 1024
 lr = 0.0001
-weight_decay = 0.01
+# In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
+# In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
+weight_decay = 0.1
 discount = 0.99
-num_epochs = 5
+num_epochs = 2
 # Use 1 for development, for production, use 87.
-sample_augmentation_multiplier = 87
+sample_augmentation_multiplier = 256
 padding_char = ' '
 stop_after_generating_samples = False
 load_model = False
@@ -166,6 +174,24 @@ def input_state_to_text(state) -> str:
     return output
 
 
+def get_full_move_counter(state) -> str:
+    """
+    Get the full move counter since the beginning of the playout
+    """
+    full_move_counter: int = 0
+    for row in range(len(state)):
+        for col in range(len(state[row])):
+            changes = state[row][col].changes()
+            if changes > 1:
+                raise Exception(
+                    f"Current state has a cell with {changes}, which is illegal because it is greater than 1.")
+            full_move_counter += changes
+
+    output: str = str(full_move_counter).rjust(2, padding_char)
+    output += "\n"
+    return output
+
+
 def current_state_to_text(state) -> str:
     output = ""
     for row in range(len(state)):
@@ -204,8 +230,9 @@ def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value
 
 
 class SampleInputTokens:
-    def __init__(self, input_state, current_state, action):
+    def __init__(self, input_state, full_move_counter, current_state, action):
         self._input_state = input_state
+        self._full_move_counter = full_move_counter
         self._current_state = current_state
         self._action = action
 
@@ -223,6 +250,10 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction) -
     input_state_text += "ini" + "\n"
     input_state_text += input_state_to_text(input_state)
 
+    full_move_counter = ""
+    full_move_counter += "cnt" + "\n"
+    full_move_counter += get_full_move_counter(current_state)
+
     current_state_text = ""
     current_state_text += "cur" + "\n"
     current_state_text += current_state_to_text(current_state)
@@ -233,6 +264,7 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction) -
 
     return SampleInputTokens(
         text_to_tokens(input_state_text),
+        text_to_tokens(full_move_counter),
         text_to_tokens(current_state_text),
         text_to_tokens(action_text)
     )
@@ -243,7 +275,8 @@ def text_to_tokens(s: str) -> List[int]:
 
 
 def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
-    tokens: List[int] = sample_input_tokens._input_state + \
+    # TODO add a method in SampleInputTokens to get a list of all tokens in a list.
+    tokens: List[int] = sample_input_tokens._input_state + sample_input_tokens._full_move_counter + \
         sample_input_tokens._current_state + sample_input_tokens._action
     return "".join(map(chr, tokens))
 
@@ -266,7 +299,7 @@ def get_q_star_action_value(state, action: QLearningAction, example_output, disc
     # Discounted future rewards
     maximum_sum_of_discounted_future_rewards = 0.0
     t = 1
-    # TODO refactor loop to simply count the number of unchanged cells.
+
     for row in range(len(state)):
         for col in range(len(state[row])):
             # Skip cell because it was already counted as the immediate reward.
@@ -360,8 +393,6 @@ def generate_action_examples(puzzle_example, cell_value_size):
         current_state = best_next_state
         assert current_state != None
 
-    # print("DONE")
-
     return action_examples
 
 
@@ -414,22 +445,31 @@ def generate_train_action_examples(puzzle_examples, cell_value_size):
 
 
 def make_sample_tensor(sample_input_tokens: SampleInputTokens):
-    input_tokens: List[int] = sample_input_tokens._input_state + \
+    input_tokens: List[int] = sample_input_tokens._input_state + sample_input_tokens._full_move_counter + \
         sample_input_tokens._current_state + sample_input_tokens._action
     if len(input_tokens) > context_size:
         raise Exception(
             f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
     item_input = [torch.tensor(sample_input_tokens._input_state),
+                  torch.tensor(sample_input_tokens._full_move_counter),
                   torch.tensor(sample_input_tokens._current_state),
                   torch.tensor(sample_input_tokens._action)
                   ]
     return item_input
 
 
-def make_sample_text(tensor):
-    the_list = tensor.tolist()
-    text = "".join(list(map(chr, the_list)))
-    return text
+def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
+    """
+    convert action_value to { 0, 1, ..., num_classes - 1 }
+    Example:
+    action_value: 3.0
+    _minimum_action_value: -4.0
+    _maximum_action_value: 7.0
+    action_value_bin = (3.0 - -4.0) / (7.0 - -4.0)
+    """
+    action_value_bin = math.floor(
+        ((action_value - minimum_action_value) / (maximum_action_value - minimum_action_value)) * (num_classes - 1))
+    return action_value_bin
 
 
 class MyDataset(Dataset):
@@ -453,15 +493,8 @@ class MyDataset(Dataset):
         item_input = make_sample_tensor(input_tokens)
 
         action_value = example[1]
-        # convert action_value to { 0, 1, ..., num_classes - 1 }
-        # Example:
-        # action_value: 3.0
-        # _minimum_action_value: -4.0
-        # _maximum_action_value: 7.0
-        # action_value_bin = (3.0 - -4.0) / (7.0 - -4.0)
-        # TODO move this code to a function.
-        action_value_bin = math.floor(
-            ((action_value - self._minimum_action_value) / (self._maximum_action_value - self._minimum_action_value)) * (num_classes - 1))
+        action_value_bin = bin_action_value(
+            action_value, self._minimum_action_value, self._maximum_action_value, num_classes)
         action_value_bin = torch.tensor(action_value_bin)
         action_value_bin = F.one_hot(
             action_value_bin, num_classes=num_classes).float()
@@ -543,6 +576,8 @@ class DecoderOnlyTransformerModel(nn.Module):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.input_embed = nn.Embedding(num_embeddings=vocab_size,
                                         embedding_dim=hidden_size)
+        self.counter_embed = nn.Embedding(num_embeddings=vocab_size,
+                                          embedding_dim=hidden_size)
         self.current_embed = nn.Embedding(num_embeddings=vocab_size,
                                           embedding_dim=hidden_size)
         self.action_embed = nn.Embedding(num_embeddings=vocab_size,
@@ -561,10 +596,12 @@ class DecoderOnlyTransformerModel(nn.Module):
             in_features=hidden_size, out_features=num_classes)
 
     def forward(self, x):
-        x0 = self.input_embed(x[0])
-        x1 = self.current_embed(x[1])
-        x2 = self.action_embed(x[2])
-        x = torch.cat([x0, x1, x2], dim=1)
+        input, counter, current, action = x
+        x_input = self.input_embed(input)
+        x_counter = self.counter_embed(counter)
+        x_current = self.current_embed(current)
+        x_action = self.action_embed(action)
+        x = torch.cat([x_input, x_counter, x_current, x_action], dim=1)
         x = x / math.sqrt(d_model)
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
@@ -595,8 +632,11 @@ def get_grad_norm(model):
     return total_norm
 
 
-def print_model_outputs():
-    for data in train_loader:
+def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int):
+    print("[after training] print_model_outputs_for_train_samples")
+    inference_loader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=False)
+    for data in inference_loader:
         (inputs, targets) = data
         inputs = [t.to(device) for t in inputs]
         targets = targets.to(device)
@@ -604,13 +644,14 @@ def print_model_outputs():
         for idx in range(len(inputs[0])):
             print("--------------------")
             print(f"idx: {idx} ")
-            input = [inputs[0][idx], inputs[1][idx], inputs[2][idx]]
+            input = [inputs[0][idx], inputs[1][idx],
+                     inputs[2][idx], inputs[3][idx]]
             target = targets[idx].argmax(dim=-1).item()
             output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")
             print("".join(
-                list(map(chr, input[0].tolist() + input[1].tolist() + input[2].tolist()))))
+                list(map(chr, input[0].tolist() + input[1].tolist() + input[2].tolist() + input[3].tolist()))))
             print("target: ")
             print(target)
             print("output: ")
@@ -653,15 +694,14 @@ def print_train_examples(train_action_examples):
         print("Example: " + str(idx))
         sample_input = example[0]
         sample_target = example[1]
-        # TODO use decode of the Tokenizer.
+
         print("sample_input")
         print(tokens_to_text(sample_input))
         print("sample_target")
         print(sample_target)
 
 
-def train():
-
+def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool):
     model.train()
     criterion = nn.CrossEntropyLoss()
     model_total_params = sum(p.numel() for p in model.parameters())
@@ -674,6 +714,9 @@ def train():
     step = 0
     steps = []
     losses = []
+    train_loader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=shuffle_train_samples)
+
     for epoch in range(num_epochs):
         for data in train_loader:
             optimizer.zero_grad()
@@ -683,11 +726,11 @@ def train():
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             optimizer.step()
             step += 1
             loss = loss.cpu().item()
-            # current_memory_allocated = torch.cuda.memory_allocated()
+
             print(
                 f"Step: {step}/{num_steps}  epoch: {epoch}  loss: {loss:.8f}")
             steps.append(step)
@@ -775,16 +818,12 @@ else:
     # Create a dataset.
     dataset = MyDataset(train_action_examples)
 
-    # Create a data loader.
-    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
-
     print("Training model")
-    train()
+    train(dataset, batch_size, shuffle_train_samples)
     torch.save(model.state_dict(),
                model_file_path)
 
-    print("[after training] print_model_outputs")
-    print_model_outputs()
+    print_model_outputs_for_train_samples(dataset, batch_size)
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
