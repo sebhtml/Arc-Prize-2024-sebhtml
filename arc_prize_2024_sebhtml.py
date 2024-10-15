@@ -119,8 +119,7 @@ lr = 0.0001
 weight_decay = 0.1
 discount = 0.99
 num_epochs = 2
-# Use 1 for development, for production, use 87.
-sample_augmentation_multiplier = 256
+sample_augmentation_multiplier = 1024
 padding_char = ' '
 stop_after_generating_samples = False
 load_model = False
