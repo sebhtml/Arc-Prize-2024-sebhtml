@@ -118,8 +118,10 @@ lr = 0.0001
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
 weight_decay = 0.1
 discount = 0.99
-num_epochs = 2
-sample_augmentation_multiplier = 1024
+num_epochs = 1
+sample_augmentation_multiplier = 1
+total_train_samples = 50000  # 12544000 * 2
+pass_train_samples = 10000  # 1000000
 padding_char = ' '
 stop_after_generating_samples = False
 load_model = False
@@ -700,7 +702,7 @@ def print_train_examples(train_action_examples):
         print(sample_target)
 
 
-def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool):
+def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step: int):
     model.train()
     criterion = nn.CrossEntropyLoss()
     model_total_params = sum(p.numel() for p in model.parameters())
@@ -708,9 +710,8 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool):
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     print(f"num_epochs {num_epochs}")
-    num_steps = num_epochs * math.ceil(len(train_action_examples) / batch_size)
+    num_steps = num_epochs * math.ceil(total_train_samples / batch_size)
     print(f"num_steps {num_steps}")
-    step = 0
     steps = []
     losses = []
     train_loader = DataLoader(
@@ -737,8 +738,8 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool):
             del inputs
             del targets
             del outputs
-    df = pd.DataFrame(data={'step': steps, 'loss': losses})
-    df.to_csv('step_loss.csv', index=False)
+
+    return step, steps, losses
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state):
@@ -797,13 +798,12 @@ print("puzzle_train_examples")
 print(len(puzzle_train_examples))
 
 
-if load_model:
-    print("Loading model")
-    state_dict = torch.load(model_file_path, weights_only=True)
-    model.load_state_dict(state_dict)
-else:
-    train_action_examples = generate_train_action_examples(
-        puzzle_train_examples, cell_value_size)
+def train_one_pass(step: int):
+    train_action_examples = []
+
+    while len(train_action_examples) < pass_train_samples:
+        train_action_examples += generate_train_action_examples(
+            puzzle_train_examples, cell_value_size)
 
     print("train_action_examples")
     print(len(train_action_examples))
@@ -818,11 +818,37 @@ else:
     dataset = MyDataset(train_action_examples)
 
     print("Training model")
-    train(dataset, batch_size, shuffle_train_samples)
-    torch.save(model.state_dict(),
-               model_file_path)
+
+    step, steps, losses = train(
+        dataset, batch_size, shuffle_train_samples, step)
 
     print_model_outputs_for_train_samples(dataset, batch_size)
+
+    return step, steps, losses, len(train_action_examples)
+
+
+if load_model:
+    print("Loading model")
+    state_dict = torch.load(model_file_path, weights_only=True)
+    model.load_state_dict(state_dict)
+else:
+    trained_train_samples = 0
+    step = 0
+    steps = []
+    losses = []
+    while trained_train_samples < total_train_samples:
+        t_step, t_steps, t_losses, train_samples = train_one_pass(step)
+        step = t_step
+        steps += t_steps
+        losses += t_losses
+        trained_train_samples += train_samples
+
+    print(f"Trained model on {trained_train_samples}")
+
+    df = pd.DataFrame(data={'step': steps, 'loss': losses})
+    df.to_csv('step_loss.csv', index=False)
+    torch.save(model.state_dict(),
+               model_file_path)
 
 
 def apply_puzzle_action_value_policy(puzzle_examples):
