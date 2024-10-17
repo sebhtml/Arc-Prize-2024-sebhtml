@@ -89,6 +89,7 @@ model_file_path = f"{models_path}/2024-09-29-q-network.pth"
 selected_puzzle_id = "3aa6fb7a"
 # multiple of 4 for NVIDIA cublas WMMA
 context_size = 188
+# Each cell has one color and there are 10 colors.
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
@@ -103,7 +104,7 @@ max_grad_norm: float = 1.0
 num_heads = 8
 dropout = 0.2
 num_layers = 4
-vocab_size = 128  # puzzle_width * puzzle_height * cell_value_size
+vocab_size = 128
 # For batch_size:
 # - 8192 for the TPU machine since "TPU-v3-8" has 330 GB RAM
 # - 512 for TPU-v3-8 with 1 TPU
@@ -119,11 +120,11 @@ lr = 0.0001
 weight_decay = 0.1
 discount = 0.99
 num_epochs = 1
-sample_augmentation_multiplier = 1
-total_train_samples = 50000  # 12544000 * 2
-pass_train_samples = 10000  # 1000000
+total_train_samples = 25088000
+pass_train_samples = 1000000
 padding_char = ' '
 stop_after_generating_samples = False
+print_model_outputs: bool = False
 load_model = False
 # Available modes are:
 # - randomize
@@ -434,14 +435,22 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
         break
     return puzzle_venue_examples
 
+# TODO this function should receive just one puzzle example
+
 
 def generate_train_action_examples(puzzle_examples, cell_value_size):
+    """
+    Generate (state, action, action_value) experience samples for all puzzle examples.
+    We start from an empty board, and generate legal actions, and choose the best action (argmax of action value)
+    until the end of the game is reached.
+    This is essentially a wrong incorrect half-baked MCTS (Monte Carlo tree search) in the sense that it's a
+    tree search. But there is no Monte Carlo or Markov Chain involved here since we are lazy at best.
+    """
     train_examples = []
     for puzzle_example in puzzle_examples:
-        for _ in range(sample_augmentation_multiplier):
-            action_examples = generate_action_examples(
-                puzzle_example, cell_value_size)
-            train_examples += action_examples
+        action_examples = generate_action_examples(
+            puzzle_example, cell_value_size)
+        train_examples += action_examples
     return train_examples
 
 
@@ -822,7 +831,8 @@ def train_one_pass(step: int):
     step, steps, losses = train(
         dataset, batch_size, shuffle_train_samples, step)
 
-    print_model_outputs_for_train_samples(dataset, batch_size)
+    if print_model_outputs:
+        print_model_outputs_for_train_samples(dataset, batch_size)
 
     return step, steps, losses, len(train_action_examples)
 

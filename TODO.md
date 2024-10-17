@@ -1,10 +1,9 @@
 # Sprint
 
-- Increase model and lower batch size since GPU VRAM is underused: allocated: 36582MiB / 46068MiB
-- use epochs=1 with more samples
-
 - check if the auto-regressive inference AI is able to predict the output for the train examples
  to check if model generalizes well for a known puzzle
+
+- Increase model and lower batch size since GPU VRAM is underused: allocated: 36582MiB / 46068MiB
 
 - find out why there are peaks in the loss curve here:
 	https://docs.google.com/spreadsheets/d/19pwa_mYlXxRR5YxxytdO2z0Fz6SE-CwfJ9mc-I_TNLo/edit?gid=842182230#gid=842182230
