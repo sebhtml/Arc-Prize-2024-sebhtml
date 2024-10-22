@@ -38,9 +38,9 @@ import random
 import math
 import copy
 import numpy as np
+import h5py
 import torch
 import json
-import hashlib
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import numpy as np  # linear algebra
 from xformers.components import MultiHeadDispatch, build_attention
@@ -50,7 +50,6 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.nn import functional as F
 import sys
-import itertools
 
 device = torch.device("cuda")
 
@@ -83,10 +82,11 @@ kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
 model_file_path = f"{models_path}/2024-09-29-q-network.pth"
+selected_puzzle_id = "3aa6fb7a"
+h5_file_path = f"/workspace/train_datasets/{selected_puzzle_id}.h5"
 
 # Model configuration
 # See https://arcprize.org/play?task=3aa6fb7a
-selected_puzzle_id = "3aa6fb7a"
 # multiple of 4 for NVIDIA cublas WMMA
 context_size = 188
 # Each cell has one color and there are 10 colors.
@@ -120,8 +120,8 @@ lr = 0.0001
 weight_decay = 0.1
 discount = 0.99
 num_epochs = 1
-total_train_samples = 25088000
-pass_train_samples = 1000000
+total_train_samples = 1000  # 25088000
+pass_train_samples = 1000  # 1000000
 padding_char = ' '
 stop_after_generating_samples = False
 print_model_outputs: bool = False
@@ -232,7 +232,7 @@ def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value
 
 
 class SampleInputTokens:
-    def __init__(self, input_state, full_move_counter, current_state, action):
+    def __init__(self, input_state: str, full_move_counter: str, current_state: str, action: str):
         self._input_state = input_state
         self._full_move_counter = full_move_counter
         self._current_state = current_state
@@ -807,6 +807,56 @@ print("puzzle_train_examples")
 print(len(puzzle_train_examples))
 
 
+def create_h5(h5_file_path):
+    f = h5py.File(h5_file_path, "w")
+    _input_state = f.create_dataset(
+        "input_state", shape=(0, 60), dtype="S60", maxshape=(None, 60))
+    _full_move_counter = f.create_dataset(
+        "full_move_counter", shape=(0, 7), dtype="S7", maxshape=(None, 7))
+    _current_state = f.create_dataset(
+        "current_state", shape=(0, 60), dtype="S60", maxshape=(None, 60))
+    _action = f.create_dataset(
+        "action", shape=(0, 60), dtype="S60", maxshape=(None, 60))
+    _action_value = f.create_dataset(
+        "action_value", shape=(0,), dtype=np.float32, maxshape=(None,))
+    return f
+
+
+def append_to_h5(h5_file_path: str, train_action_examples):
+    # a: Read/write if exists, create otherwise
+    size = len(train_action_examples)
+    f = h5py.File(h5_file_path, "a")
+
+    # Get datasets
+    input_state = f["input_state"]
+    full_move_counter = f["full_move_counter"]
+    current_state = f["current_state"]
+    action = f["action"]
+    action_value = f["action_value"]
+
+    # Size
+    current_size = input_state.shape[0]
+
+    # Resize
+    input_state.resize((current_size + size, input_state.shape[1]))
+    full_move_counter.resize((current_size + size, full_move_counter.shape[1]))
+    current_state.resize((current_size + size, current_state.shape[1]))
+    action.resize((current_size + size, action.shape[1]))
+    action_value.resize((current_size + size, ))
+
+    # Do the writes
+    input_state[current_size:] = list(
+        map(lambda sample: sample[0]._input_state, train_action_examples))
+    full_move_counter[current_size:] = list(
+        map(lambda sample: sample[0]._full_move_counter, train_action_examples))
+    current_state[current_size:] = list(
+        map(lambda sample: sample[0]._current_state, train_action_examples))
+    action[current_size:] = list(
+        map(lambda sample: sample[0]._action, train_action_examples))
+    action_value[current_size:] = list(
+        map(lambda sample: sample[1], train_action_examples))
+
+
 def train_one_pass(step: int):
     train_action_examples = []
 
@@ -814,14 +864,11 @@ def train_one_pass(step: int):
         train_action_examples += generate_train_action_examples(
             puzzle_train_examples, cell_value_size)
 
-    print("train_action_examples")
-    print(len(train_action_examples))
-
-    print("train_action_examples")
-    print_train_examples(train_action_examples)
-
     if stop_after_generating_samples:
         sys.exit(42)
+
+    create_h5(h5_file_path)
+    append_to_h5(h5_file_path, train_action_examples)
 
     # Create a dataset.
     dataset = MyDataset(train_action_examples)
