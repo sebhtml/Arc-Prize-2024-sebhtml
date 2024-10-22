@@ -724,7 +724,7 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
     steps = []
     losses = []
     train_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=shuffle_train_samples)
+        dataset, batch_size=batch_size, shuffle=shuffle_train_samples, num_workers=4)
 
     for epoch in range(num_epochs):
         for data in train_loader:
