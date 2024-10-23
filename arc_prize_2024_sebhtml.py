@@ -38,7 +38,6 @@ import random
 import math
 import copy
 import numpy as np
-import h5py
 import torch
 import json
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
@@ -50,6 +49,7 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.nn import functional as F
 import sys
+from h5 import SampleInputTokens, create_h5, append_to_h5
 
 device = torch.device("cuda")
 
@@ -229,14 +229,6 @@ def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value
     action_token = action.col() * puzzle_height * cell_value_size + \
         action.row() * cell_value_size + action.cell_value()
     return action_token
-
-
-class SampleInputTokens:
-    def __init__(self, input_state: str, full_move_counter: str, current_state: str, action: str):
-        self._input_state = input_state
-        self._full_move_counter = full_move_counter
-        self._current_state = current_state
-        self._action = action
 
 
 def tokenize_sample_input(input_state, current_state, action: QLearningAction) -> SampleInputTokens:
@@ -805,50 +797,6 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
 
 print("puzzle_train_examples")
 print(len(puzzle_train_examples))
-
-
-def get_np_structured_array_dtype():
-    """
-    See https://numpy.org/doc/stable/user/basics.rec.html
-    """
-    composite_dtype = [('input_state', 'uint8', (60)), ('full_move_counter', 'uint8', (7)), (
-        'current_state', 'uint8', (60)), ('action', 'uint8', (60)), ('action_value', 'float32')]
-    return composite_dtype
-
-
-def create_h5(h5_file_path):
-    f = h5py.File(h5_file_path, "w")
-    sa_dtype = get_np_structured_array_dtype()
-    _dataset = f.create_dataset(
-        "samples", shape=(0,), dtype=np.dtype(sa_dtype), maxshape=(None,))
-    return f
-
-
-def to_h5_sample(sample: tuple[SampleInputTokens, float]):
-    input_state: str = sample[0]._input_state
-    full_move_counter: str = sample[0]._full_move_counter
-    current_state: str = sample[0]._current_state
-    action: str = sample[0]._action
-    action_value: str = sample[1]
-    return (input_state, full_move_counter, current_state, action, action_value)
-
-
-def append_to_h5(h5_file_path: str, train_action_examples):
-    # a: Read/write if exists, create otherwise
-    size = len(train_action_examples)
-    f = h5py.File(h5_file_path, "a")
-
-    # Get datasets
-    samples = f["samples"]
-
-    # Size
-    current_size = samples.shape[0]
-
-    # Resize
-    samples.resize((current_size + size, ))
-
-    # Do the writes
-    samples[current_size:] = list(map(to_h5_sample, train_action_examples))
 
 
 def train_one_pass(step: int):
