@@ -47,7 +47,7 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.nn import functional as F
 import sys
-from file_storage import SampleInputTokens, create_file_storage, append_to_file_storage
+from file_storage import SampleInputTokens, create_file_storage, append_to_file_storage, FileStorageReader
 from model import DecoderOnlyTransformerModel
 
 device = torch.device("cuda")
@@ -474,21 +474,22 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
 
 
 class MyDataset(Dataset):
-    def __init__(self, examples):
-        self.examples = examples
+    def __init__(self, h5_file_path):
+        self.reader = FileStorageReader(h5_file_path)
 
         # Compute minimum and maximum action value
-        action_values = list(map(lambda example: example[1], examples))
+        action_values = list(map(lambda idx: self.reader.get(idx)[
+                             1], range(self.reader.size())))
         self._minimum_action_value = min(action_values)
         self._maximum_action_value = max(action_values)
         print(f"_minimum_action_value {self._minimum_action_value}")
         print(f"_maximum_action_value {self._maximum_action_value}")
 
     def __len__(self):
-        return len(self.examples)
+        return self.reader.size()
 
     def __getitem__(self, idx):
-        example = self.examples[idx]
+        example = self.reader.get(idx)
 
         input_tokens = example[0]
         item_input = make_sample_tensor(input_tokens)
@@ -702,7 +703,7 @@ def train_one_pass(step: int):
     append_to_file_storage(h5_file_path, train_action_examples)
 
     # Create a dataset.
-    dataset = MyDataset(train_action_examples)
+    dataset = MyDataset(h5_file_path)
 
     print("Training model")
 

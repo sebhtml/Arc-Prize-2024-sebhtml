@@ -51,3 +51,22 @@ def append_to_file_storage(h5_file_path: str, train_action_examples):
 
     # Do the writes
     samples[current_size:] = list(map(__to_h5_sample, train_action_examples))
+
+class FileStorageReader:
+    def __init__(self, h5_file_path):
+        self.f = h5py.File(h5_file_path, "r")
+
+    def size(self):
+        samples = self.f["samples"]
+        return samples.shape[0]
+
+    def get(self, idx) -> tuple[SampleInputTokens, float]:
+        samples = self.f["samples"]
+        sample = samples[idx]
+        input_state = sample['input_state'].tolist()
+        full_move_counter = sample['full_move_counter'].tolist()
+        current_state = sample['current_state'].tolist()
+        action = sample['action'].tolist()
+        action_value = sample['action_value']
+        tokens = SampleInputTokens(input_state, full_move_counter, current_state, action)
+        return (tokens, action_value)
