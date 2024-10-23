@@ -40,9 +40,7 @@ import copy
 import numpy as np
 import torch
 import json
-import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
-import numpy as np  # linear algebra
-from xformers.components import MultiHeadDispatch, build_attention
+import pandas as pd
 import torch.nn.functional as F
 from torch import nn
 from torch.optim import AdamW
@@ -50,6 +48,7 @@ from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.nn import functional as F
 import sys
 from h5 import SampleInputTokens, create_h5, append_to_h5
+from model import DecoderOnlyTransformerModel
 
 device = torch.device("cuda")
 
@@ -505,116 +504,6 @@ class MyDataset(Dataset):
         return item
 
 
-class SwiGLU(nn.Module):
-    """
-    swiGLU = (x * U) * swish(x * V)
-    Note that in PyTorch, the name of Swish is SILU
-    """
-
-    def __init__(self, dim):
-        super().__init__()
-        self.swish = nn.SiLU()
-        self.input_proj = nn.Linear(dim, dim, bias=False)
-        self.gate_proj = nn.Linear(dim, dim, bias=False)
-
-    def forward(self, x):
-        input = self.input_proj(x)
-        gate = self.swish(self.gate_proj(x))
-        return input * gate
-
-
-class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, dropout):
-        super().__init__()
-        self.fc1 = nn.Linear(dim, hidden_dim)
-        self.swiglu = SwiGLU(hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, dim)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.swiglu(x)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        return x
-
-
-class NonCausalSelfAttentionTransformerBlock(nn.Module):
-    def __init__(self, hidden_size, ffn_size, num_heads, dropout, context_size):
-        super(NonCausalSelfAttentionTransformerBlock, self).__init__()
-        my_config = {
-            # you can easily make this dependent on a file, sweep,..
-            "name": "scaled_dot_product",
-            "dropout": dropout,
-            "seq_len": context_size,
-            "causal": False,
-        }
-        attention = build_attention(my_config)
-        self.attn = MultiHeadDispatch(
-            seq_len=context_size,
-            dim_model=hidden_size,
-            residual_dropout=dropout,
-            num_heads=num_heads,
-            attention=attention,
-            use_rotary_embeddings=True,
-        ).to(device)
-
-        self.ffn = FeedForward(hidden_size, ffn_size, dropout)
-        self.attention_norm = nn.RMSNorm(hidden_size)
-        self.ffn_norm = nn.RMSNorm(hidden_size)
-
-    def forward(self, src):
-        src_ln = self.attention_norm(src)
-        # Self-attention
-        attn_output = self.attn(
-            query=src_ln, key=src_ln, value=src_ln)
-        src_and_attn = self.ffn_norm(src + attn_output)
-        src_and_attn_and_ffwd = src_and_attn + self.ffn(src_and_attn)
-        return src_and_attn_and_ffwd
-
-
-class DecoderOnlyTransformerModel(nn.Module):
-    def __init__(self, vocab_size, hidden_size, ffn_size, dropout, num_heads, context_size, num_layers):
-        super(DecoderOnlyTransformerModel, self).__init__()
-        self.input_embed = nn.Embedding(num_embeddings=vocab_size,
-                                        embedding_dim=hidden_size)
-        self.counter_embed = nn.Embedding(num_embeddings=vocab_size,
-                                          embedding_dim=hidden_size)
-        self.current_embed = nn.Embedding(num_embeddings=vocab_size,
-                                          embedding_dim=hidden_size)
-        self.action_embed = nn.Embedding(num_embeddings=vocab_size,
-                                         embedding_dim=hidden_size)
-
-        self.dropout_1 = nn.Dropout(dropout)
-        modules = [NonCausalSelfAttentionTransformerBlock(
-            hidden_size, ffn_size, num_heads, dropout, context_size) for _ in range(num_layers)]
-
-        self.blocks = nn.Sequential(*modules)
-        self.norm = nn.RMSNorm(hidden_size)
-
-        self.gap = nn.AdaptiveAvgPool1d(1)
-
-        self.classifier = nn.Linear(
-            in_features=hidden_size, out_features=num_classes)
-
-    def forward(self, x):
-        input, counter, current, action = x
-        x_input = self.input_embed(input)
-        x_counter = self.counter_embed(counter)
-        x_current = self.current_embed(current)
-        x_action = self.action_embed(action)
-        x = torch.cat([x_input, x_counter, x_current, x_action], dim=1)
-        x = x / math.sqrt(d_model)
-        embed_drop = self.dropout_1(x)
-        transformed = self.blocks(embed_drop)
-        transformed_ln = self.norm(transformed)
-        last_hidden_state = transformed_ln
-        output = self.gap(last_hidden_state.transpose(1, 2))
-        output = output.squeeze(2)
-        logits = self.classifier(output)
-        return logits
-
-
 def get_grad_norm(model):
     """
     Calculates and prints the total L2 norm of the gradients of all model parameters.
@@ -674,7 +563,7 @@ def print_current_state(current_state):
 
 
 model = DecoderOnlyTransformerModel(
-    vocab_size, d_model, d_ff,  dropout, num_heads, context_size, num_layers)
+    vocab_size, d_model, d_ff,  dropout, num_heads, context_size, num_layers, num_classes, device)
 # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
 # torch.compile does not work on the NVIDIA P100
 # torch.compile works on runpod.io with a NVIDIA A40
