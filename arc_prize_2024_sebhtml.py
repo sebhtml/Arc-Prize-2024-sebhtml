@@ -47,7 +47,7 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.nn import functional as F
 import sys
-from h5 import SampleInputTokens, create_h5, append_to_h5
+from file_storage import SampleInputTokens, create_file_storage, append_to_file_storage
 from model import DecoderOnlyTransformerModel
 
 device = torch.device("cuda")
@@ -698,8 +698,8 @@ def train_one_pass(step: int):
     if stop_after_generating_samples:
         sys.exit(42)
 
-    create_h5(h5_file_path)
-    append_to_h5(h5_file_path, train_action_examples)
+    create_file_storage(h5_file_path)
+    append_to_file_storage(h5_file_path, train_action_examples)
 
     # Create a dataset.
     dataset = MyDataset(train_action_examples)

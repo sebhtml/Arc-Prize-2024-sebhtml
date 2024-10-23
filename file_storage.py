@@ -9,7 +9,7 @@ class SampleInputTokens:
         self._action = action
 
 
-def get_np_structured_array_dtype():
+def __get_np_structured_array_dtype():
     """
     See https://numpy.org/doc/stable/user/basics.rec.html
     """
@@ -18,15 +18,15 @@ def get_np_structured_array_dtype():
     return composite_dtype
 
 
-def create_h5(h5_file_path):
+def create_file_storage(h5_file_path):
     f = h5py.File(h5_file_path, "w")
-    sa_dtype = get_np_structured_array_dtype()
+    sa_dtype = __get_np_structured_array_dtype()
     _dataset = f.create_dataset(
         "samples", shape=(0,), dtype=np.dtype(sa_dtype), maxshape=(None,))
     return f
 
 
-def to_h5_sample(sample: tuple[SampleInputTokens, float]):
+def __to_h5_sample(sample: tuple[SampleInputTokens, float]):
     input_state: str = sample[0]._input_state
     full_move_counter: str = sample[0]._full_move_counter
     current_state: str = sample[0]._current_state
@@ -35,7 +35,7 @@ def to_h5_sample(sample: tuple[SampleInputTokens, float]):
     return (input_state, full_move_counter, current_state, action, action_value)
 
 
-def append_to_h5(h5_file_path: str, train_action_examples):
+def append_to_file_storage(h5_file_path: str, train_action_examples):
     # a: Read/write if exists, create otherwise
     size = len(train_action_examples)
     f = h5py.File(h5_file_path, "a")
@@ -50,4 +50,4 @@ def append_to_h5(h5_file_path: str, train_action_examples):
     samples.resize((current_size + size, ))
 
     # Do the writes
-    samples[current_size:] = list(map(to_h5_sample, train_action_examples))
+    samples[current_size:] = list(map(__to_h5_sample, train_action_examples))
