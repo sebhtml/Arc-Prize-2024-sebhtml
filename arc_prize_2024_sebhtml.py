@@ -807,19 +807,30 @@ print("puzzle_train_examples")
 print(len(puzzle_train_examples))
 
 
+def get_np_structured_array_dtype():
+    """
+    See https://numpy.org/doc/stable/user/basics.rec.html
+    """
+    composite_dtype = [('input_state', 'uint8', (60)), ('full_move_counter', 'uint8', (7)), (
+        'current_state', 'uint8', (60)), ('action', 'uint8', (60)), ('action_value', 'float32')]
+    return composite_dtype
+
+
 def create_h5(h5_file_path):
     f = h5py.File(h5_file_path, "w")
-    _input_state = f.create_dataset(
-        "input_state", shape=(0, 60), dtype="S60", maxshape=(None, 60))
-    _full_move_counter = f.create_dataset(
-        "full_move_counter", shape=(0, 7), dtype="S7", maxshape=(None, 7))
-    _current_state = f.create_dataset(
-        "current_state", shape=(0, 60), dtype="S60", maxshape=(None, 60))
-    _action = f.create_dataset(
-        "action", shape=(0, 60), dtype="S60", maxshape=(None, 60))
-    _action_value = f.create_dataset(
-        "action_value", shape=(0,), dtype=np.float32, maxshape=(None,))
+    sa_dtype = get_np_structured_array_dtype()
+    _dataset = f.create_dataset(
+        "samples", shape=(0,), dtype=np.dtype(sa_dtype), maxshape=(None,))
     return f
+
+
+def to_h5_sample(sample: tuple[SampleInputTokens, float]):
+    input_state: str = sample[0]._input_state
+    full_move_counter: str = sample[0]._full_move_counter
+    current_state: str = sample[0]._current_state
+    action: str = sample[0]._action
+    action_value: str = sample[1]
+    return (input_state, full_move_counter, current_state, action, action_value)
 
 
 def append_to_h5(h5_file_path: str, train_action_examples):
@@ -828,33 +839,16 @@ def append_to_h5(h5_file_path: str, train_action_examples):
     f = h5py.File(h5_file_path, "a")
 
     # Get datasets
-    input_state = f["input_state"]
-    full_move_counter = f["full_move_counter"]
-    current_state = f["current_state"]
-    action = f["action"]
-    action_value = f["action_value"]
+    samples = f["samples"]
 
     # Size
-    current_size = input_state.shape[0]
+    current_size = samples.shape[0]
 
     # Resize
-    input_state.resize((current_size + size, input_state.shape[1]))
-    full_move_counter.resize((current_size + size, full_move_counter.shape[1]))
-    current_state.resize((current_size + size, current_state.shape[1]))
-    action.resize((current_size + size, action.shape[1]))
-    action_value.resize((current_size + size, ))
+    samples.resize((current_size + size, ))
 
     # Do the writes
-    input_state[current_size:] = list(
-        map(lambda sample: sample[0]._input_state, train_action_examples))
-    full_move_counter[current_size:] = list(
-        map(lambda sample: sample[0]._full_move_counter, train_action_examples))
-    current_state[current_size:] = list(
-        map(lambda sample: sample[0]._current_state, train_action_examples))
-    action[current_size:] = list(
-        map(lambda sample: sample[0]._action, train_action_examples))
-    action_value[current_size:] = list(
-        map(lambda sample: sample[1], train_action_examples))
+    samples[current_size:] = list(map(to_h5_sample, train_action_examples))
 
 
 def train_one_pass(step: int):
