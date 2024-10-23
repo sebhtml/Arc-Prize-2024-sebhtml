@@ -82,7 +82,7 @@ logs_path = "/workspace/logs"
 models_path = "/workspace/models"
 model_file_path = f"{models_path}/2024-09-29-q-network.pth"
 selected_puzzle_id = "3aa6fb7a"
-h5_file_path = f"/workspace/train_datasets/{selected_puzzle_id}.h5"
+train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}.hdf5"
 
 # Model configuration
 # See https://arcprize.org/play?task=3aa6fb7a
@@ -699,11 +699,11 @@ def train_one_pass(step: int):
     if stop_after_generating_samples:
         sys.exit(42)
 
-    create_file_storage(h5_file_path)
-    append_to_file_storage(h5_file_path, train_action_examples)
+    create_file_storage(train_dataset_path)
+    append_to_file_storage(train_dataset_path, train_action_examples)
 
     # Create a dataset.
-    dataset = MyDataset(h5_file_path)
+    dataset = MyDataset(train_dataset_path)
 
     print("Training model")
 
