@@ -24,7 +24,7 @@ kaggle-files:
 	kaggle kernels files -k sebastien/arc-prize-2024-sebhtml-py
 
 h5dump:
-	h5dump /workspace/train_datasets/3aa6fb7a.h5 |less
+	h5dump /workspace/train_datasets/3aa6fb7a.hdf5 |less
 
 learn:
 	./learn.sh
