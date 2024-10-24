@@ -119,9 +119,9 @@ lr = 0.0001
 weight_decay = 0.1
 discount = 0.99
 num_epochs = 1
-total_train_samples = 1000  # 25088000
-pass_train_samples = 1000  # 1000000
+total_train_samples = 20000  # 25088000
 padding_char = ' '
+generate_train_samples: bool = True
 stop_after_generating_samples = False
 print_model_outputs: bool = False
 load_model = False
@@ -605,6 +605,7 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
     print(f"num_steps {num_steps}")
     steps = []
     losses = []
+
     train_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle_train_samples, num_workers=4)
 
@@ -689,49 +690,39 @@ print("puzzle_train_examples")
 print(len(puzzle_train_examples))
 
 
-def train_one_pass(step: int):
-    train_action_examples = []
-
-    while len(train_action_examples) < pass_train_samples:
-        train_action_examples += generate_train_action_examples(
+def generate_samples(train_dataset_path: str):
+    create_file_storage(train_dataset_path)
+    generated_samples = 0
+    while generated_samples < total_train_samples:
+        samples = generate_train_action_examples(
             puzzle_train_examples, cell_value_size)
+        generated_samples += len(samples)
+        append_to_file_storage(train_dataset_path, samples)
 
     if stop_after_generating_samples:
         sys.exit(42)
 
-    create_file_storage(train_dataset_path)
-    append_to_file_storage(train_dataset_path, train_action_examples)
 
-    # Create a dataset.
-    dataset = MyDataset(train_dataset_path)
-
-    print("Training model")
-
-    step, steps, losses = train(
-        dataset, batch_size, shuffle_train_samples, step)
-
-    if print_model_outputs:
-        print_model_outputs_for_train_samples(dataset, batch_size)
-
-    return step, steps, losses, len(train_action_examples)
-
+if generate_train_samples:
+    generate_samples(train_dataset_path)
 
 if load_model:
     print("Loading model")
     state_dict = torch.load(model_file_path, weights_only=True)
     model.load_state_dict(state_dict)
 else:
-    trained_train_samples = 0
-    step = 0
-    steps = []
-    losses = []
-    while trained_train_samples < total_train_samples:
-        t_step, t_steps, t_losses, train_samples = train_one_pass(step)
-        step = t_step
-        steps += t_steps
-        losses += t_losses
-        trained_train_samples += train_samples
+    print("Training model")
+    # Create a dataset.
+    dataset = MyDataset(train_dataset_path)
 
+    step = 0
+    step, steps, losses = train(
+        dataset, batch_size, shuffle_train_samples, step)
+
+    if print_model_outputs:
+        print_model_outputs_for_train_samples(dataset, batch_size)
+
+    trained_train_samples = dataset.__len__()
     print(f"Trained model on {trained_train_samples}")
 
     df = pd.DataFrame(data={'step': steps, 'loss': losses})
