@@ -597,12 +597,17 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
     model.train()
     criterion = nn.CrossEntropyLoss()
     model_total_params = sum(p.numel() for p in model.parameters())
-    print("Model parameters: " + str(model_total_params))
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
+    trained_train_samples = dataset.__len__()
+    num_steps = num_epochs * math.ceil(trained_train_samples / batch_size)
+
+    print(f"parameters: {model_total_params}")
+    print(f"trained_train_samples {trained_train_samples}")
+    print(f"batch_size {batch_size}")
     print(f"num_epochs {num_epochs}")
-    num_steps = num_epochs * math.ceil(total_train_samples / batch_size)
     print(f"num_steps {num_steps}")
+
     steps = []
     losses = []
 
@@ -620,7 +625,6 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
             optimizer.step()
-            step += 1
             loss = loss.cpu().item()
 
             print(
@@ -630,6 +634,7 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
             del inputs
             del targets
             del outputs
+            step += 1
 
     return step, steps, losses
 
@@ -721,9 +726,6 @@ else:
 
     if print_model_outputs:
         print_model_outputs_for_train_samples(dataset, batch_size)
-
-    trained_train_samples = dataset.__len__()
-    print(f"Trained model on {trained_train_samples}")
 
     df = pd.DataFrame(data={'step': steps, 'loss': losses})
     df.to_csv('step_loss.csv', index=False)
