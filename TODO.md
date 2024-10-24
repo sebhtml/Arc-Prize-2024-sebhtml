@@ -1,5 +1,7 @@
 # Sprint
 
+- add playout_simulation.py
+- add option train_model: bool
 - split source code in more than 1 .py file
 - check if the auto-regressive inference AI is able to predict the output for the train examples
  to check if model generalizes well for a known puzzle
