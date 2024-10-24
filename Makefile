@@ -29,3 +29,6 @@ h5dump:
 learn:
 	./learn.sh
 
+lesslog:
+	./lesslog.sh
+
