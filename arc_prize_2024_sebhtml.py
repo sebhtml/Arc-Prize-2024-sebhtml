@@ -47,7 +47,7 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torch.nn import functional as F
 import sys
-from file_storage import SampleInputTokens, create_file_storage, append_to_file_storage, FileStorageReader
+from file_storage import SampleInputTokens, create_file_storage, FileStorageWriter, FileStorageReader
 from model import DecoderOnlyTransformerModel
 
 device = torch.device("cuda")
@@ -119,9 +119,10 @@ lr = 0.0001
 weight_decay = 0.1
 discount = 0.99
 num_epochs = 1
-total_train_samples = 20000  # 25088000
+# Use 20000 for dev, and use 25088000 for training the model.
+total_train_samples = 25088000
 padding_char = ' '
-generate_train_samples: bool = True
+generate_train_samples: bool = False
 stop_after_generating_samples = False
 print_model_outputs: bool = False
 load_model = False
@@ -476,12 +477,9 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
 class MyDataset(Dataset):
     def __init__(self, h5_file_path):
         self.reader = FileStorageReader(h5_file_path)
-
-        # Compute minimum and maximum action value
-        action_values = list(map(lambda idx: self.reader.get(idx)[
-                             1], range(self.reader.size())))
-        self._minimum_action_value = min(action_values)
-        self._maximum_action_value = max(action_values)
+        min_value, max_value = self.reader.get_action_value_min_max()
+        self._minimum_action_value = min_value
+        self._maximum_action_value = max_value
         print(f"_minimum_action_value {self._minimum_action_value}")
         print(f"_maximum_action_value {self._maximum_action_value}")
 
@@ -612,9 +610,10 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
     losses = []
 
     train_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=shuffle_train_samples, num_workers=4)
+        dataset, batch_size=batch_size, shuffle=shuffle_train_samples, num_workers=8)
 
     for epoch in range(num_epochs):
+        print("Starting epoch")
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
@@ -696,13 +695,13 @@ print(len(puzzle_train_examples))
 
 
 def generate_samples(train_dataset_path: str):
-    create_file_storage(train_dataset_path)
+    writer = FileStorageWriter(train_dataset_path)
     generated_samples = 0
     while generated_samples < total_train_samples:
         samples = generate_train_action_examples(
             puzzle_train_examples, cell_value_size)
         generated_samples += len(samples)
-        append_to_file_storage(train_dataset_path, samples)
+        writer.append(samples)
 
     if stop_after_generating_samples:
         sys.exit(42)
