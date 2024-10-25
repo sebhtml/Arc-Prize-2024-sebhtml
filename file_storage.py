@@ -1,5 +1,6 @@
 import numpy as np
 import h5py
+from itertools import tee
 
 class SampleInputTokens:
     def __init__(self, input_state: str, full_move_counter: str, current_state: str, action: str):
@@ -35,10 +36,8 @@ def __to_h5_sample(sample: tuple[SampleInputTokens, float]):
     return (input_state, full_move_counter, current_state, action, action_value)
 
 
-def append_to_file_storage(h5_file_path: str, train_action_examples):
-    # a: Read/write if exists, create otherwise
+def append_to_file_storage(f: h5py.File, train_action_examples):
     size = len(train_action_examples)
-    f = h5py.File(h5_file_path, "a")
 
     # Get datasets
     samples = f["samples"]
@@ -60,6 +59,33 @@ class FileStorageReader:
         samples = self.f["samples"]
         return samples.shape[0]
 
+    def get_action_value_min_max(self):
+
+        samples = self.f["samples"]
+        accumulator_min = samples[0]['action_value']
+        accumulator_max = accumulator_min
+
+        size = self.size()
+        block_size = 4096
+        idx = 0
+
+        while idx < size:
+            upper = min(idx + block_size, size)
+            block_samples = samples[idx:upper]
+            block_action_values = map(lambda sample: sample['action_value'], block_samples)
+
+            min_it, max_it = tee(block_action_values)
+
+            # Min
+            accumulator_min = min(accumulator_min, min(min_it))
+
+            # Max
+            accumulator_max = max(accumulator_max, max(max_it))
+
+            idx += block_size
+
+        return accumulator_min, accumulator_max
+
     def get(self, idx) -> tuple[SampleInputTokens, float]:
         samples = self.f["samples"]
         sample = samples[idx]
@@ -70,3 +96,11 @@ class FileStorageReader:
         action_value = sample['action_value']
         tokens = SampleInputTokens(input_state, full_move_counter, current_state, action)
         return (tokens, action_value)
+
+class FileStorageWriter:
+    def __init__(self, h5_file_path):
+        create_file_storage(h5_file_path)
+        # a: Read/write if exists, create otherwise
+        self.f = h5py.File(h5_file_path, "a")
+    def append(self, train_action_examples):
+        append_to_file_storage(self.f, train_action_examples)
