@@ -651,8 +651,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     # Note that we can't put the model in evaluation mode because Dropout is important for
     # the model to generalize well during inference according to my tests.
     model.eval()
-    print("AUTO-REGRESSIVE wannabe AGI megabot")
-    print("current_state on entry")
+    print("AUTO-REGRESSIVE wannabe AGI megabot current state")
     print_current_state(input_state, current_state)
 
     # Each cell is allowed to change exactly once.
@@ -693,7 +692,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
             del outputs
         current_state = best_next_state
         print(f"best_next_state with {best_action_value}")
-        print("current_state after motor action")
+        print("AUTO-REGRESSIVE wannabe AGI megabot current state")
         print_current_state(input_state, current_state)
     return current_state
 
