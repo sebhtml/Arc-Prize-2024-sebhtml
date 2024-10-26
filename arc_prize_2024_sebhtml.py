@@ -125,7 +125,8 @@ padding_char = ' '
 generate_train_samples: bool = False
 stop_after_generating_samples = False
 print_model_outputs: bool = False
-load_model = False
+load_model: bool = True
+train_model: bool = False
 # Available modes are:
 # - randomize
 # - identity
@@ -714,7 +715,8 @@ if load_model:
     print("Loading model")
     state_dict = torch.load(model_file_path, weights_only=True)
     model.load_state_dict(state_dict)
-else:
+
+if train_model:
     print("Training model")
     # Create a dataset.
     dataset = MyDataset(train_dataset_path)
@@ -751,7 +753,7 @@ def apply_puzzle_action_value_policy(puzzle_examples):
 
 
 # Check if the auto-regressive inference AI is able to predict the output for the train examples.
-# apply_puzzle_action_value_policy(puzzle_train_examples)
+apply_puzzle_action_value_policy(puzzle_train_examples)
 
 
 def infer_action_value(model, input_text):
