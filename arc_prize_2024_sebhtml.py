@@ -232,15 +232,7 @@ def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value
     return action_token
 
 
-def tokenize_sample_input(input_state, current_state, action: QLearningAction) -> SampleInputTokens:
-    """
-    Tokenize a sample input for the Q-network Q(s, a).
-    Note that:
-    - s contains the state which is (input_state, current_state)
-    - a contains the action which is (next_state)
-    """
-
-    # state s
+def get_state_texts(input_state, current_state):
     input_state_text = ""
     input_state_text += "ini" + "\n"
     input_state_text += input_state_to_text(input_state)
@@ -252,6 +244,21 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction) -
     current_state_text = ""
     current_state_text += "cur" + "\n"
     current_state_text += current_state_to_text(current_state)
+
+    return input_state_text, full_move_counter, current_state_text
+
+
+def tokenize_sample_input(input_state, current_state, action: QLearningAction) -> SampleInputTokens:
+    """
+    Tokenize a sample input for the Q-network Q(s, a).
+    Note that:
+    - s contains the state which is (input_state, current_state)
+    - a contains the action which is (next_state)
+    """
+
+    # state s
+    input_state_text, full_move_counter, current_state_text = get_state_texts(
+        input_state, current_state)
 
     action_text = ""
     action_text += "act" + "\n"
@@ -554,12 +561,13 @@ def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int):
         break
 
 
-def print_current_state(current_state):
-    s: str = ""
-    current_state_value_text = current_state_to_text(current_state)
-    s += "<|cur|>" + "\n"
-    s += current_state_value_text + "\n"
-    print(s)
+def print_current_state(input_state, current_state):
+    input_state_text, full_move_counter, current_state_text = get_state_texts(
+        input_state, current_state)
+
+    print(input_state_text)
+    print(full_move_counter)
+    print(current_state_text)
 
 
 model = DecoderOnlyTransformerModel(
@@ -644,10 +652,8 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     # the model to generalize well during inference according to my tests.
     model.eval()
     print("AUTO-REGRESSIVE wannabe AGI megabot")
-    print("input_state")
-    print_current_state(input_state)
     print("current_state on entry")
-    print_current_state(current_state)
+    print_current_state(input_state, current_state)
 
     # Each cell is allowed to change exactly once.
     for _ in range(puzzle_width * puzzle_height):
@@ -665,12 +671,13 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
             input_tokens = tokenize_sample_input(
                 input_state, current_state, candidate_action)
             print("input_text")
-            print(input_tokens)
+            print(tokens_to_text(input_tokens))
             # TODO test all actions in one batch
-            inputs = make_sample_tensor(input_tokens).unsqueeze(0)
+            inputs = list(map(lambda tensor: tensor.unsqueeze(0),
+                          make_sample_tensor(input_tokens)))
             print("inputs size")
-            print(inputs.size())
-            inputs = inputs.to(device)
+            print(inputs[0].size())
+            inputs = [t.to(device) for t in inputs]
             outputs = model(inputs)
             print("outputs size")
             print(outputs.size())
@@ -687,7 +694,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
         current_state = best_next_state
         print(f"best_next_state with {best_action_value}")
         print("current_state after motor action")
-        print_current_state(current_state)
+        print_current_state(input_state, current_state)
     return current_state
 
 
@@ -744,10 +751,11 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         output_state = solve_puzzle_example_auto_regressive(
             example_input, current_state)
         print("final output_state")
-        print_current_state(output_state)
-        print("Expected output")
-        print_current_state(
-            example_target)
+        print_current_state(example_input, output_state)
+        # TODO make the code work to print the example_target.
+        # print("Expected output")
+        # print_current_state(
+        # example_input, example_target)
         # TODO don't break
         break
 
@@ -767,7 +775,6 @@ def infer_action_value(model, input_text):
 def print_inferred_action_value(model, input_text):
     action_value = infer_action_value(model, input_text)
     print(f"action_value: {action_value}")
-
 
 
 # TODO check if the auto-regressive inference AI is able to predict the output for the test example.
