@@ -82,7 +82,7 @@ logs_path = "/workspace/logs"
 models_path = "/workspace/models"
 model_file_path = f"{models_path}/2024-09-29-q-network.pth"
 selected_puzzle_id = "3aa6fb7a"
-train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}.hdf5"
+train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-10-28.hdf5"
 
 # Model configuration
 # See https://arcprize.org/play?task=3aa6fb7a
@@ -120,12 +120,12 @@ weight_decay = 0.1
 discount = 0.99
 num_epochs = 1
 # Use 20000 for dev, and use 25088000 for training the model.
-total_train_samples = 25088000
+total_train_samples = 1000  # 25088000
 padding_char = ' '
-generate_train_samples: bool = False
-stop_after_generating_samples = False
+generate_train_samples: bool = True
+stop_after_generating_samples = True
 print_model_outputs: bool = False
-load_model: bool = True
+load_model: bool = False
 train_model: bool = False
 # Available modes are:
 # - randomize
@@ -133,6 +133,8 @@ train_model: bool = False
 # - zero
 input_gen_mode = "identity"
 current_gen_mode = "zero"
+run_autoregressive_inference_on_train_examples = False
+run_autoregressive_inference_on_test_examples = False
 
 
 class QLearningAction:
@@ -367,6 +369,7 @@ def generate_action_examples(puzzle_example, cell_value_size):
     while current_state != example_output:
         best_next_state = None
         best_action_value = None
+        best_action_example = None
         candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
 
@@ -386,12 +389,13 @@ def generate_action_examples(puzzle_example, cell_value_size):
             action_value = get_q_star_action_value(
                 current_state, candidate_action, example_output, discount)
             example = (input_text, action_value)
-            action_examples.append(example)
+
             if best_action_value == None or action_value > best_action_value:
                 best_next_state = next_state
                 best_action_value = action_value
-
+                best_action_example = example
         assert best_next_state != None
+        action_examples.append(best_action_example)
         current_state = best_next_state
         assert current_state != None
 
@@ -444,7 +448,7 @@ def generate_train_action_examples(puzzle_examples, cell_value_size):
     We start from an empty board, and generate legal actions, and choose the best action (argmax of action value)
     until the end of the game is reached.
     This is essentially a wrong incorrect half-baked MCTS (Monte Carlo tree search) in the sense that it's a
-    tree search. But there is no Monte Carlo or Markov Chain involved here since we are lazy at best.
+    tree search. And there is no Monte Carlo or Markov Chain involved here since we are lazy at best.
     """
     train_examples = []
     for puzzle_example in puzzle_examples:
@@ -760,7 +764,8 @@ def apply_puzzle_action_value_policy(puzzle_examples):
 
 
 # Check if the auto-regressive inference AI is able to predict the output for the train examples.
-apply_puzzle_action_value_policy(puzzle_train_examples)
+if run_autoregressive_inference_on_train_examples:
+    apply_puzzle_action_value_policy(puzzle_train_examples)
 
 
 def infer_action_value(model, input_text):
@@ -776,5 +781,6 @@ def print_inferred_action_value(model, input_text):
     print(f"action_value: {action_value}")
 
 
-# TODO check if the auto-regressive inference AI is able to predict the output for the test example.
-# apply_puzzle_action_value_policy(puzzle_test_examples)
+# Check if the auto-regressive inference AI is able to predict the output for the test example.
+if run_autoregressive_inference_on_test_examples:
+    apply_puzzle_action_value_policy(puzzle_test_examples)
