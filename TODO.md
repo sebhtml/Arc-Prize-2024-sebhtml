@@ -1,11 +1,7 @@
 # Sprint
 
-- add playout_simulation.py
+- use a simulation parameter to not always choose the best action in simulations
 - generate playout in parallel to do it faster
-- add option train_model: bool
-- split source code in more than 1 .py file
-- check if the auto-regressive inference AI is able to predict the output for the train examples
- to check if model generalizes well for a known puzzle
 
 - Increase model and lower batch size since GPU VRAM is underused: allocated: 36582MiB / 46068MiB
 
@@ -18,9 +14,6 @@
 
 - investigate model inference predicted action value using the function print_inferred_action_value.
 
-
-- generate action_examples once and write them to disk
-
 - add class QLearningState
 - add class QLearningActionValue
 
@@ -30,7 +23,3 @@
 - use "Feed forward mechanisms" from xformers
 - use "Residual paths" from xformers
 - add class add class Experience with (s, a, r, s')
-
-- check if the auto-regressive inference AI is able to predict the output for the test example.
-
-

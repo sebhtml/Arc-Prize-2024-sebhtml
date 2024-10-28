@@ -1,5 +1,5 @@
 format-code:
-	autopep8 -i arc_prize_2024_sebhtml.py
+	autopep8 -i *.py
 
 train-model:
 	python arc_prize_2024_sebhtml.py | tee log
