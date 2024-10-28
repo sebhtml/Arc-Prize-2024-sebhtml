@@ -2,7 +2,7 @@ format-code:
 	autopep8 -i *.py
 
 train-model:
-	python arc_prize_2024_sebhtml.py | tee log
+	python main.py | tee log
 
 pip-freeze:
 	pip freeze > requirements.txt

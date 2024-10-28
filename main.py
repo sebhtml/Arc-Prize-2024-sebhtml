@@ -116,9 +116,10 @@ lr = 0.0001
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
 weight_decay = 0.1
 discount = 0.99
-num_epochs = 1
+# Use 1 epoch when training the model, 4 for dev
+num_epochs = 4
 # Use 20000 for dev, and use 25088000 for training the model.
-total_train_samples = 10000  # 25088000
+total_train_samples = 1000  # 25088000
 padding_char = ' '
 generate_train_samples: bool = True
 stop_after_generating_samples = False
@@ -348,7 +349,6 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
         dataset, batch_size=batch_size, shuffle=shuffle_train_samples, num_workers=8)
 
     for epoch in range(num_epochs):
-        print("Starting epoch")
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
@@ -407,7 +407,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
             print("outputs size")
             print(outputs.size())
             print("outputs")
-            print(outputs)
+            print(outputs.tolist())
             action_value = outputs[0].argmax(dim=-1).item()
             print(
                 f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")

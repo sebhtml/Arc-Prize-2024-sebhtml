@@ -1,7 +1,7 @@
 {
   "id": "sebastien/arc-prize-2024-sebhtml-py",
   "title": "arc-prize-2024-sebhtml-py",
-  "code_file": "arc_prize_2024_sebhtml.py",
+  "code_file": "main.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": "true",
