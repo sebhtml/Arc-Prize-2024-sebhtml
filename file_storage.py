@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 from itertools import tee
 
+
 class SampleInputTokens:
     def __init__(self, input_state: str, full_move_counter: str, current_state: str, action: str):
         self._input_state = input_state
@@ -51,6 +52,7 @@ def append_to_file_storage(f: h5py.File, train_action_examples):
     # Do the writes
     samples[current_size:] = list(map(__to_h5_sample, train_action_examples))
 
+
 class FileStorageReader:
     def __init__(self, h5_file_path):
         self.f = h5py.File(h5_file_path, "r")
@@ -72,7 +74,8 @@ class FileStorageReader:
         while idx < size:
             upper = min(idx + block_size, size)
             block_samples = samples[idx:upper]
-            block_action_values = map(lambda sample: sample['action_value'], block_samples)
+            block_action_values = map(
+                lambda sample: sample['action_value'], block_samples)
 
             min_it, max_it = tee(block_action_values)
 
@@ -94,13 +97,16 @@ class FileStorageReader:
         current_state = sample['current_state'].tolist()
         action = sample['action'].tolist()
         action_value = sample['action_value']
-        tokens = SampleInputTokens(input_state, full_move_counter, current_state, action)
+        tokens = SampleInputTokens(
+            input_state, full_move_counter, current_state, action)
         return (tokens, action_value)
+
 
 class FileStorageWriter:
     def __init__(self, h5_file_path):
         create_file_storage(h5_file_path)
         # a: Read/write if exists, create otherwise
         self.f = h5py.File(h5_file_path, "a")
+
     def append(self, train_action_examples):
         append_to_file_storage(self.f, train_action_examples)

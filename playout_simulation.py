@@ -5,6 +5,7 @@ import copy
 import numpy as np
 from typing import List
 
+
 class QLearningAction:
     def __init__(self, row, col, cell_value):
         self.__row = row
@@ -36,6 +37,7 @@ class Cell:
         self.__value = value
         self.__changes += 1
 
+
 def generate_samples(train_dataset_path: str, stop_after_generating_samples: bool, total_train_samples: int, puzzle_train_examples, cell_value_size: int,
                      input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str):
     writer = FileStorageWriter(train_dataset_path)
@@ -44,7 +46,7 @@ def generate_samples(train_dataset_path: str, stop_after_generating_samples: boo
         samples = []
         for _ in range(1):
             samples += generate_train_action_examples(
-            puzzle_train_examples, cell_value_size, input_gen_mode, current_gen_mode, discount, padding_char)
+                puzzle_train_examples, cell_value_size, input_gen_mode, current_gen_mode, discount, padding_char)
         generated_samples += len(samples)
         writer.append(samples)
 
@@ -121,7 +123,8 @@ def get_starting_current_state(state, cell_value_size: int, mode: str) -> List[L
     current_state = copy.deepcopy(state)
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            value = generate_initial_cell_value(current_state, row, col, mode, cell_value_size)
+            value = generate_initial_cell_value(
+                current_state, row, col, mode, cell_value_size)
             current_state[row][col] = Cell(value)
     return current_state
 
@@ -172,6 +175,7 @@ def get_q_star_action_value(state, action: QLearningAction, example_output, disc
     action_value = immediate_reward + maximum_sum_of_discounted_future_rewards
     return action_value
 
+
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
     candidate_actions = []
     assert current_state != None
@@ -185,6 +189,7 @@ def generate_cell_actions(current_state, cell_value_size) -> list[QLearningActio
                 candidate_actions.append(action)
     np.random.shuffle(candidate_actions)
     return candidate_actions
+
 
 def tokenize_sample_input(input_state, current_state, action: QLearningAction, padding_char: str) -> SampleInputTokens:
     """
@@ -212,6 +217,7 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction, p
 
 def text_to_tokens(s: str) -> List[int]:
     return list(map(ord, list(s)))
+
 
 def get_state_texts(input_state, current_state, padding_char: str):
     input_state_text = ""

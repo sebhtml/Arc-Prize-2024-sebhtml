@@ -3,6 +3,7 @@ from torch import nn
 import torch
 import math
 
+
 class SwiGLU(nn.Module):
     """
     swiGLU = (x * U) * swish(x * V)
