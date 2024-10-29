@@ -1,2 +1,3 @@
 venv/
 step_loss.csv
+__pycache__
