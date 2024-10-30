@@ -69,6 +69,10 @@ def generate_train_action_examples(puzzle_examples, cell_value_size, input_gen_m
     return train_examples
 
 
+def actions_act_on_same_cell(action_1: QLearningAction, action_2: QLearningAction) -> bool:
+    return (action_1.row(), action_1.col()) == (action_2.row(), action_2.col())
+
+
 def generate_action_examples(puzzle_example, cell_value_size, input_gen_mode: str, current_gen_mode: str, discount: float,
                              padding_char: str, correct_color_probability: float):
     (example_input, example_output) = puzzle_example
@@ -80,14 +84,18 @@ def generate_action_examples(puzzle_example, cell_value_size, input_gen_mode: st
 
     assert current_state != None
 
+    candidate_actions = generate_cell_actions(
+        current_state, cell_value_size)
+
     while current_state != example_output:
         best_next_state = None
+        best_action = None
         best_action_example = None
-        candidate_actions = generate_cell_actions(
-            current_state, cell_value_size)
 
         if len(candidate_actions) == 0:
             break
+
+        np.random.shuffle(candidate_actions)
 
         # Each time that the player assign a color to a cell, the assigned color is either correct or incorrect.
         use_correct_color = True if random.uniform(
@@ -112,10 +120,16 @@ def generate_action_examples(puzzle_example, cell_value_size, input_gen_mode: st
 
             if satisfaction:
                 best_next_state = next_state
+                best_action = candidate_action
                 best_action_example = example
+
                 # We can break as soon as we found an action that assign a correct color or an incorrect color.
                 # The only thing that matters is that we shuffled the legal actions before testing the actions.
                 break
+
+        # Remove all actions acting on that cell for now.
+        candidate_actions = list(
+            filter(lambda action: not actions_act_on_same_cell(action, best_action), candidate_actions))
 
         assert best_next_state != None
         action_examples.append(best_action_example)
@@ -194,7 +208,6 @@ def generate_cell_actions(current_state, cell_value_size) -> list[QLearningActio
             for new_value in range(cell_value_size):
                 action = QLearningAction(row, col, new_value)
                 candidate_actions.append(action)
-    np.random.shuffle(candidate_actions)
     return candidate_actions
 
 

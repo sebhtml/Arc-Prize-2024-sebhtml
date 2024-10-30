@@ -40,6 +40,7 @@ import copy
 import torch
 import json
 import pandas as pd
+import numpy as np
 import torch.nn.functional as F
 from torch import nn
 from torch.optim import AdamW
@@ -386,8 +387,10 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     for _ in range(puzzle_width * puzzle_height):
         best_next_state = None
         best_action_value = None
+        # TODO call generate_cell_actions once and remove iteratively illegal actions like it is done in module 'playout_simulation'.
         candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
+        np.random.shuffle(candidate_actions)
 
         for candidate_action in candidate_actions:
             next_state = copy.deepcopy(current_state)
