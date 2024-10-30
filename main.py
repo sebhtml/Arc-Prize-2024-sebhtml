@@ -48,7 +48,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.nn import functional as F
 from file_storage import SampleInputTokens, FileStorageReader
 from model import DecoderOnlyTransformerModel
-from playout_simulation import generate_samples, QLearningAction, generate_cell_actions, tokenize_sample_input, get_starting_current_state, get_state_texts
+from playout_simulation import generate_samples, generate_cell_actions, tokenize_sample_input, get_starting_current_state, get_state_texts
 
 device = torch.device("cuda")
 
@@ -80,11 +80,13 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/2024-09-29-q-network.pth"
+model_file_path = f"{models_path}/2024-10-30-q-network.pth"
 selected_puzzle_id = "3aa6fb7a"
 train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-10-29-example-0-25088000.hdf5"
 
 # Model configuration
+
+playout_simulation_cpu_count = 9
 # See https://arcprize.org/play?task=3aa6fb7a
 # multiple of 4 for NVIDIA cublas WMMA
 context_size = 188
@@ -122,13 +124,13 @@ correct_color_probability = 0.50
 # Use 1 epoch when training the model, 4 for dev
 num_epochs = 1
 # Use 100000 for dev, and use 25088000 for training the model.
-total_train_samples = 100000
+total_train_samples = 25088000
 padding_char = ' '
-generate_train_samples: bool = True
+generate_train_samples: bool = False
 stop_after_generating_samples = False
 print_model_outputs: bool = True
-load_model: bool = False
-train_model: bool = True
+load_model: bool = True
+train_model: bool = False
 # Available modes are:
 # - randomize
 # - identity
@@ -387,7 +389,6 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     for _ in range(puzzle_width * puzzle_height):
         best_next_state = None
         best_action_value = None
-        # TODO call generate_cell_actions once and remove iteratively illegal actions like it is done in module 'playout_simulation'.
         candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
         np.random.shuffle(candidate_actions)
@@ -434,7 +435,7 @@ print(len(puzzle_train_examples))
 
 if generate_train_samples:
     generate_samples(train_dataset_path, total_train_samples, puzzle_train_examples, cell_value_size,
-                     input_gen_mode, current_gen_mode, discount, padding_char, correct_color_probability)
+                     input_gen_mode, current_gen_mode, discount, padding_char, correct_color_probability, playout_simulation_cpu_count)
 
     if stop_after_generating_samples:
         sys.exit(0)

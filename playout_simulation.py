@@ -1,8 +1,11 @@
 from file_storage import FileStorageWriter, SampleInputTokens
 import random
 import copy
+import os
 import numpy as np
 from typing import List
+import concurrent.futures
+import concurrent
 
 
 class QLearningAction:
@@ -38,16 +41,26 @@ class Cell:
 
 
 def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_train_examples, cell_value_size: int,
-                     input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str, correct_color_probability: float):
+                     input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str, correct_color_probability: float, cpu_count: int):
     writer = FileStorageWriter(train_dataset_path)
     generated_samples = 0
-    while generated_samples < total_train_samples:
-        samples = []
-        for _ in range(1):
-            samples += generate_train_action_examples(
-                puzzle_train_examples, cell_value_size, input_gen_mode, current_gen_mode, discount, padding_char, correct_color_probability)
-        generated_samples += len(samples)
-        writer.append(samples)
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count)
+    must_generate_more_samples = True
+    while must_generate_more_samples:
+        # Do this loop in parallel using ProcessPoolExecutor.
+        futures = list(map(
+            lambda _: executor.submit(generate_train_action_examples,
+                                      puzzle_train_examples, cell_value_size, input_gen_mode,
+                                      current_gen_mode, discount, padding_char, correct_color_probability),
+            range(cpu_count)))
+        list_of_samples = list(map(lambda future: future.result(), futures))
+        for samples in list_of_samples:
+            writer.append(samples)
+            generated_samples += len(samples)
+            if generated_samples >= total_train_samples:
+                must_generate_more_samples = False
+                break
+
 
 # TODO this function should receive just one puzzle example
 
@@ -84,13 +97,12 @@ def generate_action_examples(puzzle_example, cell_value_size, input_gen_mode: st
 
     assert current_state != None
 
-    candidate_actions = generate_cell_actions(
-        current_state, cell_value_size)
-
     while current_state != example_output:
         best_next_state = None
-        best_action = None
         best_action_example = None
+
+        candidate_actions = generate_cell_actions(
+            current_state, cell_value_size)
 
         if len(candidate_actions) == 0:
             break
@@ -120,16 +132,11 @@ def generate_action_examples(puzzle_example, cell_value_size, input_gen_mode: st
 
             if satisfaction:
                 best_next_state = next_state
-                best_action = candidate_action
                 best_action_example = example
 
                 # We can break as soon as we found an action that assign a correct color or an incorrect color.
                 # The only thing that matters is that we shuffled the legal actions before testing the actions.
                 break
-
-        # Remove all actions acting on that cell for now.
-        candidate_actions = list(
-            filter(lambda action: not actions_act_on_same_cell(action, best_action), candidate_actions))
 
         assert best_next_state != None
         action_examples.append(best_action_example)
