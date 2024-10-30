@@ -262,7 +262,7 @@ def get_grad_norm(model):
     return total_norm
 
 
-def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int):
+def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int, model):
     print("[after training] print_model_outputs_for_train_samples")
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=False)
@@ -302,21 +302,6 @@ def print_current_state(input_state, current_state):
     print(current_state_text)
 
 
-model = DecoderOnlyTransformerModel(
-    vocab_size, d_model, d_ff,  dropout, num_heads, context_size, num_layers, num_classes, device)
-# RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
-# torch.compile does not work on the NVIDIA P100
-# torch.compile works on runpod.io with a NVIDIA A40
-# model = torch.compile(model)
-model.to(device)
-
-puzzle_train_examples = load_puzzle_examples(
-    "training", selected_puzzle_id, "train")
-
-puzzle_test_examples = load_puzzle_examples(
-    "training", selected_puzzle_id, "test")
-
-
 def print_train_examples(train_action_examples):
     print("Train Examples")
     print(len(train_action_examples))
@@ -332,16 +317,14 @@ def print_train_examples(train_action_examples):
         print(sample_target)
 
 
-def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step: int):
+def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step: int, model):
     model.train()
     criterion = nn.CrossEntropyLoss()
-    model_total_params = sum(p.numel() for p in model.parameters())
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     trained_train_samples = dataset.__len__()
     num_steps = num_epochs * math.ceil(trained_train_samples / batch_size)
 
-    print(f"parameters: {model_total_params}")
     print(f"trained_train_samples {trained_train_samples}")
     print(f"batch_size {batch_size}")
     print(f"num_epochs {num_epochs}")
@@ -378,7 +361,7 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
     return step, steps, losses
 
 
-def solve_puzzle_example_auto_regressive(input_state, current_state):
+def solve_puzzle_example_auto_regressive(input_state, current_state, model):
     # Note that we can't put the model in evaluation mode because Dropout is important for
     # the model to generalize well during inference according to my tests.
     model.eval()
@@ -429,41 +412,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state):
     return current_state
 
 
-print("puzzle_train_examples")
-print(len(puzzle_train_examples))
-
-
-if generate_train_samples:
-    generate_samples(train_dataset_path, total_train_samples, puzzle_train_examples, cell_value_size,
-                     input_gen_mode, current_gen_mode, discount, padding_char, correct_color_probability, playout_simulation_cpu_count)
-
-    if stop_after_generating_samples:
-        sys.exit(0)
-
-if load_model:
-    print("Loading model")
-    state_dict = torch.load(model_file_path, weights_only=True)
-    model.load_state_dict(state_dict)
-
-if train_model:
-    print("Training model")
-    # Create a dataset.
-    dataset = MyDataset(train_dataset_path)
-
-    step = 0
-    step, steps, losses = train(
-        dataset, batch_size, shuffle_train_samples, step)
-
-    if print_model_outputs:
-        print_model_outputs_for_train_samples(dataset, batch_size)
-
-    df = pd.DataFrame(data={'step': steps, 'loss': losses})
-    df.to_csv('step_loss.csv', index=False)
-    torch.save(model.state_dict(),
-               model_file_path)
-
-
-def apply_puzzle_action_value_policy(puzzle_examples):
+def apply_puzzle_action_value_policy(puzzle_examples, model):
     for example_input, example_target in puzzle_examples:
         print("example")
         example_input = get_starting_current_state(
@@ -471,7 +420,7 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         current_state = get_starting_current_state(
             example_target, cell_value_size, current_gen_mode)
         output_state = solve_puzzle_example_auto_regressive(
-            example_input, current_state)
+            example_input, current_state, model)
         print("final output_state")
         print_current_state(example_input, output_state)
         # TODO make the code work to print the example_target.
@@ -480,12 +429,6 @@ def apply_puzzle_action_value_policy(puzzle_examples):
         # example_input, example_target)
         # TODO don't break
         break
-
-
-# Check if the auto-regressive inference AI is able to predict the output for the train examples.
-if run_autoregressive_inference_on_train_examples:
-    apply_puzzle_action_value_policy(puzzle_train_examples)
-
 
 def infer_action_value(model, input_text):
     inputs = make_sample_tensor(input_text).unsqueeze(0)
@@ -500,6 +443,63 @@ def print_inferred_action_value(model, input_text):
     print(f"action_value: {action_value}")
 
 
-# Check if the auto-regressive inference AI is able to predict the output for the test example.
-if run_autoregressive_inference_on_test_examples:
-    apply_puzzle_action_value_policy(puzzle_test_examples)
+def main():
+    model = DecoderOnlyTransformerModel(
+        vocab_size, d_model, d_ff,  dropout, num_heads, context_size, num_layers, num_classes, device)
+    # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
+    # torch.compile does not work on the NVIDIA P100
+    # torch.compile works on runpod.io with a NVIDIA A40
+    # model = torch.compile(model)
+    model.to(device)
+
+    puzzle_train_examples = load_puzzle_examples(
+        "training", selected_puzzle_id, "train")
+
+    print("puzzle_train_examples")
+    print(len(puzzle_train_examples))
+
+    puzzle_test_examples = load_puzzle_examples(
+        "training", selected_puzzle_id, "test")
+
+    if generate_train_samples:
+        generate_samples(train_dataset_path, total_train_samples, puzzle_train_examples, cell_value_size,
+                        input_gen_mode, current_gen_mode, discount, padding_char, correct_color_probability, playout_simulation_cpu_count)
+
+        if stop_after_generating_samples:
+            sys.exit(0)
+
+    model_total_params = sum(p.numel() for p in model.parameters())
+    print(f"parameters: {model_total_params}")
+
+    if load_model:
+        print("Loading model")
+        state_dict = torch.load(model_file_path, weights_only=True)
+        model.load_state_dict(state_dict)
+
+    if train_model:
+        print("Training model")
+        # Create a dataset.
+        dataset = MyDataset(train_dataset_path)
+
+        step = 0
+        step, steps, losses = train(
+            dataset, batch_size, shuffle_train_samples, step, model)
+
+        if print_model_outputs:
+            print_model_outputs_for_train_samples(dataset, batch_size, model)
+
+        df = pd.DataFrame(data={'step': steps, 'loss': losses})
+        df.to_csv('step_loss.csv', index=False)
+        torch.save(model.state_dict(),
+                model_file_path)
+
+    # Check if the auto-regressive inference AI is able to predict the output for the train examples.
+    if run_autoregressive_inference_on_train_examples:
+        apply_puzzle_action_value_policy(puzzle_train_examples, model)
+
+    # Check if the auto-regressive inference AI is able to predict the output for the test example.
+    if run_autoregressive_inference_on_test_examples:
+        apply_puzzle_action_value_policy(puzzle_test_examples, model)
+
+if __name__ == '__main__':
+    main()
