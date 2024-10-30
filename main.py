@@ -23,7 +23,7 @@
 # It uses Q-learning.
 # See https://en.wikipedia.org/wiki/Q-learning
 
-import os  # nopep8
+
 # os.system("pip uninstall fastai torchvision torchaudio")  # nopep8
 # For TPUs # nopep8
 # os.system(   # nopep8
@@ -34,6 +34,7 @@ import os  # nopep8
 # import torch_xla
 # import torch_xla.core.xla_model as xm
 from typing import List
+import sys
 import math
 import copy
 import torch
@@ -80,7 +81,7 @@ logs_path = "/workspace/logs"
 models_path = "/workspace/models"
 model_file_path = f"{models_path}/2024-09-29-q-network.pth"
 selected_puzzle_id = "3aa6fb7a"
-train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-10-28.hdf5"
+train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-10-29-example-0-25088000.hdf5"
 
 # Model configuration
 # See https://arcprize.org/play?task=3aa6fb7a
@@ -116,10 +117,11 @@ lr = 0.0001
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
 weight_decay = 0.1
 discount = 0.99
+correct_color_probability = 0.50
 # Use 1 epoch when training the model, 4 for dev
-num_epochs = 4
-# Use 20000 for dev, and use 25088000 for training the model.
-total_train_samples = 1000  # 25088000
+num_epochs = 1
+# Use 100000 for dev, and use 25088000 for training the model.
+total_train_samples = 100000
 padding_char = ' '
 generate_train_samples: bool = True
 stop_after_generating_samples = False
@@ -428,8 +430,11 @@ print(len(puzzle_train_examples))
 
 
 if generate_train_samples:
-    generate_samples(train_dataset_path, stop_after_generating_samples, total_train_samples, puzzle_train_examples, cell_value_size,
-                     input_gen_mode, current_gen_mode, discount, padding_char)
+    generate_samples(train_dataset_path, total_train_samples, puzzle_train_examples, cell_value_size,
+                     input_gen_mode, current_gen_mode, discount, padding_char, correct_color_probability)
+
+    if stop_after_generating_samples:
+        sys.exit(0)
 
 if load_model:
     print("Loading model")
