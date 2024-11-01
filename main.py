@@ -80,9 +80,9 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/2024-10-30-q-network.pth"
+model_file_path = f"{models_path}/2024-10-31-q-network.pth"
 selected_puzzle_id = "3aa6fb7a"
-train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-10-29-example-0-25088000.hdf5"
+train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-10-31-example-0-Halloween.hdf5"
 
 # Model configuration
 
@@ -120,17 +120,16 @@ lr = 0.0001
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
 weight_decay = 0.1
 discount = 0.99
-correct_color_probability = 0.50
 # Use 1 epoch when training the model, 4 for dev
 num_epochs = 1
-# Use 100000 for dev, and use 25088000 for training the model.
+# Use 100000 for dev, and use 25088000 or 10000018 for training the model.
 total_train_samples = 25088000
 padding_char = ' '
 generate_train_samples: bool = False
 stop_after_generating_samples = False
 print_model_outputs: bool = True
-load_model: bool = True
-train_model: bool = False
+load_model: bool = False
+train_model: bool = True
 # Available modes are:
 # - randomize
 # - identity
@@ -430,6 +429,7 @@ def apply_puzzle_action_value_policy(puzzle_examples, model):
         # TODO don't break
         break
 
+
 def infer_action_value(model, input_text):
     inputs = make_sample_tensor(input_text).unsqueeze(0)
     inputs = inputs.to(device)
@@ -463,7 +463,7 @@ def main():
 
     if generate_train_samples:
         generate_samples(train_dataset_path, total_train_samples, puzzle_train_examples, cell_value_size,
-                        input_gen_mode, current_gen_mode, discount, padding_char, correct_color_probability, playout_simulation_cpu_count)
+                         input_gen_mode, current_gen_mode, discount, padding_char, playout_simulation_cpu_count)
 
         if stop_after_generating_samples:
             sys.exit(0)
@@ -491,7 +491,7 @@ def main():
         df = pd.DataFrame(data={'step': steps, 'loss': losses})
         df.to_csv('step_loss.csv', index=False)
         torch.save(model.state_dict(),
-                model_file_path)
+                   model_file_path)
 
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.
     if run_autoregressive_inference_on_train_examples:
@@ -500,6 +500,7 @@ def main():
     # Check if the auto-regressive inference AI is able to predict the output for the test example.
     if run_autoregressive_inference_on_test_examples:
         apply_puzzle_action_value_policy(puzzle_test_examples, model)
+
 
 if __name__ == '__main__':
     main()

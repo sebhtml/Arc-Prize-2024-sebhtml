@@ -41,7 +41,7 @@ class Cell:
 
 
 def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_train_examples, cell_value_size: int,
-                     input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str, correct_color_probability: float, cpu_count: int):
+                     input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str, cpu_count: int):
     writer = FileStorageWriter(train_dataset_path)
     generated_samples = 0
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count)
@@ -51,7 +51,7 @@ def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_t
         futures = list(map(
             lambda _: executor.submit(generate_train_action_examples,
                                       puzzle_train_examples, cell_value_size, input_gen_mode,
-                                      current_gen_mode, discount, padding_char, correct_color_probability),
+                                      current_gen_mode, discount, padding_char),
             range(cpu_count)))
         list_of_samples = list(map(lambda future: future.result(), futures))
         for samples in list_of_samples:
@@ -65,8 +65,7 @@ def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_t
 # TODO this function should receive just one puzzle example
 
 
-def generate_train_action_examples(puzzle_examples, cell_value_size, input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str,
-                                   correct_color_probability: float):
+def generate_train_action_examples(puzzle_examples, cell_value_size, input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str):
     """
     Generate (state, action, action_value) experience samples for all puzzle examples.
     We start from an empty board, and generate legal actions, and choose the best action (argmax of action value)
@@ -76,8 +75,8 @@ def generate_train_action_examples(puzzle_examples, cell_value_size, input_gen_m
     """
     train_examples = []
     for puzzle_example in puzzle_examples:
-        action_examples = generate_action_examples(
-            puzzle_example, cell_value_size, input_gen_mode, current_gen_mode, discount, padding_char, correct_color_probability)
+        action_examples = simulate_random_playout(
+            puzzle_example, cell_value_size, input_gen_mode, current_gen_mode, discount, padding_char)
         train_examples += action_examples
     return train_examples
 
@@ -86,64 +85,56 @@ def actions_act_on_same_cell(action_1: QLearningAction, action_2: QLearningActio
     return (action_1.row(), action_1.col()) == (action_2.row(), action_2.col())
 
 
-def generate_action_examples(puzzle_example, cell_value_size, input_gen_mode: str, current_gen_mode: str, discount: float,
-                             padding_char: str, correct_color_probability: float):
+def simulate_random_playout(puzzle_example, cell_value_size, input_gen_mode: str, current_gen_mode: str, discount: float,
+                            padding_char: str):
+    """
+    Generate (state, action, action_value) samples from a simulated playout of the puzzle by a player.
+
+    Each time that the player assigns a color to a cell, the assigned color is either correct or incorrect.
+    For the probability of selecting a correct color, the reasoning is that a cell can take 1 color out of 10 colors.
+    So, we use a probability of 1 / 10 = 0.1
+    With 10000018 samples, we will get 204082 playouts.
+    For any cell, 10% of the 204082 playouts, or 20408 playouts, will have a correct value.
+
+    """
     (example_input, example_output) = puzzle_example
-    action_examples = []
+    samples = []
     example_input = get_starting_current_state(
         example_input, cell_value_size, input_gen_mode)
     current_state = get_starting_current_state(
         example_output, cell_value_size, current_gen_mode)
 
-    assert current_state != None
-
     while current_state != example_output:
-        best_next_state = None
-        best_action_example = None
-
         candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
 
         if len(candidate_actions) == 0:
             break
 
+        # We can select the legal action as soon as now.
+        # An action assigns a correct color or an incorrect color to a cell.
+        # The only thing that matters is that we shuffled the legal actions before selecting the action.
         np.random.shuffle(candidate_actions)
+        candidate_action = candidate_actions[0]
 
-        # Each time that the player assign a color to a cell, the assigned color is either correct or incorrect.
-        use_correct_color = True if random.uniform(
-            0, 1) <= correct_color_probability else False
+        next_state = copy.deepcopy(current_state)
+        row = candidate_action.row()
+        col = candidate_action.col()
+        cell_value = candidate_action.cell_value()
+        next_state[row][col].set_value(cell_value)
+        input_text = tokenize_sample_input(
+            example_input, current_state, candidate_action, padding_char)
 
-        for candidate_action in candidate_actions:
-            next_state = copy.deepcopy(current_state)
-            row = candidate_action.row()
-            col = candidate_action.col()
-            cell_value = candidate_action.cell_value()
-            next_state[row][col].set_value(cell_value)
-            input_text = tokenize_sample_input(
-                example_input, current_state, candidate_action, padding_char)
-            # Use Q*(s, a) for the action-value.
-            action_value = get_q_star_action_value(
-                current_state, candidate_action, example_output, discount)
-            example = (input_text, action_value)
+        # Use Q*(s, a) for the action-value.
+        action_value = get_q_star_action_value(
+            current_state, candidate_action, example_output, discount)
 
-            cell_color_is_correct: bool = example_output[row][col] == cell_value
+        sample = (input_text, action_value)
+        samples.append(sample)
 
-            satisfaction: bool = use_correct_color == cell_color_is_correct
+        current_state = next_state
 
-            if satisfaction:
-                best_next_state = next_state
-                best_action_example = example
-
-                # We can break as soon as we found an action that assign a correct color or an incorrect color.
-                # The only thing that matters is that we shuffled the legal actions before testing the actions.
-                break
-
-        assert best_next_state != None
-        action_examples.append(best_action_example)
-        current_state = best_next_state
-        assert current_state != None
-
-    return action_examples
+    return samples
 
 
 def get_starting_current_state(state, cell_value_size: int, mode: str) -> List[List[Cell]]:
