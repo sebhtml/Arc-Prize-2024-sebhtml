@@ -32,3 +32,7 @@ learn:
 lesslog:
 	./lesslog.sh
 
+setup:
+	bash install-programs.sh
+	bash link-git-config.sh
+	bash link-ssh-key.sh
