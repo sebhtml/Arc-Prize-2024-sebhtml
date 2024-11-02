@@ -108,6 +108,7 @@ def simulate_random_playout(puzzle_example, cell_value_size, input_gen_mode: str
         candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
 
+        # The playout is completed.
         if len(candidate_actions) == 0:
             break
 

@@ -80,9 +80,9 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/2024-10-31-q-network.pth"
+model_file_path = f"{models_path}/2024-11-01-q-network.pth"
 selected_puzzle_id = "3aa6fb7a"
-train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-10-31-example-0-Halloween.hdf5"
+train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-11-01-2-examples.hdf5"
 
 # Model configuration
 
@@ -125,11 +125,23 @@ num_epochs = 1
 # Use 100000 for dev, and use 25088000 or 10000018 for training the model.
 total_train_samples = 25088000
 padding_char = ' '
-generate_train_samples: bool = False
-stop_after_generating_samples = False
-print_model_outputs: bool = True
-load_model: bool = False
-train_model: bool = True
+#
+# Options for generating train samples
+#
+generate_train_samples = False
+stop_after_generating_samples = True
+#
+# Options for loading AI neural net model
+#
+load_model = False
+#
+# Options for training AI neural net model
+#
+train_model = True
+print_model_outputs = True
+save_step_losses = True
+save_neural_net_model = True
+#
 # Available modes are:
 # - randomize
 # - identity
@@ -180,8 +192,6 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 
         example = (example_input, example_output)
         puzzle_venue_examples.append(example)
-        # TODO don't break.
-        break
     return puzzle_venue_examples
 
 
@@ -288,7 +298,7 @@ def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int, m
         del inputs
         del targets
         del outputs
-        # Only check first batch.
+        # Only check first batch for now.
         break
 
 
@@ -426,8 +436,6 @@ def apply_puzzle_action_value_policy(puzzle_examples, model):
         # print("Expected output")
         # print_current_state(
         # example_input, example_target)
-        # TODO don't break
-        break
 
 
 def infer_action_value(model, input_text):
@@ -488,10 +496,13 @@ def main():
         if print_model_outputs:
             print_model_outputs_for_train_samples(dataset, batch_size, model)
 
-        df = pd.DataFrame(data={'step': steps, 'loss': losses})
-        df.to_csv('step_loss.csv', index=False)
-        torch.save(model.state_dict(),
-                   model_file_path)
+        if save_step_losses:
+            df = pd.DataFrame(data={'step': steps, 'loss': losses})
+            df.to_csv('step_loss.csv', index=False)
+
+        if save_neural_net_model:
+            torch.save(model.state_dict(),
+                       model_file_path)
 
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.
     if run_autoregressive_inference_on_train_examples:
