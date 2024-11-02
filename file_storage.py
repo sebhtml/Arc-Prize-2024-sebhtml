@@ -21,7 +21,8 @@ def __get_np_structured_array_dtype():
 
 
 def create_file_storage(h5_file_path):
-    f = h5py.File(h5_file_path, "w")
+    # We disable HDF5 locking because it does not work properly on runpod.io MooseFS file system.
+    f = h5py.File(h5_file_path, "w", locking=False)
     sa_dtype = __get_np_structured_array_dtype()
     _dataset = f.create_dataset(
         "samples", shape=(0,), dtype=np.dtype(sa_dtype), maxshape=(None,))
@@ -106,7 +107,8 @@ class FileStorageWriter:
     def __init__(self, h5_file_path):
         create_file_storage(h5_file_path)
         # a: Read/write if exists, create otherwise
-        self.f = h5py.File(h5_file_path, "a")
+        # We disable HDF5 locking because it does not work properly on runpod.io MooseFS file system.
+        self.f = h5py.File(h5_file_path, "a", locking=False)
 
     def append(self, train_action_examples):
         append_to_file_storage(self.f, train_action_examples)
