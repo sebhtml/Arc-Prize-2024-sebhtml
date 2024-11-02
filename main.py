@@ -114,7 +114,7 @@ vocab_size = 128
 # On runpod:
 # - 1536 with NVIDIA A40 (48 GB VRAM)
 # - 512 with NVIDIA A4000 (16 GB VRAM)
-batch_size = 1024
+batch_size = 1280  # 1024 + 256
 lr = 0.0001
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
@@ -122,14 +122,14 @@ weight_decay = 0.1
 discount = 0.99
 # Use 1 epoch when training the model, 4 for dev
 num_epochs = 1
-# Use 100000 for dev, and use 25088000 or 10000018 for training the model.
-total_train_samples = 25088000
+# Use 100000 for dev, and use 25088000 for training the model.
+total_train_samples = 100000  # 25088000
 padding_char = ' '
 #
 # Options for generating train samples
 #
-generate_train_samples = False
-stop_after_generating_samples = True
+generate_train_samples = True
+stop_after_generating_samples = False
 #
 # Options for loading AI neural net model
 #
