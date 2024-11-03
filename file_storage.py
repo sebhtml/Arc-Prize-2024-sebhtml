@@ -4,9 +4,8 @@ from itertools import tee
 
 
 class SampleInputTokens:
-    def __init__(self, input_state: str, full_move_counter: str, current_state: str, action: str):
+    def __init__(self, input_state: str, current_state: str, action: str):
         self._input_state = input_state
-        self._full_move_counter = full_move_counter
         self._current_state = current_state
         self._action = action
 
@@ -15,7 +14,7 @@ def __get_np_structured_array_dtype():
     """
     See https://numpy.org/doc/stable/user/basics.rec.html
     """
-    composite_dtype = [('input_state', 'uint8', (60)), ('full_move_counter', 'uint8', (7)), (
+    composite_dtype = [('input_state', 'uint8', (60)), (
         'current_state', 'uint8', (60)), ('action', 'uint8', (60)), ('action_value', 'float32')]
     return composite_dtype
 
@@ -31,11 +30,10 @@ def create_file_storage(h5_file_path):
 
 def __to_h5_sample(sample: tuple[SampleInputTokens, float]):
     input_state: str = sample[0]._input_state
-    full_move_counter: str = sample[0]._full_move_counter
     current_state: str = sample[0]._current_state
     action: str = sample[0]._action
     action_value: str = sample[1]
-    return (input_state, full_move_counter, current_state, action, action_value)
+    return (input_state, current_state, action, action_value)
 
 
 def append_to_file_storage(f: h5py.File, train_action_examples):
@@ -94,12 +92,11 @@ class FileStorageReader:
         samples = self.f["samples"]
         sample = samples[idx]
         input_state = sample['input_state'].tolist()
-        full_move_counter = sample['full_move_counter'].tolist()
         current_state = sample['current_state'].tolist()
         action = sample['action'].tolist()
         action_value = sample['action_value']
         tokens = SampleInputTokens(
-            input_state, full_move_counter, current_state, action)
+            input_state, current_state, action)
         return (tokens, action_value)
 
 

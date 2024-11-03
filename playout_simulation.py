@@ -219,7 +219,7 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction, p
     """
 
     # state s
-    input_state_text, full_move_counter, current_state_text = get_state_texts(
+    input_state_text, current_state_text = get_state_texts(
         input_state, current_state, padding_char)
 
     action_text = ""
@@ -228,7 +228,6 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction, p
 
     return SampleInputTokens(
         text_to_tokens(input_state_text),
-        text_to_tokens(full_move_counter),
         text_to_tokens(current_state_text),
         text_to_tokens(action_text)
     )
@@ -243,15 +242,11 @@ def get_state_texts(input_state, current_state, padding_char: str):
     input_state_text += "ini" + "\n"
     input_state_text += input_state_to_text(input_state)
 
-    full_move_counter = ""
-    full_move_counter += "cnt" + "\n"
-    full_move_counter += get_full_move_counter(current_state, padding_char)
-
     current_state_text = ""
     current_state_text += "cur" + "\n"
     current_state_text += current_state_to_text(current_state)
 
-    return input_state_text, full_move_counter, current_state_text
+    return input_state_text, current_state_text
 
 
 def input_state_to_text(state) -> str:
@@ -261,24 +256,6 @@ def input_state_to_text(state) -> str:
             value = state[row][col].value()
             output += str(value)
         output += "\n"
-    return output
-
-
-def get_full_move_counter(state, padding_char: str) -> str:
-    """
-    Get the full move counter since the beginning of the playout
-    """
-    full_move_counter: int = 0
-    for row in range(len(state)):
-        for col in range(len(state[row])):
-            changes = state[row][col].changes()
-            if changes > 1:
-                raise Exception(
-                    f"Current state has a cell with {changes}, which is illegal because it is greater than 1.")
-            full_move_counter += changes
-
-    output: str = str(full_move_counter).rjust(2, padding_char)
-    output += "\n"
     return output
 
 

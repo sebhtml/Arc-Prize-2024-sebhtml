@@ -97,12 +97,11 @@ class DecoderOnlyTransformerModel(nn.Module):
             in_features=d_model, out_features=num_classes)
 
     def forward(self, x):
-        input, counter, current, action = x
-        x_input = self.input_embed(input)
-        x_counter = self.counter_embed(counter)
-        x_current = self.current_embed(current)
+        input_state, current_state, action = x
+        x_input_state = self.input_embed(input_state)
+        x_current_state = self.current_embed(current_state)
         x_action = self.action_embed(action)
-        x = torch.cat([x_input, x_counter, x_current, x_action], dim=1)
+        x = torch.cat([x_input_state, x_current_state, x_action], dim=1)
         x = x / math.sqrt(self.d_model)
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)

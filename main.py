@@ -81,15 +81,16 @@ kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 models_path = "/workspace/models"
 model_file_path = f"{models_path}/2024-11-01-q-network.pth"
+# See https://arcprize.org/play?task=3aa6fb7a
 selected_puzzle_id = "3aa6fb7a"
 train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-11-01-2-examples.hdf5"
 
 # Model configuration
 
 playout_simulation_cpu_count = 9
-# See https://arcprize.org/play?task=3aa6fb7a
-# multiple of 4 for NVIDIA cublas WMMA
-context_size = 188
+# Multiple of 4 for NVIDIA cublas WMMA
+# See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
+context_size = 180
 # Each cell has one color and there are 10 colors.
 cell_value_size = 10
 puzzle_width = 7
@@ -154,7 +155,7 @@ run_autoregressive_inference_on_test_examples = True
 
 def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
     # TODO add a method in SampleInputTokens to get a list of all tokens in a list.
-    tokens: List[int] = sample_input_tokens._input_state + sample_input_tokens._full_move_counter + \
+    tokens: List[int] = sample_input_tokens._input_state + \
         sample_input_tokens._current_state + sample_input_tokens._action
     return "".join(map(chr, tokens))
 
@@ -196,13 +197,12 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
 
 
 def make_sample_tensor(sample_input_tokens: SampleInputTokens):
-    input_tokens: List[int] = sample_input_tokens._input_state + sample_input_tokens._full_move_counter + \
+    input_tokens: List[int] = sample_input_tokens._input_state + \
         sample_input_tokens._current_state + sample_input_tokens._action
     if len(input_tokens) > context_size:
         raise Exception(
             f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
     item_input = [torch.tensor(sample_input_tokens._input_state),
-                  torch.tensor(sample_input_tokens._full_move_counter),
                   torch.tensor(sample_input_tokens._current_state),
                   torch.tensor(sample_input_tokens._action)
                   ]
@@ -284,13 +284,13 @@ def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int, m
             print("--------------------")
             print(f"idx: {idx} ")
             input = [inputs[0][idx], inputs[1][idx],
-                     inputs[2][idx], inputs[3][idx]]
+                     inputs[2][idx]]
             target = targets[idx].argmax(dim=-1).item()
             output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")
             print("".join(
-                list(map(chr, input[0].tolist() + input[1].tolist() + input[2].tolist() + input[3].tolist()))))
+                list(map(chr, input[0].tolist() + input[1].tolist() + input[2].tolist()))))
             print("target: ")
             print(target)
             print("output: ")
@@ -303,11 +303,10 @@ def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int, m
 
 
 def print_current_state(input_state, current_state):
-    input_state_text, full_move_counter, current_state_text = get_state_texts(
+    input_state_text, current_state_text = get_state_texts(
         input_state, current_state, padding_char)
 
     print(input_state_text)
-    print(full_move_counter)
     print(current_state_text)
 
 
