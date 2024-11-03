@@ -104,19 +104,23 @@ def simulate_random_playout(puzzle_example, cell_value_size, input_gen_mode: str
     current_state = get_starting_current_state(
         example_output, cell_value_size, current_gen_mode)
 
-    while current_state != example_output:
-        candidate_actions = generate_cell_actions(
-            current_state, cell_value_size)
+    # List the cells of the output grid in a random order.
+    cells = []
+    for row in range(len(current_state)):
+        for col in range(len(current_state[row])):
+            cells.append([row, col])
+    np.random.shuffle(cells)
 
-        # The playout is completed.
-        if len(candidate_actions) == 0:
-            break
+    for cell in cells:
+        row = cell[0]
+        col = cell[1]
+        # Use random cell pixel value.
+        new_value = random.randrange(0, cell_value_size)
+        candidate_action = QLearningAction(row, col, new_value)
 
         # We can select the legal action as soon as now.
         # An action assigns a correct color or an incorrect color to a cell.
         # The only thing that matters is that we shuffled the legal actions before selecting the action.
-        np.random.shuffle(candidate_actions)
-        candidate_action = candidate_actions[0]
 
         next_state = copy.deepcopy(current_state)
         row = candidate_action.row()
