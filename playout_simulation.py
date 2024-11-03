@@ -41,7 +41,7 @@ class Cell:
 
 
 def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_train_examples, cell_value_size: int,
-                     input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str, cpu_count: int):
+                     discount: float, padding_char: str, cpu_count: int):
     writer = FileStorageWriter(train_dataset_path)
     generated_samples = 0
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count)
@@ -50,8 +50,7 @@ def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_t
         # Do this loop in parallel using ProcessPoolExecutor.
         futures = list(map(
             lambda _: executor.submit(generate_train_action_examples,
-                                      puzzle_train_examples, cell_value_size, input_gen_mode,
-                                      current_gen_mode, discount, padding_char),
+                                      puzzle_train_examples, cell_value_size, discount, padding_char),
             range(cpu_count)))
         list_of_samples = list(map(lambda future: future.result(), futures))
         for samples in list_of_samples:
@@ -65,7 +64,7 @@ def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_t
 # TODO this function should receive just one puzzle example
 
 
-def generate_train_action_examples(puzzle_examples, cell_value_size, input_gen_mode: str, current_gen_mode: str, discount: float, padding_char: str):
+def generate_train_action_examples(puzzle_examples, cell_value_size, discount: float, padding_char: str):
     """
     Generate (state, action, action_value) experience samples for all puzzle examples.
     We start from an empty board, and generate legal actions, and choose the best action (argmax of action value)
@@ -76,7 +75,7 @@ def generate_train_action_examples(puzzle_examples, cell_value_size, input_gen_m
     train_examples = []
     for puzzle_example in puzzle_examples:
         action_examples = simulate_random_playout(
-            puzzle_example, cell_value_size, input_gen_mode, current_gen_mode, discount, padding_char)
+            puzzle_example, cell_value_size, discount, padding_char)
         train_examples += action_examples
     return train_examples
 
@@ -85,7 +84,7 @@ def actions_act_on_same_cell(action_1: QLearningAction, action_2: QLearningActio
     return (action_1.row(), action_1.col()) == (action_2.row(), action_2.col())
 
 
-def simulate_random_playout(puzzle_example, cell_value_size, input_gen_mode: str, current_gen_mode: str, discount: float,
+def simulate_random_playout(puzzle_example, cell_value_size, discount: float,
                             padding_char: str):
     """
     Generate (state, action, action_value) samples from a simulated playout of the puzzle by a player.
@@ -99,10 +98,10 @@ def simulate_random_playout(puzzle_example, cell_value_size, input_gen_mode: str
     """
     (example_input, example_output) = puzzle_example
     samples = []
-    example_input = get_starting_current_state(
-        example_input, cell_value_size, input_gen_mode)
-    current_state = get_starting_current_state(
-        example_output, cell_value_size, current_gen_mode)
+    example_input = get_puzzle_starting_state(
+        example_input, "input_state")
+    current_state = get_puzzle_starting_state(
+        example_output, "current_state")
 
     # List the cells of the output grid in a random order.
     cells = []
@@ -142,23 +141,15 @@ def simulate_random_playout(puzzle_example, cell_value_size, input_gen_mode: str
     return samples
 
 
-def get_starting_current_state(state, cell_value_size: int, mode: str) -> List[List[Cell]]:
+def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     current_state = copy.deepcopy(state)
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            value = generate_initial_cell_value(
-                current_state, row, col, mode, cell_value_size)
+            value = 0
+            if mode == "input_state":
+                value = state[row][col]
             current_state[row][col] = Cell(value)
     return current_state
-
-
-def generate_initial_cell_value(state, row, col, mode, cell_value_size: int) -> int:
-    if mode == "randomize":
-        return random.randrange(0, cell_value_size)
-    elif mode == "identity":
-        return state[row][col]
-    elif mode == "zero":
-        return 0
 
 
 def reward(expected_cell_value, cell_value) -> int:

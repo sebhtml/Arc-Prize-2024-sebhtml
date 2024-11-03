@@ -48,7 +48,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.nn import functional as F
 from file_storage import SampleInputTokens, FileStorageReader
 from model import DecoderOnlyTransformerModel
-from playout_simulation import generate_samples, generate_cell_actions, tokenize_sample_input, get_starting_current_state, get_state_texts
+from playout_simulation import generate_samples, generate_cell_actions, tokenize_sample_input, get_puzzle_starting_state, get_state_texts
 
 device = torch.device("cuda")
 
@@ -147,8 +147,6 @@ save_neural_net_model = True
 # - randomize
 # - identity
 # - zero
-input_gen_mode = "identity"
-current_gen_mode = "zero"
 run_autoregressive_inference_on_train_examples = True
 run_autoregressive_inference_on_test_examples = True
 
@@ -423,10 +421,10 @@ def solve_puzzle_example_auto_regressive(input_state, current_state, model):
 def apply_puzzle_action_value_policy(puzzle_examples, model):
     for example_input, example_target in puzzle_examples:
         print("example")
-        example_input = get_starting_current_state(
-            example_input, cell_value_size, input_gen_mode)
-        current_state = get_starting_current_state(
-            example_target, cell_value_size, current_gen_mode)
+        example_input = get_puzzle_starting_state(
+            example_input, "input_state")
+        current_state = get_puzzle_starting_state(
+            example_target, "current_state")
         output_state = solve_puzzle_example_auto_regressive(
             example_input, current_state, model)
         print("final output_state")
@@ -470,7 +468,7 @@ def main():
 
     if generate_train_samples:
         generate_samples(train_dataset_path, total_train_samples, puzzle_train_examples, cell_value_size,
-                         input_gen_mode, current_gen_mode, discount, padding_char, playout_simulation_cpu_count)
+                         discount, padding_char, playout_simulation_cpu_count)
 
         if stop_after_generating_samples:
             sys.exit(0)
