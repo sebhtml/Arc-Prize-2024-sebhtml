@@ -77,36 +77,65 @@ device = torch.device("cuda")
 # kaggle_input_path = "/kaggle/input/arc-prize-2024"
 # logs_path = "/workspace/logs"
 # On runpod
+
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
-models_path = "/workspace/models"
-model_file_path = f"{models_path}/2024-11-01-q-network.pth"
+
+#
+# Puzzle configuration
+#
+
 # See https://arcprize.org/play?task=3aa6fb7a
 selected_puzzle_id = "3aa6fb7a"
-train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-11-01-2-examples.hdf5"
 
-# Model configuration
-
-playout_simulation_cpu_count = 9
-# Multiple of 4 for NVIDIA cublas WMMA
-# See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
-context_size = 180
 # Each cell has one color and there are 10 colors.
 cell_value_size = 10
 puzzle_width = 7
 puzzle_height = 7
+
+#
+# Playout simulation configuration
+#
+
+generate_train_samples = True
+stop_after_generating_samples = False
+playout_simulation_cpu_count = 9
+train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-11-01-2-examples.hdf5"
+discount = 0.99
+# Use 100000 for dev, and use 25088000 for training the model.
+total_train_samples = 100000
+padding_char = ' '
+
+#
+# Neural network model configuration
+#
+
+# Multiple of 4 for NVIDIA cublas WMMA
+# See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
+models_path = "/workspace/models"
+model_file_path = f"{models_path}/2024-11-01-q-network.pth"
+context_size = 180
 # Hidden size
 d_model = 256
 # Feed-forward size in transformer block
 d_ff = 768
 num_classes = 128
-shuffle_train_samples = True
-# In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
-max_grad_norm: float = 1.0
 num_heads = 8
 dropout = 0.2
 num_layers = 4
 vocab_size = 128
+
+#
+# Training parameters
+#
+
+# See: A Recipe for Training Neural Networks
+# http://karpathy.github.io/2019/04/25/recipe/
+
+shuffle_train_samples = True
+# In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
+max_grad_norm: float = 1.0
+
 # For batch_size:
 # - 8192 for the TPU machine since "TPU-v3-8" has 330 GB RAM
 # - 512 for TPU-v3-8 with 1 TPU
@@ -120,17 +149,10 @@ lr = 0.0001
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
 weight_decay = 0.1
-discount = 0.99
+
 # Use 1 epoch when training the model, 4 for dev
 num_epochs = 1
-# Use 100000 for dev, and use 25088000 for training the model.
-total_train_samples = 25088000
-padding_char = ' '
-#
-# Options for generating train samples
-#
-generate_train_samples = True
-stop_after_generating_samples = False
+
 #
 # Options for loading AI neural net model
 #
@@ -147,6 +169,7 @@ save_neural_net_model = True
 print_model_outputs = True
 run_autoregressive_inference_on_train_examples = True
 run_autoregressive_inference_on_test_examples = True
+
 
 def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
     # TODO add a method in SampleInputTokens to get a list of all tokens in a list.

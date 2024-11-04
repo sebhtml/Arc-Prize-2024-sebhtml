@@ -165,7 +165,7 @@ def get_q_star_action_value(state, action: QLearningAction, example_output, disc
     """
     - discount is gamma
     - Q*(s, a) = gamma^0 * r_{t+1} + gamma^1* r_{t+1} + gamma^2 * r_{t+2} + ...
-    
+
     See https://www.science.org/doi/10.1126/science.153.3731.34
     See https://en.wikipedia.org/wiki/Bellman_equation
     """

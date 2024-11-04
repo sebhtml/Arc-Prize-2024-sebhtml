@@ -1,11 +1,5 @@
 # Sprint
 
-- add doc section for training parameters and move them there.
-
-# Training parameters
-# See: A Recipe for Training Neural Networks
-# http://karpathy.github.io/2019/04/25/recipe/
-
 - use runpod API to terminate pod after training if terminate_pod_after_training is True
   see https://github.com/runpod/runpod-python?tab=readme-ov-file#endpoints
 
