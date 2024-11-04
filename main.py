@@ -124,7 +124,7 @@ discount = 0.99
 # Use 1 epoch when training the model, 4 for dev
 num_epochs = 1
 # Use 100000 for dev, and use 25088000 for training the model.
-total_train_samples = 100000  # 25088000
+total_train_samples = 25088000
 padding_char = ' '
 #
 # Options for generating train samples
@@ -139,17 +139,14 @@ load_model = False
 # Options for training AI neural net model
 #
 train_model = True
-print_model_outputs = True
 save_step_losses = True
 save_neural_net_model = True
 #
-# Available modes are:
-# - randomize
-# - identity
-# - zero
+# Options for evaluating AI neural net model
+#
+print_model_outputs = True
 run_autoregressive_inference_on_train_examples = True
 run_autoregressive_inference_on_test_examples = True
-
 
 def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
     # TODO add a method in SampleInputTokens to get a list of all tokens in a list.

@@ -95,6 +95,8 @@ def simulate_random_playout(puzzle_example, cell_value_size, discount: float,
     With 10000018 samples, we will get 204082 playouts.
     For any cell, 10% of the 204082 playouts, or 20408 playouts, will have a correct value.
 
+    See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
+    See https://en.wikipedia.org/wiki/Monte_Carlo_tree_search
     """
     (example_input, example_output) = puzzle_example
     samples = []
@@ -163,6 +165,9 @@ def get_q_star_action_value(state, action: QLearningAction, example_output, disc
     """
     - discount is gamma
     - Q*(s, a) = gamma^0 * r_{t+1} + gamma^1* r_{t+1} + gamma^2 * r_{t+2} + ...
+    
+    See https://www.science.org/doi/10.1126/science.153.3731.34
+    See https://en.wikipedia.org/wiki/Bellman_equation
     """
     # Immediate reward is not discounted.
     immediate_reward = reward(
