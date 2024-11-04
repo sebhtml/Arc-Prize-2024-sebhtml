@@ -1,8 +1,4 @@
 # Sprint
-
-- use runpod API to terminate pod after training if terminate_pod_after_training is True
-  see https://github.com/runpod/runpod-python?tab=readme-ov-file#endpoints
-
 - implement translations
 - implement rotations
 - implement symmetries (flips)

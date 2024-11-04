@@ -49,6 +49,7 @@ from torch.nn import functional as F
 from file_storage import SampleInputTokens, FileStorageReader
 from model import DecoderOnlyTransformerModel
 from playout_simulation import generate_samples, generate_cell_actions, tokenize_sample_input, get_puzzle_starting_state, get_state_texts
+from infrastructure import terminate_pod
 
 device = torch.device("cuda")
 
@@ -80,6 +81,12 @@ device = torch.device("cuda")
 
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
+
+#
+# Infrastructure configuration
+#
+api_key_file = "/workspace/runpod_api_key.yml"
+terminate_pod_at_the_end = False
 
 #
 # Puzzle configuration
@@ -528,6 +535,9 @@ def main():
     # Check if the auto-regressive inference AI is able to predict the output for the test example.
     if run_autoregressive_inference_on_test_examples:
         apply_puzzle_action_value_policy(puzzle_test_examples, model)
+
+    if terminate_pod_at_the_end:
+        terminate_pod(api_key_file)
 
 
 if __name__ == '__main__':
