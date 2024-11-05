@@ -1,7 +1,9 @@
 # Sprint
-- implement translations
+
+- automatically plot train loss curve
 - implement rotations
 - implement symmetries (flips)
+- add regularization techniques
 
 # Backlog
 

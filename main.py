@@ -86,7 +86,7 @@ logs_path = "/workspace/logs"
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = False
+terminate_pod_at_the_end = True
 
 #
 # Puzzle configuration
@@ -110,7 +110,7 @@ playout_simulation_cpu_count = 9
 train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-11-01-2-examples.hdf5"
 discount = 0.99
 # Use 100000 for dev, and use 25088000 for training the model.
-total_train_samples = 100000
+total_train_samples = 25088000
 padding_char = ' '
 
 #

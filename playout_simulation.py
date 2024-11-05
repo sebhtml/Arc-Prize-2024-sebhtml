@@ -1,7 +1,6 @@
 from file_storage import FileStorageWriter, SampleInputTokens
 import random
 import copy
-import os
 import numpy as np
 from typing import List
 import concurrent.futures
@@ -98,7 +97,26 @@ def simulate_random_playout(puzzle_example, cell_value_size, discount: float,
     See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
     See https://en.wikipedia.org/wiki/Monte_Carlo_tree_search
     """
-    (example_input, example_output) = puzzle_example
+
+    (raw_example_input, raw_example_output) = puzzle_example
+
+    input_width = len(raw_example_input[0])
+    input_height = len(raw_example_input)
+    output_width = len(raw_example_output[0])
+    output_height = len(raw_example_output)
+
+    if (input_width, input_height) != (output_width, output_height):
+        raise Exception(
+            f"input and output have different sizes: {(input_width, input_height)} and {(output_width, output_height)}")
+
+    translation_x = random.randrange(-input_width + 1, input_width)
+    translation_y = random.randrange(-input_height + 1, input_height)
+
+    example_input = translate_board(
+        raw_example_input, translation_x, translation_y)
+    example_output = translate_board(
+        raw_example_output, translation_x, translation_y)
+
     samples = []
     example_input = get_puzzle_starting_state(
         example_input, "input_state")
@@ -294,3 +312,22 @@ def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value
     action_token = action.col() * puzzle_height * cell_value_size + \
         action.row() * cell_value_size + action.cell_value()
     return action_token
+
+
+def translate_board(board, translation_x: int, translation_y: int):
+    width = len(board[0])
+    height = len(board)
+    new_board = copy.deepcopy(board)
+    for x in range(width):
+        for y in range(height):
+            new_board[y][x] = 0
+    for src_x in range(width):
+        dst_x = src_x + translation_x
+        if dst_x < 0 or dst_x >= width:
+            continue
+        for src_y in range(height):
+            dst_y = src_y + translation_y
+            if dst_y < 0 or dst_y >= height:
+                continue
+            new_board[dst_y][dst_x] = board[src_y][src_x]
+    return new_board
