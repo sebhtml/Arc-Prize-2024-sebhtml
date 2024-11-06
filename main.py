@@ -34,6 +34,7 @@
 # import torch_xla
 # import torch_xla.core.xla_model as xm
 from typing import List
+import datetime
 import sys
 import math
 import copy
@@ -50,6 +51,7 @@ from file_storage import SampleInputTokens, FileStorageReader
 from model import DecoderOnlyTransformerModel
 from playout_simulation import generate_samples, generate_cell_actions, tokenize_sample_input, get_puzzle_starting_state, get_state_texts
 from infrastructure import terminate_pod
+from report import plot_train_loss_graph
 
 device = torch.device("cuda")
 
@@ -82,11 +84,15 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 
+time_marker = datetime.datetime.now().isoformat().replace(":", "-").replace(".", "-")
+train_loss_csv_path = f"/workspace/reports/{time_marker}-step_loss.csv"
+train_loss_png_path = f"/workspace/reports/{time_marker}-step_loss.png"
+
 #
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = True
+terminate_pod_at_the_end = False
 
 #
 # Puzzle configuration
@@ -107,10 +113,10 @@ puzzle_height = 7
 generate_train_samples = True
 stop_after_generating_samples = False
 playout_simulation_cpu_count = 9
-train_dataset_path = f"/workspace/train_datasets/{selected_puzzle_id}-2024-11-01-2-examples.hdf5"
+train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}.hdf5"
 discount = 0.99
 # Use 100000 for dev, and use 25088000 for training the model.
-total_train_samples = 25088000
+total_train_samples = 100000
 padding_char = ' '
 
 #
@@ -120,7 +126,7 @@ padding_char = ' '
 # Multiple of 4 for NVIDIA cublas WMMA
 # See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/2024-11-01-q-network.pth"
+model_file_path = f"{models_path}/{time_marker}-q-network.pth"
 context_size = 180
 # Hidden size
 d_model = 256
@@ -522,7 +528,8 @@ def main():
 
         if save_step_losses:
             df = pd.DataFrame(data={'step': steps, 'loss': losses})
-            df.to_csv('step_loss.csv', index=False)
+            df.to_csv(train_loss_csv_path, index=False)
+            plot_train_loss_graph(steps, losses, train_loss_png_path)
 
         if save_neural_net_model:
             torch.save(model.state_dict(),
