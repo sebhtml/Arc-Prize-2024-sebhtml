@@ -92,7 +92,7 @@ train_loss_png_path = f"/workspace/reports/{time_marker}-step_loss.png"
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = False
+terminate_pod_at_the_end = True
 
 #
 # Puzzle configuration
@@ -116,7 +116,7 @@ playout_simulation_cpu_count = 9
 train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}.hdf5"
 discount = 0.99
 # Use 100000 for dev, and use 25088000 for training the model.
-total_train_samples = 100000
+total_train_samples = 25088000
 padding_char = ' '
 
 #
@@ -134,9 +134,21 @@ d_model = 256
 d_ff = 768
 num_classes = 128
 num_heads = 8
-dropout = 0.2
 num_layers = 4
 vocab_size = 128
+
+#
+# Dropout regularization
+#
+
+# See
+# Improving neural networks by preventing co-adaptation of feature detectors
+# https://arxiv.org/pdf/1207.0580
+# See:
+# Dropout: A Simple Way to Prevent Neural Networks from Overfitting
+# https://www.cs.toronto.edu/~rsalakhu/papers/srivastava14a.pdf
+input_dropout = 0.2
+hidden_dropout = 0.5
 
 #
 # Training parameters
@@ -401,8 +413,6 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
 
 
 def solve_puzzle_example_auto_regressive(input_state, current_state, model):
-    # Note that we can't put the model in evaluation mode because Dropout is important for
-    # the model to generalize well during inference according to my tests.
     model.eval()
     print("AUTO-REGRESSIVE wannabe AGI megabot current state")
     print_current_state(input_state, current_state)
@@ -483,7 +493,7 @@ def print_inferred_action_value(model, input_text):
 
 def main():
     model = DecoderOnlyTransformerModel(
-        vocab_size, d_model, d_ff,  dropout, num_heads, context_size, num_layers, num_classes, device)
+        vocab_size, d_model, d_ff,  input_dropout, hidden_dropout, num_heads, context_size, num_layers, num_classes, device)
     # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
     # torch.compile does not work on the NVIDIA P100
     # torch.compile works on runpod.io with a NVIDIA A40

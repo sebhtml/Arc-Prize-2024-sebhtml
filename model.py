@@ -72,7 +72,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 
 
 class DecoderOnlyTransformerModel(nn.Module):
-    def __init__(self, vocab_size, d_model, ffn_size, dropout, num_heads, context_size, num_layers, num_classes, device):
+    def __init__(self, vocab_size, d_model, ffn_size, input_dropout, hidden_dropout, num_heads, context_size, num_layers, num_classes, device):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.d_model = d_model
         self.input_embed = nn.Embedding(num_embeddings=vocab_size,
@@ -84,9 +84,9 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.action_embed = nn.Embedding(num_embeddings=vocab_size,
                                          embedding_dim=d_model)
 
-        self.dropout_1 = nn.Dropout(dropout)
+        self.dropout_1 = nn.Dropout(input_dropout)
         modules = [NonCausalSelfAttentionTransformerBlock(
-            d_model, ffn_size, num_heads, dropout, context_size, device) for _ in range(num_layers)]
+            d_model, ffn_size, num_heads, hidden_dropout, context_size, device) for _ in range(num_layers)]
 
         self.blocks = nn.Sequential(*modules)
         self.norm = nn.RMSNorm(d_model)
@@ -103,6 +103,9 @@ class DecoderOnlyTransformerModel(nn.Module):
         x_action = self.action_embed(action)
         x = torch.cat([x_input_state, x_current_state, x_action], dim=1)
         x = x / math.sqrt(self.d_model)
+        # We use Dropout after computing embedding.
+        # See File:Full GPT architecture.svg
+        # https://en.wikipedia.org/wiki/File:Full_GPT_architecture.svg
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
         transformed_ln = self.norm(transformed)
