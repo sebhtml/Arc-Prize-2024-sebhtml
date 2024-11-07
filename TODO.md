@@ -1,6 +1,6 @@
 # Sprint
 
-- automatically plot train loss curve
+- use half precision float16
 - implement rotations
 - implement symmetries (flips)
 - add regularization techniques
