@@ -1,6 +1,6 @@
 # Sprint
 
-- increase batch_size and train_samples since we are now using only 26 GB / 46 GB VRAM.
+- increase batch_size and train_samples since we are now using only 28846MiB / 46068MiB instead of 43039MiB /  46068MiB on the NVIDIA A40 GPU.
 - use half precision float16
 - implement rotations
 - implement symmetries (flips)
