@@ -148,7 +148,7 @@ vocab_size = 128
 # Dropout: A Simple Way to Prevent Neural Networks from Overfitting
 # https://www.cs.toronto.edu/~rsalakhu/papers/srivastava14a.pdf
 input_dropout = 0.2
-hidden_dropout = 0.5
+hidden_dropout = 0.2
 
 #
 # Training parameters
