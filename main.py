@@ -34,7 +34,7 @@
 # import torch_xla
 # import torch_xla.core.xla_model as xm
 from typing import List
-import datetime
+from datetime import datetime, timezone
 import sys
 import math
 import copy
@@ -84,7 +84,8 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 
-time_marker = datetime.datetime.now().isoformat().replace(":", "-").replace(".", "-")
+# datetime.now(timezone.utc).isoformat()
+time_marker = '2024-11-09T00:18:25.063611+00:00'
 train_loss_csv_path = f"/workspace/reports/{time_marker}-step_loss.csv"
 train_loss_png_path = f"/workspace/reports/{time_marker}-step_loss.png"
 
@@ -110,13 +111,13 @@ puzzle_height = 7
 # Playout simulation configuration
 #
 
-generate_train_samples = True
-stop_after_generating_samples = False
-playout_simulation_cpu_count = 9
-train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}.hdf5"
-discount = 0.99
+generate_train_samples = False
 # Use 100000 for dev, and use 25088000 for training the model.
 total_train_samples = 25088000
+stop_after_generating_samples = False
+playout_simulation_cpu_count = 9
+train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_samples}.hdf5"
+discount = 0.99
 padding_char = ' '
 
 #
