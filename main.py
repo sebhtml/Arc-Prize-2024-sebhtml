@@ -169,7 +169,7 @@ max_grad_norm: float = 1.0
 # On runpod:
 # - 1536 with NVIDIA A40 (48 GB VRAM)
 # - 512 with NVIDIA A4000 (16 GB VRAM)
-batch_size = 1280  # 1024 + 256
+batch_size = 1024  # 1024 + 256 = 1280
 lr = 0.0001
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
