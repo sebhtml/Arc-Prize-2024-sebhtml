@@ -1,5 +1,7 @@
 # Sprint
 
+- pass only x to CustomAttention instead of q,k,v
+- fix dropout position in FeedForward class
 - increase batch_size and train_samples since we are now using only 28846MiB / 46068MiB instead of 43039MiB /  46068MiB on the NVIDIA A40 GPU.
 - use half precision float16
 - implement rotations
