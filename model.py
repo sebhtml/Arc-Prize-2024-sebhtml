@@ -1,4 +1,9 @@
+import torch
+import torch.nn as nn
+import xformers.ops as xops
+from xformers.components.positional_embedding import RotaryEmbedding
 from xformers.components import MultiHeadDispatch, build_attention
+
 from torch import nn
 import torch
 import math
@@ -23,6 +28,11 @@ class SwiGLU(nn.Module):
 
 
 class FeedForward(nn.Module):
+    """
+    Feed-forward network for a transformer block
+    See https://en.wikipedia.org/wiki/GPT-1#/media/File:Full_GPT_architecture.svg
+    """
+
     def __init__(self, dim, hidden_dim, dropout):
         super().__init__()
         self.fc1 = nn.Linear(dim, hidden_dim)
@@ -33,14 +43,20 @@ class FeedForward(nn.Module):
     def forward(self, x):
         x = self.fc1(x)
         x = self.swiglu(x)
+        # TODO maybe move dropout after fc2.
         x = self.dropout(x)
         x = self.fc2(x)
         return x
 
 
-class NonCausalSelfAttentionTransformerBlock(nn.Module):
-    def __init__(self, d_model, ffn_size, num_heads, dropout, context_size, device):
-        super(NonCausalSelfAttentionTransformerBlock, self).__init__()
+class CustomAttention(nn.Module):
+    """
+    This custom attention uses multi-head attention with non-causal self-attention and rotary embeddings.
+    See https://en.wikipedia.org/wiki/GPT-1#/media/File:Full_GPT_architecture.svg
+    """
+
+    def __init__(self, num_heads, d_model, dropout, context_size, device):
+        super().__init__()
         my_config = {
             "name": "scaled_dot_product",
             "dropout": dropout,
@@ -57,6 +73,17 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
             use_rotary_embeddings=True,
         ).to(device)
 
+    def forward(self, query, key, value):
+        return self.attn(query, key, value)
+
+
+class NonCausalSelfAttentionTransformerBlock(nn.Module):
+    def __init__(self, d_model, ffn_size, num_heads, dropout, context_size, device):
+        super(NonCausalSelfAttentionTransformerBlock, self).__init__()
+
+        self.attn = CustomAttention(
+            num_heads, d_model, dropout, context_size, device)
+
         self.ffn = FeedForward(d_model, ffn_size, dropout)
         self.attention_norm = nn.RMSNorm(d_model)
         self.ffn_norm = nn.RMSNorm(d_model)
@@ -64,6 +91,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
     def forward(self, src):
         src_ln = self.attention_norm(src)
         # Self-attention
+        # TODO pass only src_ln since we use a SelfAttentionMechanism
         attn_output = self.attn(
             query=src_ln, key=src_ln, value=src_ln)
         src_and_attn = self.ffn_norm(src + attn_output)
