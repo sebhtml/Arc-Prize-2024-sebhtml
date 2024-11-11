@@ -75,8 +75,9 @@ class CustomAttention(nn.Module):
             use_rotary_embeddings=True,
         ).to(device)
 
-    def forward(self, query, key, value):
-        return self.attn(query, key, value)
+    def forward(self, x):
+        # Self-attention
+        return self.attn(query=x, key=x, value=x)
 
 
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
@@ -96,10 +97,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 
     def forward(self, src):
         src_ln = self.attention_norm(src)
-        # Self-attention
-        # TODO pass only src_ln since we use a SelfAttentionMechanism
-        attn_output = self.attn(
-            query=src_ln, key=src_ln, value=src_ln)
+        attn_output = self.attn(src_ln)
         src_and_attn = self.ffn_norm(src + attn_output)
         src_and_attn_and_ffwd = src_and_attn + self.ffn(src_and_attn)
         return src_and_attn_and_ffwd
