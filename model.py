@@ -13,6 +13,7 @@ class SwiGLU(nn.Module):
     """
     swiGLU = (x * U) * swish(x * V)
     Note that in PyTorch, the name of Swish is SILU
+    See https://arxiv.org/pdf/2002.05202
     """
 
     def __init__(self, dim):
