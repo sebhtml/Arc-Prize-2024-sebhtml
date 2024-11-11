@@ -43,9 +43,8 @@ class FeedForward(nn.Module):
     def forward(self, x):
         x = self.fc1(x)
         x = self.swiglu(x)
-        # TODO maybe move dropout after fc2.
-        x = self.dropout(x)
         x = self.fc2(x)
+        x = self.dropout(x)
         return x
 
 
@@ -55,11 +54,13 @@ class CustomAttention(nn.Module):
     See https://en.wikipedia.org/wiki/GPT-1#/media/File:Full_GPT_architecture.svg
     """
 
-    def __init__(self, num_heads, d_model, dropout, context_size, device):
+    def __init__(self, num_heads, d_model,
+                 attention_head_dropout,  attention_sublayer_dropout,
+                 context_size, device):
         super().__init__()
         my_config = {
             "name": "scaled_dot_product",
-            "dropout": dropout,
+            "dropout": attention_head_dropout,
             "seq_len": context_size,
             "causal": False,
         }
@@ -67,7 +68,7 @@ class CustomAttention(nn.Module):
         self.attn = MultiHeadDispatch(
             seq_len=context_size,
             dim_model=d_model,
-            residual_dropout=dropout,
+            residual_dropout=attention_sublayer_dropout,
             num_heads=num_heads,
             attention=attention,
             use_rotary_embeddings=True,
@@ -78,13 +79,17 @@ class CustomAttention(nn.Module):
 
 
 class NonCausalSelfAttentionTransformerBlock(nn.Module):
-    def __init__(self, d_model, ffn_size, num_heads, dropout, context_size, device):
+    def __init__(self, d_model, ffn_size, num_heads,
+                 attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
+                 context_size, device):
         super(NonCausalSelfAttentionTransformerBlock, self).__init__()
 
         self.attn = CustomAttention(
-            num_heads, d_model, dropout, context_size, device)
+            num_heads, d_model,
+            attention_head_dropout,  attention_sublayer_dropout,
+            context_size, device)
 
-        self.ffn = FeedForward(d_model, ffn_size, dropout)
+        self.ffn = FeedForward(d_model, ffn_size, ffn_sublayer_dropout)
         self.attention_norm = nn.RMSNorm(d_model)
         self.ffn_norm = nn.RMSNorm(d_model)
 
@@ -100,7 +105,9 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 
 
 class DecoderOnlyTransformerModel(nn.Module):
-    def __init__(self, vocab_size, d_model, ffn_size, input_dropout, hidden_dropout, num_heads, context_size, num_layers, num_classes, device):
+    def __init__(self, vocab_size, d_model, ffn_size,
+                 input_dropout, attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
+                 num_heads, context_size, num_layers, num_classes, device):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.d_model = d_model
         self.input_embed = nn.Embedding(num_embeddings=vocab_size,
@@ -114,7 +121,9 @@ class DecoderOnlyTransformerModel(nn.Module):
 
         self.dropout_1 = nn.Dropout(input_dropout)
         modules = [NonCausalSelfAttentionTransformerBlock(
-            d_model, ffn_size, num_heads, hidden_dropout, context_size, device) for _ in range(num_layers)]
+            d_model, ffn_size, num_heads,
+            attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
+            context_size, device) for _ in range(num_layers)]
 
         self.blocks = nn.Sequential(*modules)
         self.norm = nn.RMSNorm(d_model)

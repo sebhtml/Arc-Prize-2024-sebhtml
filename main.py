@@ -149,7 +149,9 @@ vocab_size = 128
 # Dropout: A Simple Way to Prevent Neural Networks from Overfitting
 # https://www.cs.toronto.edu/~rsalakhu/papers/srivastava14a.pdf
 input_dropout = 0.2
-hidden_dropout = 0.2
+attention_head_dropout = 0.2
+attention_sublayer_dropout = 0.2
+ffn_sublayer_dropout = 0.1
 
 #
 # Training parameters
@@ -494,7 +496,9 @@ def print_inferred_action_value(model, input_text):
 
 def main():
     model = DecoderOnlyTransformerModel(
-        vocab_size, d_model, d_ff,  input_dropout, hidden_dropout, num_heads, context_size, num_layers, num_classes, device)
+        vocab_size, d_model, d_ff,
+        input_dropout, attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
+        num_heads, context_size, num_layers, num_classes, device)
     # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
     # torch.compile does not work on the NVIDIA P100
     # torch.compile works on runpod.io with a NVIDIA A40
