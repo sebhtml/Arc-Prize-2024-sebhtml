@@ -84,10 +84,10 @@ device = torch.device("cuda")
 kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 
-# datetime.now(timezone.utc).isoformat()
 time_marker = '2024-11-09T00:18:25.063611+00:00'
-train_loss_csv_path = f"/workspace/reports/{time_marker}-step_loss.csv"
-train_loss_png_path = f"/workspace/reports/{time_marker}-step_loss.png"
+dynamic_time_marker = datetime.now(timezone.utc).isoformat()
+train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.csv"
+train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 
 #
 # Infrastructure configuration
