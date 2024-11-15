@@ -130,12 +130,12 @@ models_path = "/workspace/models"
 model_file_path = f"{models_path}/{time_marker}-q-network.pth"
 context_size = 180
 # Hidden size
-d_model = 256
+d_model = 384
 # Feed-forward size in transformer block
-d_ff = 768
+d_ff = 1024
 num_classes = 128
 num_heads = 8
-num_layers = 4
+num_layers = 8
 vocab_size = 128
 
 #
@@ -172,7 +172,8 @@ max_grad_norm: float = 1.0
 # On runpod:
 # - 1536 with NVIDIA A40 (48 GB VRAM)
 # - 512 with NVIDIA A4000 (16 GB VRAM)
-batch_size = 1024  # 1024 + 256 = 1280
+# See https://x.com/ylecun/status/989610208497360896?lang=en
+batch_size = 512
 lr = 0.0001
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
