@@ -109,13 +109,8 @@ def simulate_random_playout(puzzle_example, cell_value_size, discount: float,
         raise Exception(
             f"input and output have different sizes: {(input_width, input_height)} and {(output_width, output_height)}")
 
-    translation_x = random.randrange(-input_width + 1, input_width)
-    translation_y = random.randrange(-input_height + 1, input_height)
-
-    example_input = translate_board(
-        raw_example_input, translation_x, translation_y)
-    example_output = translate_board(
-        raw_example_output, translation_x, translation_y)
+    example_input = raw_example_input
+    example_output = raw_example_output
 
     samples = []
     example_input = get_puzzle_starting_state(
@@ -146,14 +141,22 @@ def simulate_random_playout(puzzle_example, cell_value_size, discount: float,
         col = candidate_action.col()
         cell_value = candidate_action.cell_value()
         next_state[row][col].set_value(cell_value)
-        input_text = tokenize_sample_input(
-            example_input, current_state, candidate_action, padding_char)
+
+        (attented_example_input, attented_current_state, attented_candidate_action,
+         translation_x, translation_y) = focus_with_visual_attention(
+            example_input, current_state, candidate_action)
+        attented_example_output = translate_board(
+            example_output, translation_x, translation_y, default_cell=0)
+
+        input_tokens = tokenize_sample_input(
+            attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
         # Use Q*(s, a) for the action-value.
         action_value = get_q_star_action_value(
-            current_state, candidate_action, example_output, discount)
+            attented_current_state, attented_candidate_action, attented_example_output, discount)
 
-        sample = (input_text, action_value)
+        sample = (input_tokens, action_value)
+
         samples.append(sample)
 
         current_state = next_state
@@ -320,13 +323,16 @@ def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value
     return action_token
 
 
-def translate_board(board, translation_x: int, translation_y: int):
+def translate_board(board, translation_x: int, translation_y: int, default_cell=0):
+    """
+    default_cell is 0 or Cell(0)
+    """
     width = len(board[0])
     height = len(board)
     new_board = copy.deepcopy(board)
     for x in range(width):
         for y in range(height):
-            new_board[y][x] = 0
+            new_board[y][x] = default_cell
     for src_x in range(width):
         dst_x = src_x + translation_x
         if dst_x < 0 or dst_x >= width:
@@ -337,3 +343,39 @@ def translate_board(board, translation_x: int, translation_y: int):
                 continue
             new_board[dst_y][dst_x] = board[src_y][src_x]
     return new_board
+
+
+def focus_with_visual_attention(example_input, current_state, candidate_action: QLearningAction):
+    """
+    Attend to the cell that is changed by the action.
+    To do so, make the vision system put that cell in the center
+    of the field of view.
+    """
+
+    input_height = len(example_input)
+    input_width = len(example_input[0])
+
+    row = candidate_action.row()
+    col = candidate_action.col()
+    new_value = candidate_action.cell_value()
+
+    center_x = input_width // 2
+    center_y = input_height // 2
+
+    translation_x = center_x - col
+    translation_y = center_y - row
+
+    attented_example_input = translate_board(
+        example_input, translation_x, translation_y, default_cell=Cell(0))
+    attented_current_state = translate_board(
+        current_state, translation_x, translation_y, default_cell=Cell(0))
+    attented_candidate_action = QLearningAction(
+        center_y, center_x, new_value)
+
+    return [
+        attented_example_input,
+        attented_current_state,
+        attented_candidate_action,
+        translation_x,
+        translation_y,
+    ]

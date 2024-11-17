@@ -50,6 +50,7 @@ from torch.nn import functional as F
 from file_storage import SampleInputTokens, FileStorageReader
 from model import DecoderOnlyTransformerModel
 from playout_simulation import generate_samples, generate_cell_actions, tokenize_sample_input, get_puzzle_starting_state, get_state_texts, tokens_to_text
+from playout_simulation import translate_board, focus_with_visual_attention
 from infrastructure import terminate_pod
 from report import plot_train_loss_graph
 
@@ -93,7 +94,7 @@ train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = False
+terminate_pod_at_the_end = True
 
 #
 # Puzzle configuration
@@ -111,9 +112,9 @@ puzzle_height = 7
 # Playout simulation configuration
 #
 
-generate_train_samples = True
+generate_train_samples = False
 # Use 100000 for dev, and use 25088000 or 1000000 for training the model.
-total_train_samples = 100000
+total_train_samples = 5000000
 stop_after_generating_samples = False
 playout_simulation_cpu_count = 9
 train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_samples}.hdf5"
@@ -409,10 +410,10 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
     return step, steps, losses
 
 
-def solve_puzzle_example_auto_regressive(input_state, current_state, model):
+def solve_puzzle_example_auto_regressive(example_input, current_state, model):
     model.eval()
     print("AUTO-REGRESSIVE wannabe AGI megabot current state")
-    print_current_state(input_state, current_state)
+    print_current_state(example_input, current_state)
 
     # Each cell is allowed to change exactly once.
     for _ in range(puzzle_width * puzzle_height):
@@ -428,8 +429,13 @@ def solve_puzzle_example_auto_regressive(input_state, current_state, model):
             col = candidate_action.col()
             cell_value = candidate_action.cell_value()
             next_state[row][col].set_value(cell_value)
+
+            (attented_example_input, attented_current_state, attented_candidate_action, translation_x,
+             translation_y) = focus_with_visual_attention(example_input, current_state, candidate_action)
+
             input_tokens = tokenize_sample_input(
-                input_state, current_state, candidate_action, padding_char)
+                attented_example_input, attented_current_state, attented_candidate_action, padding_char)
+
             print("input_text")
             print(tokens_to_text(input_tokens))
             # TODO test all actions in one batch
@@ -454,7 +460,7 @@ def solve_puzzle_example_auto_regressive(input_state, current_state, model):
         current_state = best_next_state
         print(f"best_next_state with {best_action_value}")
         print("AUTO-REGRESSIVE wannabe AGI megabot current state")
-        print_current_state(input_state, current_state)
+        print_current_state(example_input, current_state)
     return current_state
 
 

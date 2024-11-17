@@ -1,12 +1,13 @@
 # Sprint
 
-- reduce number of train steps
+- add class PuzzleState
 - encode action in input using less tokens (rows, cols, value)
-- reduce batch size
 - move norm and dropout at same scope in transformer block
 - increase dropout
 
-- TODO test all actions in one batch
+- reduce number of train steps
+- reduce batch size
+- test all actions in one batch
 - print the output of nvidia-smi at the end of training
 - print total wall-clock time for the training time
 
