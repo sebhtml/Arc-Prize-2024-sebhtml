@@ -255,6 +255,12 @@ def text_to_tokens(s: str) -> List[int]:
     return list(map(ord, list(s)))
 
 
+def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
+    tokens: List[int] = sample_input_tokens._input_state + \
+        sample_input_tokens._current_state + sample_input_tokens._action
+    return "".join(map(chr, tokens))
+
+
 def get_state_texts(input_state, current_state, padding_char: str):
     input_state_text = ""
     input_state_text += "ini" + "\n"

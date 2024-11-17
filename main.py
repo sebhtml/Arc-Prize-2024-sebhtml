@@ -49,7 +49,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.nn import functional as F
 from file_storage import SampleInputTokens, FileStorageReader
 from model import DecoderOnlyTransformerModel
-from playout_simulation import generate_samples, generate_cell_actions, tokenize_sample_input, get_puzzle_starting_state, get_state_texts
+from playout_simulation import generate_samples, generate_cell_actions, tokenize_sample_input, get_puzzle_starting_state, get_state_texts, tokens_to_text
 from infrastructure import terminate_pod
 from report import plot_train_loss_graph
 
@@ -93,7 +93,7 @@ train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = True
+terminate_pod_at_the_end = False
 
 #
 # Puzzle configuration
@@ -111,9 +111,9 @@ puzzle_height = 7
 # Playout simulation configuration
 #
 
-generate_train_samples = False
-# Use 100000 for dev, and use 25088000 for training the model.
-total_train_samples = 25088000
+generate_train_samples = True
+# Use 100000 for dev, and use 25088000 or 1000000 for training the model.
+total_train_samples = 100000
 stop_after_generating_samples = False
 playout_simulation_cpu_count = 9
 train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_samples}.hdf5"
@@ -198,13 +198,6 @@ save_neural_net_model = True
 print_model_outputs = True
 run_autoregressive_inference_on_train_examples = True
 run_autoregressive_inference_on_test_examples = True
-
-
-def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
-    # TODO add a method in SampleInputTokens to get a list of all tokens in a list.
-    tokens: List[int] = sample_input_tokens._input_state + \
-        sample_input_tokens._current_state + sample_input_tokens._action
-    return "".join(map(chr, tokens))
 
 
 def get_puzzle_solution(venue, puzzle_id):
