@@ -105,8 +105,8 @@ puzzle_height = 7
 # Playout simulation configuration
 #
 
-generate_train_samples = False
-# Use 100000 for dev, and use 25088000 or 1000000 for training the model.
+generate_train_samples = True
+# Use 100000 for dev, and use 5000000 for training the model.
 total_train_samples = 5000000
 stop_after_generating_samples = False
 playout_simulation_cpu_count = 9
@@ -118,11 +118,12 @@ padding_char = ' '
 # Neural network model configuration
 #
 
-# Multiple of 4 for NVIDIA cublas WMMA
-# See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
+
 models_path = "/workspace/models"
 model_file_path = f"{models_path}/{time_marker}-q-network.pth"
-context_size = 180
+# Multiple of 4 for NVIDIA cublas WMMA
+# See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
+context_size = 148
 # Hidden size
 d_model = 384
 # Feed-forward size in transformer block
@@ -230,15 +231,31 @@ def load_puzzle_examples(venue, puzzle_id, example_type):
     return puzzle_venue_examples
 
 
+def filter_token(token: int) -> bool:
+    """
+    The ASCII codes of characters '0' to '9' and of character '_'
+    are the only allowed tokens in the context.
+    """
+    legal_tokens = list(map(lambda x: ord(str(x)), range(10))) + [ord('_')]
+    return token in legal_tokens
+
+
+def filter_tokens(tokens):
+    return list(filter(filter_token, tokens))
+
+
 def make_sample_tensor(sample_input_tokens: SampleInputTokens):
-    input_tokens: List[int] = sample_input_tokens._input_state + \
-        sample_input_tokens._current_state + sample_input_tokens._action
+    example_input = filter_tokens(sample_input_tokens._input_state)
+    current_state = filter_tokens(sample_input_tokens._current_state)
+    candidate_action = filter_tokens(sample_input_tokens._action)
+
+    input_tokens: List[int] = example_input + current_state + candidate_action
     if len(input_tokens) > context_size:
         raise Exception(
             f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
-    item_input = [torch.tensor(sample_input_tokens._input_state),
-                  torch.tensor(sample_input_tokens._current_state),
-                  torch.tensor(sample_input_tokens._action)
+    item_input = [torch.tensor(example_input),
+                  torch.tensor(current_state),
+                  torch.tensor(candidate_action)
                   ]
     return item_input
 
