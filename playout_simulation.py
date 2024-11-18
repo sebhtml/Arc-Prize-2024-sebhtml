@@ -345,6 +345,10 @@ def focus_with_visual_attention(example_input, current_state, candidate_action: 
     Attend to the cell that is changed by the action.
     To do so, make the vision system put that cell in the center
     of the field of view.
+
+    See
+    Learning to combine foveal glimpses with a third-order Boltzmann machine
+    https://www.cs.toronto.edu/~hinton/absps/nips_eyebm.pdf
     """
 
     input_height = len(example_input)
