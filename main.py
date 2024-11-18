@@ -6,23 +6,14 @@
 # Hardware used:
 
 # Legion
-# CPU: AMD Ryzen 7 7840HS w/ Radeon 780M Graphics
-# GPU: NVIDIA GeForce RTX 4060 8188MiB
-# RAM: MemTotal:       32023592 kB
+# - NVIDIA GeForce RTX 4060 8188MiB
 
 # Kaggle
-# CPU:
-# GPU: NVIDIA P100
-# RAM:
+# - GPU: NVIDIA P100
 
 # Runpod
 # - NVIDIA A40 48 GB VRAM
 # - NVIDIA RTX A4000 16 GB VRAM
-
-# This software used reinforcement learning.
-# It uses Q-learning.
-# See https://en.wikipedia.org/wiki/Q-learning
-
 
 # os.system("pip uninstall fastai torchvision torchaudio")  # nopep8
 # For TPUs # nopep8

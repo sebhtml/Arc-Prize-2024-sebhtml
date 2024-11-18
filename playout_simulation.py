@@ -184,6 +184,10 @@ def reward(expected_cell_value, cell_value) -> int:
 
 def get_q_star_action_value(state, action: QLearningAction, example_output, discount) -> int:
     """
+    This software used reinforcement learning.
+    It uses Q-learning.
+    See https://en.wikipedia.org/wiki/Q-learning
+
     - discount is gamma
     - Q*(s, a) = gamma^0 * r_{t+1} + gamma^1* r_{t+1} + gamma^2 * r_{t+2} + ...
 
