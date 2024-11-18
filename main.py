@@ -33,6 +33,8 @@
 
 # import torch_xla
 # import torch_xla.core.xla_model as xm
+import subprocess
+import time
 from typing import List
 from datetime import datetime, timezone
 import sys
@@ -563,4 +565,10 @@ def main():
 
 
 if __name__ == '__main__':
+    start_time = time.time()
     main()
+    end_time = time.time()
+    print("--- TOTAL_TIME: %s seconds ---" % (time.time() - start_time))
+    result = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE)
+    output = result.stdout.decode(encoding='utf-8')
+    print(output)
