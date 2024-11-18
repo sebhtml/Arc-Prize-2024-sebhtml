@@ -1,10 +1,10 @@
 # Sprint
 
-- encode action in input using less tokens (rows, cols, value)
 - test all actions in one batch in auto-regressive inference
+
+- encode action in input using less tokens (rows, cols, value)
 - use only one learned embedding
 - use another character for "outside of field of view"
-- don't print output tensor values in auto-regressive inference
 - add class PuzzleState
 - move norm and dropout at same scope in transformer block
 - increase dropout

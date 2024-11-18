@@ -105,7 +105,7 @@ puzzle_height = 7
 # Playout simulation configuration
 #
 
-generate_train_samples = True
+generate_train_samples = False
 # Use 100000 for dev, and use 5000000 for training the model.
 total_train_samples = 5000000
 stop_after_generating_samples = False
@@ -451,14 +451,8 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model):
             # TODO test all actions in one batch
             inputs = list(map(lambda tensor: tensor.unsqueeze(0),
                           make_sample_tensor(input_tokens)))
-            print("inputs size")
-            print(inputs[0].size())
             inputs = [t.to(device) for t in inputs]
             outputs = model(inputs)
-            print("outputs size")
-            print(outputs.size())
-            print("outputs")
-            print(outputs.tolist())
             action_value = outputs[0].argmax(dim=-1).item()
             print(
                 f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
