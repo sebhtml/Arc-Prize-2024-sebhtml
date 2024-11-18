@@ -314,15 +314,6 @@ def action_to_text(state, action: QLearningAction) -> str:
     return output
 
 
-def compute_action_token(action: QLearningAction, puzzle_height: int, cell_value_size: int) -> int:
-    # action a
-    # For example, a puzzle with a grid 7x7 has 7*7*10 possible actions.
-    # Points (a, b, c) are in a coordinate system of size (WIDTH, HEIGHT, VALUES)
-    action_token = action.col() * puzzle_height * cell_value_size + \
-        action.row() * cell_value_size + action.cell_value()
-    return action_token
-
-
 def translate_board(board, translation_x: int, translation_y: int, default_cell=0):
     """
     default_cell is 0 or Cell(0)
