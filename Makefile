@@ -1,8 +1,5 @@
 format-code:
-	autopep8 -i *.py
-
-train-model:
-	python main.py | tee log
+	autopep8 -i src/*.py
 
 pip-freeze:
 	pip freeze > requirements.txt
@@ -22,9 +19,6 @@ kaggle-output:
 
 kaggle-files:
 	kaggle kernels files -k sebastien/arc-prize-2024-sebhtml-py
-
-h5dump:
-	h5dump /workspace/train_datasets/3aa6fb7a.hdf5 |less
 
 learn:
 	./learn.sh

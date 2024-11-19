@@ -1,7 +1,7 @@
 # Sprint
 
-- move code to src/
 - implement symmetries (flips)
+
 - implement rotations
 - use only one learned embedding
 
