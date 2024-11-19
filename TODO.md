@@ -1,9 +1,9 @@
 # Sprint
 
-- test all actions in one batch in auto-regressive inference
-
-- encode action in input using less tokens (rows, cols, value)
+- implement symmetries (flips)
+- implement rotations
 - use only one learned embedding
+- encode action in input using less tokens (rows, cols, value)
 - use another character for "outside of field of view"
 - add class PuzzleState
 - move norm and dropout at same scope in transformer block
@@ -13,8 +13,6 @@
 - reduce batch size
 
 - use half precision float16
-- implement rotations
-- implement symmetries (flips)
 
 # Backlog
 

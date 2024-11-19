@@ -87,7 +87,7 @@ train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = True
+terminate_pod_at_the_end = False
 
 #
 # Puzzle configuration
@@ -120,7 +120,7 @@ padding_char = ' '
 
 
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/{time_marker}-q-network.pth"
+model_file_path = f"{models_path}/{time_marker}-{total_train_samples}-q-network.pth"
 # Multiple of 4 for NVIDIA cublas WMMA
 # See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
 context_size = 148
@@ -180,11 +180,11 @@ num_epochs = 1
 #
 # Options for loading AI neural net model
 #
-load_model = False
+load_model = True
 #
 # Options for training AI neural net model
 #
-train_model = True
+train_model = False
 save_step_losses = True
 save_neural_net_model = True
 #
@@ -346,7 +346,8 @@ def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int, m
             print(target)
             print("output: ")
             print(output)
-        del inputs
+        for t in inputs:
+            del t
         del targets
         del outputs
         # Only check first batch for now.
@@ -412,7 +413,8 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
                 f"Step: {step}/{num_steps}  epoch: {epoch}  loss: {loss:.8f}")
             steps.append(step)
             losses.append(loss)
-            del inputs
+            for t in inputs:
+                del t
             del targets
             del outputs
             step += 1
@@ -433,12 +435,12 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model):
             current_state, cell_value_size)
         np.random.shuffle(candidate_actions)
 
-        for candidate_action in candidate_actions:
-            next_state = copy.deepcopy(current_state)
-            row = candidate_action.row()
-            col = candidate_action.col()
-            cell_value = candidate_action.cell_value()
-            next_state[row][col].set_value(cell_value)
+        batch_tokens = []
+        batch_inputs = []
+        batch_actions = []
+
+        for candidate_action_index in range(len(candidate_actions)):
+            candidate_action = candidate_actions[candidate_action_index]
 
             (attented_example_input, attented_current_state, attented_candidate_action, translation_x,
              translation_y) = focus_with_visual_attention(example_input, current_state, candidate_action)
@@ -446,21 +448,55 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model):
             input_tokens = tokenize_sample_input(
                 attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
-            print("input_text")
-            print(tokens_to_text(input_tokens))
-            # TODO test all actions in one batch
             inputs = list(map(lambda tensor: tensor.unsqueeze(0),
                           make_sample_tensor(input_tokens)))
-            inputs = [t.to(device) for t in inputs]
-            outputs = model(inputs)
-            action_value = outputs[0].argmax(dim=-1).item()
-            print(
-                f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
-            if best_action_value == None or action_value > best_action_value:
-                best_next_state = next_state
-                best_action_value = action_value
-            del inputs
-            del outputs
+
+            batch_tokens.append(input_tokens)
+            batch_inputs.append(inputs)
+            batch_actions.append(candidate_action)
+
+            if len(batch_inputs) == batch_size or candidate_action_index == len(candidate_actions) - 1:
+                # batch_tensors contains:
+                # [
+                #   [ tensor1, tensor2, tensor3],
+                #   [ tensor1, tensor2, tensor3],
+                #   [ tensor1, tensor2, tensor3],
+                # ]
+                inputs = [
+                    torch.cat(
+                        list(map(lambda inputs: inputs[0], batch_inputs)), dim=0),
+                    torch.cat(
+                        list(map(lambda inputs: inputs[1], batch_inputs)), dim=0),
+                    torch.cat(
+                        list(map(lambda inputs: inputs[2], batch_inputs)), dim=0),
+                ]
+                inputs = [t.to(device) for t in inputs]
+                outputs = model(inputs)
+
+                for batch_index in range(len(batch_tokens)):
+                    input_tokens = batch_tokens[batch_index]
+                    candidate_action = batch_actions[batch_index]
+                    print("input_text")
+                    print(tokens_to_text(input_tokens))
+                    action_value = outputs[batch_index].argmax(dim=-1).item()
+                    row = candidate_action.row()
+                    col = candidate_action.col()
+                    cell_value = candidate_action.cell_value()
+                    next_state = copy.deepcopy(current_state)
+                    next_state[row][col].set_value(cell_value)
+
+                    print(
+                        f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
+                    if best_action_value == None or action_value > best_action_value:
+                        best_next_state = next_state
+                        best_action_value = action_value
+                for t in inputs:
+                    del t
+                del outputs
+                # Clear accumulated batch.
+                batch_tokens = []
+                batch_inputs = []
+                batch_actions = []
         current_state = best_next_state
         print(f"best_next_state with {best_action_value}")
         print("AUTO-REGRESSIVE wannabe AGI megabot current state")
