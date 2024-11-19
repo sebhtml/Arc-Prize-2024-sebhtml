@@ -2,7 +2,11 @@
 
 - implement symmetries (flips)
 - implement rotations
+- move training code to training.py
 - use only one learned embedding
+
+# Backlog
+
 - encode action in input using less tokens (rows, cols, value)
 - use another character for "outside of field of view"
 - add class PuzzleState
@@ -13,8 +17,6 @@
 - reduce batch size
 
 - use half precision float16
-
-# Backlog
 
 - add class QLearningState
 - add class QLearningActionValue
