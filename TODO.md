@@ -1,12 +1,13 @@
 # Sprint
 
+- move code to src/
 - implement symmetries (flips)
 - implement rotations
-- move training code to training.py
 - use only one learned embedding
 
 # Backlog
 
+- move functions that load json files to puzzle_data.py
 - encode action in input using less tokens (rows, cols, value)
 - use another character for "outside of field of view"
 - add class PuzzleState
