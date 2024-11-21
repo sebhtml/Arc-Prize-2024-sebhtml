@@ -3,7 +3,7 @@ import numpy as np
 import copy
 from file_storage import SampleInputTokens
 from typing import List
-from playout_simulation import get_puzzle_starting_state, get_state_texts, generate_cell_actions, focus_with_visual_attention
+from playout_simulation import get_puzzle_starting_state, get_state_texts, generate_cell_actions, do_visual_fixation
 from playout_simulation import tokenize_sample_input, tokens_to_text
 
 
@@ -97,7 +97,7 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
             candidate_action = candidate_actions[candidate_action_index]
 
             (attented_example_input, attented_current_state, attented_candidate_action, translation_x,
-             translation_y) = focus_with_visual_attention(example_input, current_state, candidate_action)
+             translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
 
             input_tokens = tokenize_sample_input(
                 attented_example_input, attented_current_state, attented_candidate_action, padding_char)

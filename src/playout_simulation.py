@@ -2,7 +2,7 @@ from file_storage import FileStorageWriter, SampleInputTokens
 import random
 import copy
 import numpy as np
-from typing import List
+from typing import List, Tuple
 import concurrent.futures
 import concurrent
 
@@ -39,6 +39,50 @@ class Cell:
         self.__changes += 1
 
 
+class GameState:
+    def __init__(self, example_input: List[List[Cell]], current_state: List[List[Cell]]):
+        self.__example_input = example_input
+        self.__current_state = current_state
+
+    def example_input(self) -> List[List[Cell]]:
+        return self.__example_input
+
+    def current_state(self) -> List[List[Cell]]:
+        return self.__current_state
+
+
+class Experience:
+    def __init__(self, state: GameState, action: QLearningAction, reward: float, next_state: GameState):
+        self.__state = state
+        self.__action = action
+        self.__reward = reward
+        self.__next_state = next_state
+
+    def state(self) -> GameState:
+        return self.__state
+
+    def reward(self) -> float:
+        return self.__reward
+
+    def action(self) -> QLearningAction:
+        return self.__action
+
+
+class ReplayBuffer:
+    """
+    See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
+    """
+
+    def __init__(self):
+        self.__experiences: List[Experience] = []
+
+    def add_experience(self, experience: Experience):
+        self.__experiences.append(experience)
+
+    def experiences(self) -> List[Experience]:
+        return self.__experiences
+
+
 def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_train_examples, cell_value_size: int,
                      discount: float, padding_char: str, cpu_count: int):
     writer = FileStorageWriter(train_dataset_path)
@@ -73,30 +117,92 @@ def generate_train_action_examples(puzzle_examples, cell_value_size, discount: f
     """
     train_examples = []
     for puzzle_example in puzzle_examples:
-        action_examples = simulate_random_playout(
-            puzzle_example, cell_value_size, discount, padding_char)
+        replay_buffer = simulate_random_game(
+            puzzle_example, cell_value_size)
+        action_examples = extract_action_examples(
+            replay_buffer, discount, padding_char)
         train_examples += action_examples
     return train_examples
+
+
+def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Tuple[SampleInputTokens, float]]:
+    """
+    This software used reinforcement learning.
+    It uses Q-learning.
+
+    See https://en.wikipedia.org/wiki/Q-learning
+    See https://en.wikipedia.org/wiki/Bellman_equation
+
+    See https://www.science.org/doi/10.1126/science.153.3731.34
+    """
+
+    examples = []
+
+    experiences = replay_buffer.experiences()
+    for experience in experiences:
+        reward = experience.reward()
+        example_input = experience.state().example_input()
+        current_state = experience.state().current_state()
+        candidate_action = experience.action()
+
+        expected_rewards = 0.0
+        t = 0
+
+        discounted_reward = discount**t * reward
+        expected_rewards += discounted_reward
+        t += 1
+
+        (attented_example_input, attented_current_state, attented_candidate_action,
+         translation_x, translation_y) = do_visual_fixation(
+            example_input, current_state, candidate_action)
+
+        # Count the number of remaining actions in the glimpe of the visual fixation.
+        cells_that_can_change = 0
+        for row in range(len(attented_current_state)):
+            for col in range(len(attented_current_state[row])):
+                # Skip cell because it was already counted as the immediate reward.
+                if row == attented_candidate_action.row() and col == attented_candidate_action.col():
+                    continue
+                # A cell can only be changed once.
+                # TODO don't count the cells outside of the puzzle board.
+                if attented_current_state[row][col].changes() == 1:
+                    continue
+                cells_that_can_change += 1
+
+        for _ in range(cells_that_can_change):
+            # assume perfect play
+            reward = cell_match_reward
+            discounted_reward = discount**t * reward
+            expected_rewards += discounted_reward
+            t += 1
+
+        input_tokens = tokenize_sample_input(
+            attented_example_input, attented_current_state, attented_candidate_action, padding_char)
+
+        action_value = expected_rewards
+        example = (input_tokens, action_value)
+
+        examples.append(example)
+
+    return examples
 
 
 def actions_act_on_same_cell(action_1: QLearningAction, action_2: QLearningAction) -> bool:
     return (action_1.row(), action_1.col()) == (action_2.row(), action_2.col())
 
 
-def simulate_random_playout(puzzle_example, cell_value_size, discount: float,
-                            padding_char: str):
+def simulate_random_game(puzzle_example, cell_value_size) -> ReplayBuffer:
     """
-    Generate (state, action, action_value) samples from a simulated playout of the puzzle by a player.
+    Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by a random player.
 
     Each time that the player assigns a color to a cell, the assigned color is either correct or incorrect.
     For the probability of selecting a correct color, the reasoning is that a cell can take 1 color out of 10 colors.
     So, we use a probability of 1 / 10 = 0.1
-    With 10000018 samples, we will get 204082 playouts.
-    For any cell, 10% of the 204082 playouts, or 20408 playouts, will have a correct value.
 
-    See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
-    See https://en.wikipedia.org/wiki/Monte_Carlo_tree_search
+    For any cell, 10% of the random games will have a correct value for that cell.
     """
+
+    replay_buffer = ReplayBuffer()
 
     (raw_example_input, raw_example_output) = puzzle_example
 
@@ -112,7 +218,6 @@ def simulate_random_playout(puzzle_example, cell_value_size, discount: float,
     example_input = raw_example_input
     example_output = raw_example_output
 
-    samples = []
     example_input = get_puzzle_starting_state(
         example_input, "input_state")
     current_state = get_puzzle_starting_state(
@@ -132,36 +237,24 @@ def simulate_random_playout(puzzle_example, cell_value_size, discount: float,
         new_value = random.randrange(0, cell_value_size)
         candidate_action = QLearningAction(row, col, new_value)
 
-        # We can select the legal action as soon as now.
         # An action assigns a correct color or an incorrect color to a cell.
         # The only thing that matters is that we shuffled the legal actions before selecting the action.
 
         next_state = copy.deepcopy(current_state)
-        row = candidate_action.row()
-        col = candidate_action.col()
-        cell_value = candidate_action.cell_value()
-        next_state[row][col].set_value(cell_value)
+        next_state[row][col].set_value(new_value)
 
-        (attented_example_input, attented_current_state, attented_candidate_action,
-         translation_x, translation_y) = focus_with_visual_attention(
-            example_input, current_state, candidate_action)
-        attented_example_output = translate_board(
-            example_output, translation_x, translation_y, default_cell=0)
+        immediate_reward = reward(example_output, candidate_action)
 
-        input_tokens = tokenize_sample_input(
-            attented_example_input, attented_current_state, attented_candidate_action, padding_char)
-
-        # Use Q*(s, a) for the action-value.
-        action_value = get_q_star_action_value(
-            attented_current_state, attented_candidate_action, attented_example_output, discount)
-
-        sample = (input_tokens, action_value)
-
-        samples.append(sample)
-
+        experience = Experience(
+            GameState(example_input, current_state),
+            candidate_action,
+            immediate_reward,
+            GameState(example_input, next_state),
+        )
+        replay_buffer.add_experience(experience)
         current_state = next_state
 
-    return samples
+    return replay_buffer
 
 
 def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
@@ -175,50 +268,19 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     return current_state
 
 
-def reward(expected_cell_value, cell_value) -> int:
-    if expected_cell_value == cell_value:
-        return 1.0
+cell_match_reward = 1.0
+cell_mismatch_reward = -1.0
+
+
+def reward(expected_state: List[List[int]], candidate_action: QLearningAction) -> float:
+    row = candidate_action.row()
+    col = candidate_action.col()
+    action_cell_value = candidate_action.cell_value()
+    expected_cell_value = expected_state[row][col]
+    if expected_cell_value == action_cell_value:
+        return cell_match_reward
     else:
-        return -1.0
-
-
-def get_q_star_action_value(state, action: QLearningAction, example_output, discount) -> int:
-    """
-    This software used reinforcement learning.
-    It uses Q-learning.
-    See https://en.wikipedia.org/wiki/Q-learning
-
-    - discount is gamma
-    - Q*(s, a) = gamma^0 * r_{t+1} + gamma^1* r_{t+1} + gamma^2 * r_{t+2} + ...
-
-    See https://www.science.org/doi/10.1126/science.153.3731.34
-    See https://en.wikipedia.org/wiki/Bellman_equation
-    """
-    # Immediate reward is not discounted.
-    immediate_reward = reward(
-        example_output[action.row()][action.col()], action.cell_value())
-    # Discounted future rewards
-    maximum_sum_of_discounted_future_rewards = 0.0
-    t = 1
-
-    for row in range(len(state)):
-        for col in range(len(state[row])):
-            # Skip cell because it was already counted as the immediate reward.
-            if row == action.row() and col == action.col():
-                continue
-            # A cell can only be changed once.
-            if state[row][col].changes() == 1:
-                continue
-            # Maximize future expected discounted rewards.
-            # Assume perfect play in the future.
-            future_reward = reward(
-                example_output[row][col], example_output[row][col])
-            discounted_reward = discount**t * future_reward
-            maximum_sum_of_discounted_future_rewards += discounted_reward
-            t += 1
-
-    action_value = immediate_reward + maximum_sum_of_discounted_future_rewards
-    return action_value
+        return cell_mismatch_reward
 
 
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
@@ -340,7 +402,7 @@ def translate_board(board, translation_x: int, translation_y: int, default_cell=
     return new_board
 
 
-def focus_with_visual_attention(example_input, current_state, candidate_action: QLearningAction):
+def do_visual_fixation(example_input, current_state, candidate_action: QLearningAction):
     """
     Attend to the cell that is changed by the action.
     To do so, make the vision system put that cell in the center
@@ -349,6 +411,8 @@ def focus_with_visual_attention(example_input, current_state, candidate_action: 
     See
     Learning to combine foveal glimpses with a third-order Boltzmann machine
     https://www.cs.toronto.edu/~hinton/absps/nips_eyebm.pdf
+
+    See https://en.wikipedia.org/wiki/Fixation_(visual)
     """
 
     input_height = len(example_input)
