@@ -1,17 +1,18 @@
 # Sprint
 
-- don't allow token OUTSIDE_BOARD_CHAR in input of neural network.
+- don't use OUTSIDE_BOARD_CHAR in input to compute action value
 - implement symmetries (flips)
 - implement rotations
 - use only one learned embedding
 - don't talk about playout
 - don't count cells outside of the grid in the future rewards.
 - don't assume perfect play to compute future rewards
-- encode action in input using less tokens (rows, cols, value)
-VACANT_CELL_CHAR = '_'
-AROUND_ACTION_CHAR = ','
-OUTSIDE_BOARD_CHAR = '.'
-OUTSIDE_BOARD_CELL_VALUE = -1
+- don't pass the AROUND_ACTION_CHAR chars to the neural network
+- use VACANT_CELL_CHAR = '_'
+- use AROUND_ACTION_CHAR = ','
+- use OUTSIDE_BOARD_CHAR = '.'
+- use OUTSIDE_BOARD_CELL_VALUE = -1
+- Verify if the HDF5 schema must be changed.
 
 # Backlog
 
