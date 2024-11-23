@@ -1,5 +1,6 @@
 from typing import List, Tuple
 import numpy as np
+import copy
 
 VACANT_CELL_VALUE = -1
 MASKED_CELL_VALUE = -2
@@ -8,6 +9,7 @@ OUTSIDE_CELL_VALUE = -3
 VACANT_CELL_CHAR = '_'
 MASKED_CELL_CHAR = 'X'
 OUTSIDE_CELL_CHAR = '.'
+
 
 class Cell:
     def __init__(self, value):
@@ -109,3 +111,18 @@ def mask_cells(current_state: List[List[Cell]], attented_current_state: List[Lis
         attented_current_state[y][x].set_value(MASKED_CELL_VALUE)
 
     return attented_current_state
+
+
+def do_circular_shift(board, shift_x: int, shift_y: int):
+    """
+    https://en.wikipedia.org/wiki/Circular_shift
+    """
+    width = len(board[0])
+    height = len(board)
+    new_board = copy.deepcopy(board)
+    for src_x in range(width):
+        dst_x = (src_x + shift_x) % width
+        for src_y in range(height):
+            dst_y = (src_y + shift_y) % height
+            new_board[dst_y][dst_x] = copy.deepcopy(board[src_y][src_x])
+    return new_board

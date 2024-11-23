@@ -5,7 +5,6 @@ from file_storage import SampleInputTokens
 from typing import List
 from playout_simulation import get_puzzle_starting_state, get_state_texts, generate_cell_actions, do_visual_fixation
 from playout_simulation import tokenize_sample_input, tokens_to_text
-from vision import mask_cells
 from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
 
 
@@ -102,8 +101,8 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
             (attented_example_input, attented_current_state, attented_candidate_action, translation_x,
              translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
 
-            attented_current_state = mask_cells(
-                current_state, attented_current_state)
+            # attented_current_state = mask_cells(
+            # current_state, attented_current_state)
 
             input_tokens = tokenize_sample_input(
                 attented_example_input, attented_current_state, attented_candidate_action, padding_char)
