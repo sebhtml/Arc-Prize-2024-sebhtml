@@ -124,6 +124,39 @@ def generate_train_action_examples(puzzle_examples, cell_value_size, discount: f
     return train_examples
 
 
+def sum_of_future_rewards(immediate_reward: float, discount: float,
+                          attented_current_state: List[List[Cell]],
+                          attented_candidate_action: QLearningAction) -> float:
+    expected_rewards = 0.0
+    t = 0
+
+    discounted_reward = discount**t * immediate_reward
+    expected_rewards += discounted_reward
+    t += 1
+
+    # Count the number of remaining actions in the glimpe of the visual fixation.
+    cells_that_can_change = 0
+    for row in range(len(attented_current_state)):
+        for col in range(len(attented_current_state[row])):
+            # Skip cell because it was already counted as the immediate reward.
+            if row == attented_candidate_action.row() and col == attented_candidate_action.col():
+                continue
+            # A cell can only be changed once.
+            # TODO don't count the cells outside of the puzzle board.
+            if attented_current_state[row][col].value() != VACANT_CELL_VALUE:
+                continue
+            cells_that_can_change += 1
+
+    for _ in range(cells_that_can_change):
+        # assume perfect play
+        future_reward = cell_match_reward
+        discounted_reward = discount**t * future_reward
+        expected_rewards += discounted_reward
+        t += 1
+
+    return expected_rewards
+
+
 def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Tuple[SampleInputTokens, float]]:
     """
     This software used reinforcement learning.
@@ -139,45 +172,21 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
 
     experiences = replay_buffer.experiences()
     for experience in experiences:
-        reward = experience.reward()
+        immediate_reward = experience.reward()
         example_input = experience.state().example_input()
         current_state = experience.state().current_state()
         candidate_action = experience.action()
-
-        expected_rewards = 0.0
-        t = 0
-
-        discounted_reward = discount**t * reward
-        expected_rewards += discounted_reward
-        t += 1
 
         (attented_example_input, attented_current_state, attented_candidate_action,
          translation_x, translation_y) = do_visual_fixation(
             example_input, current_state, candidate_action)
 
-        # Count the number of remaining actions in the glimpe of the visual fixation.
-        cells_that_can_change = 0
-        for row in range(len(attented_current_state)):
-            for col in range(len(attented_current_state[row])):
-                # Skip cell because it was already counted as the immediate reward.
-                if row == attented_candidate_action.row() and col == attented_candidate_action.col():
-                    continue
-                # A cell can only be changed once.
-                # TODO don't count the cells outside of the puzzle board.
-                if attented_current_state[row][col].value() != VACANT_CELL_VALUE:
-                    continue
-                cells_that_can_change += 1
-
-        for _ in range(cells_that_can_change):
-            # assume perfect play
-            reward = cell_match_reward
-            discounted_reward = discount**t * reward
-            expected_rewards += discounted_reward
-            t += 1
 
         input_tokens = tokenize_sample_input(
             attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
+        expected_rewards = sum_of_future_rewards(
+            immediate_reward, discount, attented_current_state, attented_candidate_action)
         action_value = expected_rewards
         example = (input_tokens, action_value)
 
