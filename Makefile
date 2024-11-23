@@ -26,6 +26,9 @@ learn:
 lesslog:
 	./lesslog.sh
 
+watch-log:
+	./watch-log.sh
+
 setup:
 	bash install-programs.sh
 	bash link-git-config.sh
