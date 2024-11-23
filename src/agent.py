@@ -5,6 +5,7 @@ from file_storage import SampleInputTokens
 from typing import List
 from playout_simulation import get_puzzle_starting_state, get_state_texts, generate_cell_actions, do_visual_fixation
 from playout_simulation import tokenize_sample_input, tokens_to_text
+from playout_simulation import VACANT_CELL_CHAR
 
 
 def filter_token(token: int) -> bool:
@@ -12,7 +13,8 @@ def filter_token(token: int) -> bool:
     The ASCII codes of characters '0' to '9' and of character '_'
     are the only allowed tokens in the context.
     """
-    legal_tokens = list(map(lambda x: ord(str(x)), range(10))) + [ord('_')]
+    legal_tokens = list(map(lambda x: ord(str(x)), range(10))) + \
+        list(map(ord, [VACANT_CELL_CHAR]))
     return token in legal_tokens
 
 

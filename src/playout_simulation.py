@@ -6,6 +6,10 @@ from typing import List, Tuple
 import concurrent.futures
 import concurrent
 
+VACANT_CELL_VALUE = -1
+
+VACANT_CELL_CHAR = '_'
+
 
 class QLearningAction:
     def __init__(self, row, col, cell_value):
@@ -26,17 +30,12 @@ class QLearningAction:
 class Cell:
     def __init__(self, value):
         self.__value = value
-        self.__changes = 0
 
     def value(self) -> int:
         return self.__value
 
-    def changes(self) -> int:
-        return self.__changes
-
     def set_value(self, value):
         self.__value = value
-        self.__changes += 1
 
 
 class GameState:
@@ -165,7 +164,7 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
                     continue
                 # A cell can only be changed once.
                 # TODO don't count the cells outside of the puzzle board.
-                if attented_current_state[row][col].changes() == 1:
+                if attented_current_state[row][col].value() != VACANT_CELL_VALUE:
                     continue
                 cells_that_can_change += 1
 
@@ -261,7 +260,7 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     current_state = copy.deepcopy(state)
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
-            value = 0
+            value = VACANT_CELL_VALUE
             if mode == "input_state":
                 value = state[row][col]
             current_state[row][col] = Cell(value)
@@ -289,7 +288,7 @@ def generate_cell_actions(current_state, cell_value_size) -> list[QLearningActio
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
             # A cell can only be changed once.
-            if current_state[row][col].changes() > 0:
+            if current_state[row][col].value() != VACANT_CELL_VALUE:
                 continue
             for new_value in range(cell_value_size):
                 action = QLearningAction(row, col, new_value)
@@ -357,11 +356,11 @@ def current_state_to_text(state) -> str:
     for row in range(len(state)):
         for col in range(len(state[row])):
             value = None
-            if state[row][col].changes() == 0:
-                value = '_'
+            if state[row][col].value() == VACANT_CELL_VALUE:
+                value = VACANT_CELL_CHAR
             else:
-                value = state[row][col].value()
-            output += str(value)
+                value = str(state[row][col].value())
+            output += value
         output += "\n"
     return output
 
@@ -372,10 +371,10 @@ def action_to_text(state, action: QLearningAction) -> str:
         for col in range(len(state[row])):
             value = None
             if row == action.row() and col == action.col():
-                value = action.cell_value()
+                value = str(action.cell_value())
             else:
-                value = '_'
-            output += str(value)
+                value = VACANT_CELL_CHAR
+            output += value
         output += "\n"
     return output
 
@@ -429,9 +428,9 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
     translation_y = center_y - row
 
     attented_example_input = translate_board(
-        example_input, translation_x, translation_y, default_cell=Cell(0))
+        example_input, translation_x, translation_y, default_cell=Cell(VACANT_CELL_VALUE))
     attented_current_state = translate_board(
-        current_state, translation_x, translation_y, default_cell=Cell(0))
+        current_state, translation_x, translation_y, default_cell=Cell(VACANT_CELL_VALUE))
     attented_candidate_action = QLearningAction(
         center_y, center_x, new_value)
 
