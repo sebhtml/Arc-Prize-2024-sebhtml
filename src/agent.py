@@ -5,7 +5,8 @@ from file_storage import SampleInputTokens
 from typing import List
 from playout_simulation import get_puzzle_starting_state, get_state_texts, generate_cell_actions, do_visual_fixation
 from playout_simulation import tokenize_sample_input, tokens_to_text
-from playout_simulation import VACANT_CELL_CHAR
+from vision import mask_cells
+from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
 
 
 def filter_token(token: int) -> bool:
@@ -14,7 +15,7 @@ def filter_token(token: int) -> bool:
     are the only allowed tokens in the context.
     """
     legal_tokens = list(map(lambda x: ord(str(x)), range(10))) + \
-        list(map(ord, [VACANT_CELL_CHAR]))
+        list(map(ord, [VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR]))
     return token in legal_tokens
 
 
@@ -101,6 +102,9 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
             (attented_example_input, attented_current_state, attented_candidate_action, translation_x,
              translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
 
+            attented_current_state = mask_cells(
+                current_state, attented_current_state)
+
             input_tokens = tokenize_sample_input(
                 attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
@@ -153,6 +157,9 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
                 batch_tokens = []
                 batch_inputs = []
                 batch_actions = []
+        if best_next_state == None:
+            print_current_state(example_input, current_state, padding_char)
+            raise Exception("Failed to select action")
         current_state = best_next_state
         print(f"best_next_state with {best_action_value}")
         print("AUTO-REGRESSIVE wannabe AGI megabot current state")

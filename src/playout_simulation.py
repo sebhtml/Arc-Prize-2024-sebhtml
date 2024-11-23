@@ -5,10 +5,8 @@ import numpy as np
 from typing import List, Tuple
 import concurrent.futures
 import concurrent
-
-VACANT_CELL_VALUE = -1
-
-VACANT_CELL_CHAR = '_'
+from vision import mask_cells, Cell
+from vision import VACANT_CELL_VALUE, VACANT_CELL_CHAR, MASKED_CELL_VALUE, MASKED_CELL_CHAR, OUTSIDE_CELL_VALUE, OUTSIDE_CELL_CHAR
 
 
 class QLearningAction:
@@ -25,17 +23,6 @@ class QLearningAction:
 
     def cell_value(self) -> int:
         return self.__cell_value
-
-
-class Cell:
-    def __init__(self, value):
-        self.__value = value
-
-    def value(self) -> int:
-        return self.__value
-
-    def set_value(self, value):
-        self.__value = value
 
 
 class GameState:
@@ -181,6 +168,8 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
          translation_x, translation_y) = do_visual_fixation(
             example_input, current_state, candidate_action)
 
+        attented_current_state = mask_cells(
+            current_state, attented_current_state)
 
         input_tokens = tokenize_sample_input(
             attented_example_input, attented_current_state, attented_candidate_action, padding_char)
@@ -357,6 +346,10 @@ def state_to_text(state) -> str:
             value = None
             if state[row][col].value() == VACANT_CELL_VALUE:
                 value = VACANT_CELL_CHAR
+            elif state[row][col].value() == MASKED_CELL_VALUE:
+                value = MASKED_CELL_CHAR
+            elif state[row][col].value() == OUTSIDE_CELL_VALUE:
+                value = OUTSIDE_CELL_CHAR
             else:
                 value = str(state[row][col].value())
             output += value
@@ -396,7 +389,7 @@ def translate_board(board, translation_x: int, translation_y: int, default_cell=
             dst_y = src_y + translation_y
             if dst_y < 0 or dst_y >= height:
                 continue
-            new_board[dst_y][dst_x] = board[src_y][src_x]
+            new_board[dst_y][dst_x] = copy.deepcopy(board[src_y][src_x])
     return new_board
 
 
@@ -427,9 +420,9 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
     translation_y = center_y - row
 
     attented_example_input = translate_board(
-        example_input, translation_x, translation_y, default_cell=Cell(VACANT_CELL_VALUE))
+        example_input, translation_x, translation_y, default_cell=Cell(OUTSIDE_CELL_VALUE))
     attented_current_state = translate_board(
-        current_state, translation_x, translation_y, default_cell=Cell(VACANT_CELL_VALUE))
+        current_state, translation_x, translation_y, default_cell=Cell(OUTSIDE_CELL_VALUE))
     attented_candidate_action = QLearningAction(
         center_y, center_x, new_value)
 
