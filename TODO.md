@@ -1,6 +1,13 @@
 # Sprint
 
+- use VACANT_CELL_CHAR = '_'
+- use AROUND_ACTION_CHAR = ','
+- use OUTSIDE_BOARD_CHAR = '.'
+- use OUTSIDE_BOARD_CELL_VALUE = -1
+- implement OUTSIDE_BOARD_CHAR
 - don't use OUTSIDE_BOARD_CHAR in input to compute action value
+
+- use str instead of int for cell values
 - implement symmetries (flips)
 - implement rotations
 - use only one learned embedding
@@ -8,10 +15,6 @@
 - don't count cells outside of the grid in the future rewards.
 - don't assume perfect play to compute future rewards
 - don't pass the AROUND_ACTION_CHAR chars to the neural network
-- use VACANT_CELL_CHAR = '_'
-- use AROUND_ACTION_CHAR = ','
-- use OUTSIDE_BOARD_CHAR = '.'
-- use OUTSIDE_BOARD_CELL_VALUE = -1
 - Verify if the HDF5 schema must be changed.
 
 # Backlog
