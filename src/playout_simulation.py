@@ -341,26 +341,16 @@ def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
 def get_state_texts(input_state, current_state, padding_char: str):
     input_state_text = ""
     input_state_text += "ini" + "\n"
-    input_state_text += input_state_to_text(input_state)
+    input_state_text += state_to_text(input_state)
 
     current_state_text = ""
     current_state_text += "cur" + "\n"
-    current_state_text += current_state_to_text(current_state)
+    current_state_text += state_to_text(current_state)
 
     return input_state_text, current_state_text
 
 
-def input_state_to_text(state) -> str:
-    output = ""
-    for row in range(len(state)):
-        for col in range(len(state[row])):
-            value = state[row][col].value()
-            output += str(value)
-        output += "\n"
-    return output
-
-
-def current_state_to_text(state) -> str:
+def state_to_text(state) -> str:
     output = ""
     for row in range(len(state)):
         for col in range(len(state[row])):
