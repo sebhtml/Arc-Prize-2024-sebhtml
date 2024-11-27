@@ -5,7 +5,7 @@ import numpy as np
 from typing import List, Tuple
 import concurrent.futures
 import concurrent
-from vision import Cell, do_circular_shift
+from vision import Cell, mask_cells
 from vision import VACANT_CELL_VALUE, VACANT_CELL_CHAR, MASKED_CELL_VALUE, MASKED_CELL_CHAR, OUTSIDE_CELL_VALUE, OUTSIDE_CELL_CHAR
 
 
@@ -167,9 +167,6 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
         (attented_example_input, attented_current_state, attented_candidate_action,
          translation_x, translation_y) = do_visual_fixation(
             example_input, current_state, candidate_action)
-
-        # attented_current_state = mask_cells(
-        # current_state, attented_current_state)
 
         input_tokens = tokenize_sample_input(
             attented_example_input, attented_current_state, attented_candidate_action, padding_char)
@@ -419,10 +416,10 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
     translation_x = center_x - col
     translation_y = center_y - row
 
-    attented_example_input = do_circular_shift(
-        example_input, translation_x, translation_y)
-    attented_current_state = do_circular_shift(
-        current_state, translation_x, translation_y)
+    attented_example_input = translate_board(
+        example_input, translation_x, translation_y, Cell(OUTSIDE_CELL_VALUE))
+    attented_current_state = translate_board(
+        current_state, translation_x, translation_y, Cell(OUTSIDE_CELL_VALUE))
     attented_candidate_action = QLearningAction(
         center_y, center_x, new_value)
 
