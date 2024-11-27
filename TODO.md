@@ -1,14 +1,14 @@
 # Sprint
 
 - move translate_board to vision.py
+- move do_visual_fixation to vision.py
+- rename samples to examples
+- implement symmetries (flips)
+
 - use AROUND_ACTION_CHAR = ','
 - don't pass the AROUND_ACTION_CHAR chars to the neural network
-- implement symmetries (flips)
-- implement rotations
-- use only one learned embedding
-- don't talk about playout
 - don't assume perfect play to compute future rewards
-- Verify if the HDF5 schema must be changed.
+- don't talk about playout
 
 # Backlog
 
