@@ -96,8 +96,8 @@ cell_value_size = 10
 #
 
 generate_train_samples = True
-# Use 100000 for dev, and use 5000000 for training the model.
-total_train_samples = 5000000
+# Use 100000 for dev, and use 10000000 for training the model.
+total_train_samples = 10000000
 stop_after_generating_samples = False
 playout_simulation_cpu_count = 9
 train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_samples}.hdf5"
