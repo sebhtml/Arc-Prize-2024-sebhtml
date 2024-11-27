@@ -126,3 +126,23 @@ def do_circular_shift(board, shift_x: int, shift_y: int):
             dst_y = (src_y + shift_y) % height
             new_board[dst_y][dst_x] = copy.deepcopy(board[src_y][src_x])
     return new_board
+
+
+def rotate_90_clockwise(grid):
+    """Rotates a 2D grid 90 degrees clockwise.
+
+    Args:
+    grid: A 2D list representing the grid.
+
+    Returns:
+    A new 2D list representing the rotated grid.
+    """
+
+    n = len(grid)
+    rotated_grid = [[0] * n for _ in range(n)]
+
+    for i in range(n):
+        for j in range(n):
+            rotated_grid[j][n - i - 1] = grid[i][j]
+
+    return rotated_grid
