@@ -23,8 +23,8 @@ kaggle-files:
 learn:
 	./learn.sh
 
-lesslog:
-	./lesslog.sh
+less-log:
+	./less-log.sh
 
 watch-log:
 	./watch-log.sh
