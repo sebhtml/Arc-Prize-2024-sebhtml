@@ -101,9 +101,6 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
             (attented_example_input, attented_current_state, attented_candidate_action, translation_x,
              translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
 
-            # attented_current_state = mask_cells(
-            # current_state, attented_current_state)
-
             input_tokens = tokenize_sample_input(
                 attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 

@@ -5,7 +5,7 @@ import numpy as np
 from typing import List, Tuple
 import concurrent.futures
 import concurrent
-from vision import Cell, mask_cells
+from vision import Cell, rotate_90_clockwise, mask_cells
 from vision import VACANT_CELL_VALUE, VACANT_CELL_CHAR, MASKED_CELL_VALUE, MASKED_CELL_CHAR, OUTSIDE_CELL_VALUE, OUTSIDE_CELL_CHAR
 
 
@@ -422,6 +422,9 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
         current_state, translation_x, translation_y, Cell(OUTSIDE_CELL_VALUE))
     attented_candidate_action = QLearningAction(
         center_y, center_x, new_value)
+
+    attented_current_state = mask_cells(
+        current_state, attented_current_state)
 
     return [
         attented_example_input,
