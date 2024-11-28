@@ -1,7 +1,5 @@
 # Sprint
 
-- move translate_board to vision.py
-- move do_visual_fixation to vision.py
 - rename samples to examples
 - implement symmetries (flips)
 

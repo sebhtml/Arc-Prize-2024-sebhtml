@@ -5,9 +5,10 @@ import numpy as np
 from typing import List, Tuple
 import concurrent.futures
 import concurrent
-from vision import Cell, rotate_90_clockwise, mask_cells
+from vision import Cell, do_visual_fixation
 from vision import VACANT_CELL_VALUE, VACANT_CELL_CHAR, MASKED_CELL_VALUE, MASKED_CELL_CHAR, OUTSIDE_CELL_VALUE, OUTSIDE_CELL_CHAR
 from q_learning import QLearningAction
+
 
 class GameState:
     def __init__(self, example_input: List[List[Cell]], current_state: List[List[Cell]]):
@@ -350,76 +351,3 @@ def action_to_text(state, action: QLearningAction) -> str:
             output += value
         output += "\n"
     return output
-
-
-def translate_board(board, translation_x: int, translation_y: int, default_cell=0):
-    """
-    default_cell is 0 or Cell(0)
-    """
-    width = len(board[0])
-    height = len(board)
-    new_board = copy.deepcopy(board)
-    for x in range(width):
-        for y in range(height):
-            new_board[y][x] = default_cell
-    for src_x in range(width):
-        dst_x = src_x + translation_x
-        if dst_x < 0 or dst_x >= width:
-            continue
-        for src_y in range(height):
-            dst_y = src_y + translation_y
-            if dst_y < 0 or dst_y >= height:
-                continue
-            new_board[dst_y][dst_x] = copy.deepcopy(board[src_y][src_x])
-    return new_board
-
-
-def do_visual_fixation(example_input, current_state, candidate_action: QLearningAction):
-    """
-    Attend to the cell that is changed by the action.
-    To do so, make the vision system put that cell in the center
-    of the field of view.
-
-    See
-    Learning to combine foveal glimpses with a third-order Boltzmann machine
-    https://www.cs.toronto.edu/~hinton/absps/nips_eyebm.pdf
-
-    See https://en.wikipedia.org/wiki/Fixation_(visual)
-    """
-
-    input_height = len(example_input)
-    input_width = len(example_input[0])
-
-    row = candidate_action.row()
-    col = candidate_action.col()
-    new_value = candidate_action.cell_value()
-
-    center_x = input_width // 2
-    center_y = input_height // 2
-
-    translation_x = center_x - col
-    translation_y = center_y - row
-
-    attented_example_input = translate_board(
-        example_input, translation_x, translation_y, Cell(OUTSIDE_CELL_VALUE))
-    attented_current_state = translate_board(
-        current_state, translation_x, translation_y, Cell(OUTSIDE_CELL_VALUE))
-    attented_candidate_action = QLearningAction(
-        center_y, center_x, new_value)
-
-    attented_current_state = mask_cells(
-        current_state, attented_current_state)
-
-    rotations = random.randrange(0, 4)
-
-    for _ in range(rotations):
-        attented_example_input = rotate_90_clockwise(attented_example_input)
-        attented_current_state = rotate_90_clockwise(attented_current_state)
-
-    return [
-        attented_example_input,
-        attented_current_state,
-        attented_candidate_action,
-        translation_x,
-        translation_y,
-    ]
