@@ -21,7 +21,7 @@ kaggle-files:
 	kaggle kernels files -k sebastien/arc-prize-2024-sebhtml-py
 
 learn:
-	./learn.sh
+	nohup ./learn.sh
 
 less-log:
 	./less-log.sh
