@@ -24,7 +24,7 @@ def create_file_storage(h5_file_path):
     f = h5py.File(h5_file_path, "w", locking=False)
     sa_dtype = __get_np_structured_array_dtype()
     _dataset = f.create_dataset(
-        "samples", shape=(0,), dtype=np.dtype(sa_dtype), maxshape=(None,))
+        "examples", shape=(0,), dtype=np.dtype(sa_dtype), maxshape=(None,))
     return f
 
 
@@ -40,16 +40,16 @@ def append_to_file_storage(f: h5py.File, train_action_examples):
     size = len(train_action_examples)
 
     # Get datasets
-    samples = f["samples"]
+    examples = f["examples"]
 
     # Size
-    current_size = samples.shape[0]
+    current_size = examples.shape[0]
 
     # Resize
-    samples.resize((current_size + size, ))
+    examples.resize((current_size + size, ))
 
     # Do the writes
-    samples[current_size:] = list(map(__to_h5_sample, train_action_examples))
+    examples[current_size:] = list(map(__to_h5_sample, train_action_examples))
 
 
 class FileStorageReader:
@@ -57,13 +57,13 @@ class FileStorageReader:
         self.f = h5py.File(h5_file_path, "r")
 
     def size(self):
-        samples = self.f["samples"]
-        return samples.shape[0]
+        examples = self.f["examples"]
+        return examples.shape[0]
 
     def get_action_value_min_max(self):
 
-        samples = self.f["samples"]
-        accumulator_min = samples[0]['action_value']
+        examples = self.f["examples"]
+        accumulator_min = examples[0]['action_value']
         accumulator_max = accumulator_min
 
         size = self.size()
@@ -72,9 +72,9 @@ class FileStorageReader:
 
         while idx < size:
             upper = min(idx + block_size, size)
-            block_samples = samples[idx:upper]
+            block_examples = examples[idx:upper]
             block_action_values = map(
-                lambda sample: sample['action_value'], block_samples)
+                lambda sample: sample['action_value'], block_examples)
 
             min_it, max_it = tee(block_action_values)
 
@@ -89,8 +89,8 @@ class FileStorageReader:
         return accumulator_min, accumulator_max
 
     def get(self, idx) -> tuple[SampleInputTokens, float]:
-        samples = self.f["samples"]
-        sample = samples[idx]
+        examples = self.f["examples"]
+        sample = examples[idx]
         input_state = sample['input_state'].tolist()
         current_state = sample['current_state'].tolist()
         action = sample['action'].tolist()

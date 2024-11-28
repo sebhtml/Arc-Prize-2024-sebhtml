@@ -1,6 +1,5 @@
 # Sprint
 
-- rename samples to examples
 - implement symmetries (flips)
 
 - don't assume perfect play to compute future rewards

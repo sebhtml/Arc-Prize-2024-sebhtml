@@ -33,11 +33,11 @@ import json
 import pandas as pd
 from torch.utils.data import DataLoader
 from model import DecoderOnlyTransformerModel
-from playout_simulation import generate_samples, tokens_to_text
+from playout_simulation import generate_examples, tokens_to_text
 from infrastructure import terminate_pod
 from report import plot_train_loss_graph
 from agent import apply_puzzle_action_value_policy
-from training import MyDataset, train, print_model_outputs_for_train_samples
+from training import MyDataset, train, print_model_outputs_for_train_examples
 
 device = torch.device("cuda")
 
@@ -95,12 +95,12 @@ cell_value_size = 10
 # Playout simulation configuration
 #
 
-generate_train_samples = True
+generate_train_examples = True
 # Use 100000 for dev, and use 10000000 for training the model.
-total_train_samples = 100000
-stop_after_generating_samples = False
+total_train_examples = 100000
+stop_after_generating_examples = False
 playout_simulation_cpu_count = 9
-train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_samples}.hdf5"
+train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_examples}.hdf5"
 discount = 0.99
 padding_char = ' '
 
@@ -110,7 +110,7 @@ padding_char = ' '
 
 
 models_path = "/workspace/models"
-model_file_path = f"{models_path}/{time_marker}-{total_train_samples}-q-network.pth"
+model_file_path = f"{models_path}/{time_marker}-{total_train_examples}-q-network.pth"
 # Multiple of 4 for NVIDIA cublas WMMA
 # See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
 context_size = 148
@@ -145,7 +145,7 @@ ffn_sublayer_dropout = 0.1
 # See: A Recipe for Training Neural Networks
 # http://karpathy.github.io/2019/04/25/recipe/
 
-shuffle_train_samples = True
+shuffle_train_examples = True
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
 max_grad_norm = 1.0
 
@@ -241,11 +241,11 @@ def main():
     puzzle_test_examples = load_puzzle_examples(
         "training", selected_puzzle_id, "test")
 
-    if generate_train_samples:
-        generate_samples(train_dataset_path, total_train_samples, puzzle_train_examples, cell_value_size,
-                         discount, padding_char, playout_simulation_cpu_count)
+    if generate_train_examples:
+        generate_examples(train_dataset_path, total_train_examples, puzzle_train_examples, cell_value_size,
+                          discount, padding_char, playout_simulation_cpu_count)
 
-        if stop_after_generating_samples:
+        if stop_after_generating_examples:
             sys.exit(0)
 
     model_total_params = sum(p.numel() for p in model.parameters())
@@ -263,11 +263,11 @@ def main():
 
         step = 0
         step, steps, losses = train(
-            dataset, batch_size, shuffle_train_samples, step, model,
+            dataset, batch_size, shuffle_train_examples, step, model,
             num_epochs, lr, weight_decay, max_grad_norm, device,)
 
         if print_model_outputs:
-            print_model_outputs_for_train_samples(
+            print_model_outputs_for_train_examples(
                 dataset, batch_size, model, device,)
 
         if save_step_losses:

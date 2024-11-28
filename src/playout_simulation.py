@@ -10,24 +10,24 @@ from vision import VACANT_CELL_VALUE, VACANT_CELL_CHAR, MASKED_CELL_VALUE, MASKE
 from q_learning import QLearningAction, ReplayBuffer, Experience, GameState
 
 
-def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_train_examples, cell_value_size: int,
-                     discount: float, padding_char: str, cpu_count: int):
+def generate_examples(train_dataset_path: str, total_train_examples: int, puzzle_train_examples, cell_value_size: int,
+                      discount: float, padding_char: str, cpu_count: int):
     writer = FileStorageWriter(train_dataset_path)
-    generated_samples = 0
+    generated_examples = 0
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count)
-    must_generate_more_samples = True
-    while must_generate_more_samples:
+    must_generate_more_examples = True
+    while must_generate_more_examples:
         # Do this loop in parallel using ProcessPoolExecutor.
         futures = list(map(
             lambda _: executor.submit(generate_train_action_examples,
                                       puzzle_train_examples, cell_value_size, discount, padding_char),
             range(cpu_count)))
-        list_of_samples = list(map(lambda future: future.result(), futures))
-        for samples in list_of_samples:
-            writer.append(samples)
-            generated_samples += len(samples)
-            if generated_samples >= total_train_samples:
-                must_generate_more_samples = False
+        list_of_examples = list(map(lambda future: future.result(), futures))
+        for examples in list_of_examples:
+            writer.append(examples)
+            generated_examples += len(examples)
+            if generated_examples >= total_train_examples:
+                must_generate_more_examples = False
                 break
 
 
@@ -36,7 +36,7 @@ def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_t
 
 def generate_train_action_examples(puzzle_examples, cell_value_size, discount: float, padding_char: str):
     """
-    Generate (state, action, action_value) experience samples for all puzzle examples.
+    Generate (state, action, action_value) experience examples for all puzzle examples.
     We start from an empty board, and generate legal actions, and choose the best action (argmax of action value)
     until the end of the game is reached.
     This is essentially a wrong incorrect half-baked MCTS (Monte Carlo tree search) in the sense that it's a

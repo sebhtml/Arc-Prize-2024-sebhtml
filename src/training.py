@@ -54,16 +54,16 @@ class MyDataset(Dataset):
         return item
 
 
-def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step: int, model,
+def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, step: int, model,
           num_epochs: int, lr: float, weight_decay: float, max_grad_norm: float, device,):
     model.train()
     criterion = nn.CrossEntropyLoss()
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-    trained_train_samples = dataset.__len__()
-    num_steps = num_epochs * math.ceil(trained_train_samples / batch_size)
+    trained_train_examples = dataset.__len__()
+    num_steps = num_epochs * math.ceil(trained_train_examples / batch_size)
 
-    print(f"trained_train_samples {trained_train_samples}")
+    print(f"trained_train_examples {trained_train_examples}")
     print(f"batch_size {batch_size}")
     print(f"num_epochs {num_epochs}")
     print(f"num_steps {num_steps}")
@@ -72,7 +72,7 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_samples: bool, step
     losses = []
 
     train_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=shuffle_train_samples, num_workers=8)
+        dataset, batch_size=batch_size, shuffle=shuffle_train_examples, num_workers=8)
 
     for epoch in range(num_epochs):
         for data in train_loader:
@@ -115,8 +115,8 @@ def print_train_examples(train_action_examples):
         print(sample_target)
 
 
-def print_model_outputs_for_train_samples(dataset: MyDataset, batch_size: int, model, device,):
-    print("[after training] print_model_outputs_for_train_samples")
+def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, model, device,):
+    print("[after training] print_model_outputs_for_train_examples")
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=False)
     for data in inference_loader:
