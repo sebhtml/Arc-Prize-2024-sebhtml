@@ -122,6 +122,8 @@ def do_circular_shift(board, shift_x: int, shift_y: int):
 def rotate_90_clockwise(grid):
     """Rotates a 2D grid 90 degrees clockwise.
 
+    See https://pytorch.org/vision/main/generated/torchvision.transforms.RandomRotation.html
+
     Args:
     grid: A 2D list representing the grid.
 
@@ -159,6 +161,30 @@ def translate_board(board, translation_x: int, translation_y: int, default_cell=
                 continue
             new_board[dst_y][dst_x] = copy.deepcopy(board[src_y][src_x])
     return new_board
+
+
+def flip_board(grid, direction):
+    """Flips a 2D grid horizontally or vertically.
+
+    See https://help.optitex.com/1382687/Content/Marker/Flip_Horizontal.htm
+    See https://pytorch.org/vision/main/generated/torchvision.transforms.RandomVerticalFlip.html
+    See https://pytorch.org/vision/main/generated/torchvision.transforms.RandomHorizontalFlip.html
+
+    Args:
+    grid: A 2D list representing the grid.
+    direction: A string, either 'horizontal' or 'vertical', indicating the direction of the flip.
+
+    Returns:
+    A new 2D list representing the flipped grid.
+    """
+
+    if direction == 'horizontal':
+        return [row[::-1] for row in grid]
+    elif direction == 'vertical':
+        return grid[::-1]
+    else:
+        raise ValueError(
+            "Invalid direction. Must be 'horizontal' or 'vertical'.")
 
 
 def do_visual_fixation(example_input, current_state, candidate_action: QLearningAction):
