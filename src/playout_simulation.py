@@ -7,23 +7,7 @@ import concurrent.futures
 import concurrent
 from vision import Cell, rotate_90_clockwise, mask_cells
 from vision import VACANT_CELL_VALUE, VACANT_CELL_CHAR, MASKED_CELL_VALUE, MASKED_CELL_CHAR, OUTSIDE_CELL_VALUE, OUTSIDE_CELL_CHAR
-
-
-class QLearningAction:
-    def __init__(self, row, col, cell_value):
-        self.__row = row
-        self.__col = col
-        self.__cell_value = cell_value
-
-    def row(self) -> int:
-        return self.__row
-
-    def col(self) -> int:
-        return self.__col
-
-    def cell_value(self) -> int:
-        return self.__cell_value
-
+from q_learning import QLearningAction
 
 class GameState:
     def __init__(self, example_input: List[List[Cell]], current_state: List[List[Cell]]):
