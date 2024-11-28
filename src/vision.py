@@ -2,7 +2,7 @@ from typing import List, Tuple
 import numpy as np
 import copy
 import random
-from q_learning import QLearningAction
+from q_learning import QLearningAction, Cell
 
 VACANT_CELL_VALUE = -1
 MASKED_CELL_VALUE = -2
@@ -11,17 +11,6 @@ OUTSIDE_CELL_VALUE = -3
 VACANT_CELL_CHAR = '_'
 MASKED_CELL_CHAR = 'X'
 OUTSIDE_CELL_CHAR = '.'
-
-
-class Cell:
-    def __init__(self, value):
-        self.__value = value
-
-    def value(self) -> int:
-        return self.__value
-
-    def set_value(self, value):
-        self.__value = value
 
 
 def get_total_cells(board: List[List[Cell]]) -> int:

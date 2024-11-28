@@ -3,9 +3,9 @@
 - rename samples to examples
 - implement symmetries (flips)
 
+- don't assume perfect play to compute future rewards
 - use AROUND_ACTION_CHAR = ','
 - don't pass the AROUND_ACTION_CHAR chars to the neural network
-- don't assume perfect play to compute future rewards
 - don't talk about playout
 
 # Backlog

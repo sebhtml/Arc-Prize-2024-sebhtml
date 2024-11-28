@@ -7,51 +7,7 @@ import concurrent.futures
 import concurrent
 from vision import Cell, do_visual_fixation
 from vision import VACANT_CELL_VALUE, VACANT_CELL_CHAR, MASKED_CELL_VALUE, MASKED_CELL_CHAR, OUTSIDE_CELL_VALUE, OUTSIDE_CELL_CHAR
-from q_learning import QLearningAction
-
-
-class GameState:
-    def __init__(self, example_input: List[List[Cell]], current_state: List[List[Cell]]):
-        self.__example_input = example_input
-        self.__current_state = current_state
-
-    def example_input(self) -> List[List[Cell]]:
-        return self.__example_input
-
-    def current_state(self) -> List[List[Cell]]:
-        return self.__current_state
-
-
-class Experience:
-    def __init__(self, state: GameState, action: QLearningAction, reward: float, next_state: GameState):
-        self.__state = state
-        self.__action = action
-        self.__reward = reward
-        self.__next_state = next_state
-
-    def state(self) -> GameState:
-        return self.__state
-
-    def reward(self) -> float:
-        return self.__reward
-
-    def action(self) -> QLearningAction:
-        return self.__action
-
-
-class ReplayBuffer:
-    """
-    See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
-    """
-
-    def __init__(self):
-        self.__experiences: List[Experience] = []
-
-    def add_experience(self, experience: Experience):
-        self.__experiences.append(experience)
-
-    def experiences(self) -> List[Experience]:
-        return self.__experiences
+from q_learning import QLearningAction, ReplayBuffer, Experience, GameState
 
 
 def generate_samples(train_dataset_path: str, total_train_samples: int, puzzle_train_examples, cell_value_size: int,
