@@ -1,4 +1,4 @@
-from file_storage import FileStorageWriter, SampleInputTokens
+from file_storage import FileStorageWriter, ExampleInputTokens
 import random
 import copy
 import numpy as np
@@ -25,9 +25,9 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     return current_state
 
 
-def tokenize_sample_input(input_state, current_state, action: QLearningAction, padding_char: str) -> SampleInputTokens:
+def tokenize_example_input(input_state, current_state, action: QLearningAction, padding_char: str) -> ExampleInputTokens:
     """
-    Tokenize a sample input for the Q-network Q(s, a).
+    Tokenize a example input for the Q-network Q(s, a).
     Note that:
     - s contains the state which is (input_state, current_state)
     - a contains the action which is (next_state)
@@ -41,7 +41,7 @@ def tokenize_sample_input(input_state, current_state, action: QLearningAction, p
     action_text += "act" + "\n"
     action_text += action_to_text(current_state, action)
 
-    return SampleInputTokens(
+    return ExampleInputTokens(
         text_to_tokens(input_state_text),
         text_to_tokens(current_state_text),
         text_to_tokens(action_text)
@@ -52,9 +52,9 @@ def text_to_tokens(s: str) -> List[int]:
     return list(map(ord, list(s)))
 
 
-def tokens_to_text(sample_input_tokens: SampleInputTokens) -> str:
-    tokens: List[int] = sample_input_tokens._input_state + \
-        sample_input_tokens._current_state + sample_input_tokens._action
+def tokens_to_text(example_input_tokens: ExampleInputTokens) -> str:
+    tokens: List[int] = example_input_tokens._input_state + \
+        example_input_tokens._current_state + example_input_tokens._action
     return "".join(map(chr, tokens))
 
 

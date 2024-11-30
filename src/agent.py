@@ -5,9 +5,9 @@ import random
 import concurrent.futures
 import concurrent
 from typing import List, Tuple
-from file_storage import FileStorageWriter, SampleInputTokens
+from file_storage import FileStorageWriter, ExampleInputTokens
 from context import get_puzzle_starting_state, get_state_texts
-from context import tokenize_sample_input, tokens_to_text
+from context import tokenize_example_input, tokens_to_text
 from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
 from vision import VACANT_CELL_VALUE
 from vision import do_visual_fixation
@@ -30,10 +30,10 @@ def filter_tokens(tokens):
     return list(filter(filter_token, tokens))
 
 
-def make_sample_tensor(sample_input_tokens: SampleInputTokens, context_size: int):
-    example_input = filter_tokens(sample_input_tokens._input_state)
-    current_state = filter_tokens(sample_input_tokens._current_state)
-    candidate_action = filter_tokens(sample_input_tokens._action)
+def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: int):
+    example_input = filter_tokens(example_input_tokens._input_state)
+    current_state = filter_tokens(example_input_tokens._current_state)
+    candidate_action = filter_tokens(example_input_tokens._action)
 
     input_tokens: List[int] = example_input + current_state + candidate_action
     if len(input_tokens) > context_size:
@@ -47,7 +47,7 @@ def make_sample_tensor(sample_input_tokens: SampleInputTokens, context_size: int
 
 
 def infer_action_value(model, input_text, context_size, device):
-    inputs = make_sample_tensor(input_text, context_size).unsqueeze(0)
+    inputs = make_example_tensor(input_text, context_size).unsqueeze(0)
     inputs = inputs.to(device)
     outputs = model(inputs)
     action_value = outputs[0].argmax(dim=-1).item()
@@ -156,11 +156,11 @@ def select_action_with_deep_q_network(
         (attented_example_input, attented_current_state, attented_candidate_action,
          translation_x, translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
 
-        input_tokens = tokenize_sample_input(
+        input_tokens = tokenize_example_input(
             attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
         inputs = list(map(lambda tensor: tensor.unsqueeze(0),
-                          make_sample_tensor(input_tokens, context_size)))
+                          make_example_tensor(input_tokens, context_size)))
 
         batch_tokens.append(input_tokens)
         batch_inputs.append(inputs)
@@ -297,7 +297,7 @@ def generate_train_action_examples(puzzle_examples, cell_value_size, discount: f
     return train_examples
 
 
-def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Tuple[SampleInputTokens, float]]:
+def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Tuple[ExampleInputTokens, float]]:
     """
     This software used reinforcement learning.
     It uses Q-learning.
@@ -321,7 +321,7 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
          translation_x, translation_y) = do_visual_fixation(
             example_input, current_state, candidate_action)
 
-        input_tokens = tokenize_sample_input(
+        input_tokens = tokenize_example_input(
             attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
         expected_rewards = sum_of_future_rewards(

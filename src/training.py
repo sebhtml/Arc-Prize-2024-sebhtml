@@ -5,7 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import math
 from file_storage import FileStorageReader
-from agent import make_sample_tensor
+from agent import make_example_tensor
 from context import tokens_to_text
 
 
@@ -41,7 +41,7 @@ class MyDataset(Dataset):
         example = self.reader.get(idx)
 
         input_tokens = example[0]
-        item_input = make_sample_tensor(input_tokens, self.context_size)
+        item_input = make_example_tensor(input_tokens, self.context_size)
 
         action_value = example[1]
         action_value_bin = bin_action_value(
@@ -106,13 +106,13 @@ def print_train_examples(train_action_examples):
     for (idx, example) in enumerate(train_action_examples):
         print("---------------------------")
         print("Example: " + str(idx))
-        sample_input = example[0]
-        sample_target = example[1]
+        example_input = example[0]
+        example_target = example[1]
 
-        print("sample_input")
-        print(tokens_to_text(sample_input))
-        print("sample_target")
-        print(sample_target)
+        print("example_input")
+        print(tokens_to_text(example_input))
+        print("example_target")
+        print(example_target)
 
 
 def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, model, device,):

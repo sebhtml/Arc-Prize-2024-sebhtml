@@ -3,7 +3,7 @@ import h5py
 from itertools import tee
 
 
-class SampleInputTokens:
+class ExampleInputTokens:
     def __init__(self, input_state: str, current_state: str, action: str):
         self._input_state = input_state
         self._current_state = current_state
@@ -28,11 +28,11 @@ def create_file_storage(h5_file_path):
     return f
 
 
-def __to_h5_sample(sample: tuple[SampleInputTokens, float]):
-    input_state: str = sample[0]._input_state
-    current_state: str = sample[0]._current_state
-    action: str = sample[0]._action
-    action_value: str = sample[1]
+def __to_h5_example(example: tuple[ExampleInputTokens, float]):
+    input_state: str = example[0]._input_state
+    current_state: str = example[0]._current_state
+    action: str = example[0]._action
+    action_value: str = example[1]
     return (input_state, current_state, action, action_value)
 
 
@@ -49,7 +49,7 @@ def append_to_file_storage(f: h5py.File, train_action_examples):
     examples.resize((current_size + size, ))
 
     # Do the writes
-    examples[current_size:] = list(map(__to_h5_sample, train_action_examples))
+    examples[current_size:] = list(map(__to_h5_example, train_action_examples))
 
 
 class FileStorageReader:
@@ -74,7 +74,7 @@ class FileStorageReader:
             upper = min(idx + block_size, size)
             block_examples = examples[idx:upper]
             block_action_values = map(
-                lambda sample: sample['action_value'], block_examples)
+                lambda example: example['action_value'], block_examples)
 
             min_it, max_it = tee(block_action_values)
 
@@ -88,14 +88,14 @@ class FileStorageReader:
 
         return accumulator_min, accumulator_max
 
-    def get(self, idx) -> tuple[SampleInputTokens, float]:
+    def get(self, idx) -> tuple[ExampleInputTokens, float]:
         examples = self.f["examples"]
-        sample = examples[idx]
-        input_state = sample['input_state'].tolist()
-        current_state = sample['current_state'].tolist()
-        action = sample['action'].tolist()
-        action_value = sample['action_value']
-        tokens = SampleInputTokens(
+        example = examples[idx]
+        input_state = example['input_state'].tolist()
+        current_state = example['current_state'].tolist()
+        action = example['action'].tolist()
+        action_value = example['action_value']
+        tokens = ExampleInputTokens(
             input_state, current_state, action)
         return (tokens, action_value)
 
