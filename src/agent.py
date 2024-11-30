@@ -6,8 +6,8 @@ import concurrent.futures
 import concurrent
 from typing import List, Tuple
 from file_storage import FileStorageWriter, SampleInputTokens
-from playout_simulation import get_puzzle_starting_state, get_state_texts
-from playout_simulation import tokenize_sample_input, tokens_to_text
+from context import get_puzzle_starting_state, get_state_texts
+from context import tokenize_sample_input, tokens_to_text
 from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
 from vision import VACANT_CELL_VALUE
 from vision import do_visual_fixation

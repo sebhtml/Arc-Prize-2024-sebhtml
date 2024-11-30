@@ -1,6 +1,5 @@
 # Sprint
 
-- don't talk about playout
 - use neural network to generate random games
 
 - don't assume perfect play to compute future rewards
