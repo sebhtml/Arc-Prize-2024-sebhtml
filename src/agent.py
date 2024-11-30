@@ -208,7 +208,13 @@ def select_action_with_deep_q_network(
     return best_action, best_action_value
 
 
-def simulate_random_game(puzzle_example, cell_value_size) -> ReplayBuffer:
+def play_game_using_model(
+    padding_char: str,
+    context_size: int,
+    batch_size: int,
+    device: torch.device,
+    model: DecoderOnlyTransformerModel,
+        puzzle_example, cell_value_size) -> ReplayBuffer:
     """
     Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by a random player.
 
@@ -240,19 +246,30 @@ def simulate_random_game(puzzle_example, cell_value_size) -> ReplayBuffer:
     current_state = get_puzzle_starting_state(
         example_output, "current_state")
 
-    # List the cells of the output grid in a random order.
-    cells = []
-    for row in range(len(current_state)):
-        for col in range(len(current_state[row])):
-            cells.append([row, col])
-    np.random.shuffle(cells)
+    puzzle_width = len(current_state[0])
+    puzzle_height = len(current_state)
 
-    for cell in cells:
-        row = cell[0]
-        col = cell[1]
-        # Use random cell pixel value.
-        new_value = random.randrange(0, cell_value_size)
-        candidate_action = QLearningAction(row, col, new_value)
+    # Each cell is allowed to change exactly once.
+    for _ in range(puzzle_width * puzzle_height):
+        candidate_actions = generate_cell_actions(
+            current_state, cell_value_size)
+        np.random.shuffle(candidate_actions)
+
+        best_action, best_action_value = select_action_with_deep_q_network(
+            example_input,
+            current_state,
+            candidate_actions,
+            padding_char,
+            context_size,
+            batch_size,
+            device,
+            model,
+        )
+
+        row = best_action.row()
+        col = best_action.col()
+        new_value = best_action.cell_value()
+        candidate_action = best_action
 
         # An action assigns a correct color or an incorrect color to a cell.
         # The only thing that matters is that we shuffled the legal actions before selecting the action.
@@ -277,7 +294,12 @@ def simulate_random_game(puzzle_example, cell_value_size) -> ReplayBuffer:
 # TODO this function should receive just one puzzle example
 
 
-def generate_train_action_examples(puzzle_examples, cell_value_size, discount: float, padding_char: str):
+def generate_train_action_examples(
+        context_size: int,
+        batch_size: int,
+        device: torch.device,
+        model: DecoderOnlyTransformerModel,
+        puzzle_examples, cell_value_size, discount: float, padding_char: str):
     """
     Generate (state, action, action_value) experience examples for all puzzle examples.
     We start from an empty board, and generate legal actions, and choose the best action (argmax of action value)
@@ -287,7 +309,12 @@ def generate_train_action_examples(puzzle_examples, cell_value_size, discount: f
     """
     train_examples = []
     for puzzle_example in puzzle_examples:
-        replay_buffer = simulate_random_game(
+        replay_buffer = play_game_using_model(
+            padding_char,
+            context_size,
+            batch_size,
+            device,
+            model,
             puzzle_example, cell_value_size)
         action_examples = extract_action_examples(
             replay_buffer, discount, padding_char)
@@ -332,13 +359,22 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
     return examples
 
 
-def generate_examples(train_dataset_path: str, total_train_examples: int, puzzle_train_examples, cell_value_size: int,
-                      discount: float, padding_char: str):
+def generate_examples(
+        context_size: int,
+        batch_size: int,
+        device: torch.device,
+        model: DecoderOnlyTransformerModel,
+    train_dataset_path: str, total_train_examples: int, puzzle_train_examples, cell_value_size: int,
+        discount: float, padding_char: str):
     writer = FileStorageWriter(train_dataset_path)
     generated_examples = 0
     must_generate_more_examples = True
     while must_generate_more_examples:
         examples = generate_train_action_examples(
+            context_size,
+            batch_size,
+            device,
+            model,
             puzzle_train_examples, cell_value_size, discount, padding_char)
 
         writer.append(examples)

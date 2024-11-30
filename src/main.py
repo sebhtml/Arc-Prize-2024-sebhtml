@@ -239,8 +239,13 @@ def main():
         "training", selected_puzzle_id, "test")
 
     if generate_train_examples:
-        generate_examples(train_dataset_path, total_train_examples, puzzle_train_examples, cell_value_size,
-                          discount, padding_char)
+        generate_examples(
+            context_size,
+            batch_size,
+            device,
+            model,
+            train_dataset_path, total_train_examples, puzzle_train_examples, cell_value_size,
+            discount, padding_char)
 
         if stop_after_generating_examples:
             sys.exit(0)

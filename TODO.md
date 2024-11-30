@@ -1,6 +1,6 @@
 # Sprint
 
-- use neural network to generate random games
+- interleave playing and learning using the ReplayBuffer
 
 - don't assume perfect play to compute future rewards
 - use AROUND_ACTION_CHAR = ','
