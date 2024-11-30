@@ -3,10 +3,7 @@ import numpy as np
 import copy
 import random
 from q_learning import QLearningAction, Cell
-
-VACANT_CELL_VALUE = -1
-MASKED_CELL_VALUE = -2
-OUTSIDE_CELL_VALUE = -3
+from q_learning import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE, MASKED_CELL_VALUE
 
 VACANT_CELL_CHAR = '_'
 MASKED_CELL_CHAR = 'X'

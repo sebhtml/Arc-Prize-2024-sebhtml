@@ -1,6 +1,14 @@
 from typing import List
 
 
+VACANT_CELL_VALUE = -1
+MASKED_CELL_VALUE = -2
+OUTSIDE_CELL_VALUE = -3
+
+cell_match_reward = 1.0
+cell_mismatch_reward = -1.0
+
+
 class QLearningAction:
     def __init__(self, row, col, cell_value):
         self.__row = row
@@ -70,3 +78,47 @@ class ReplayBuffer:
 
     def experiences(self) -> List[Experience]:
         return self.__experiences
+
+
+def sum_of_future_rewards(immediate_reward: float, discount: float,
+                          attented_current_state: List[List[Cell]],
+                          attented_candidate_action: QLearningAction) -> float:
+    expected_rewards = 0.0
+    t = 0
+
+    discounted_reward = discount**t * immediate_reward
+    expected_rewards += discounted_reward
+    t += 1
+
+    # Count the number of remaining actions in the glimpe of the visual fixation.
+    cells_that_can_change = 0
+    for row in range(len(attented_current_state)):
+        for col in range(len(attented_current_state[row])):
+            # Skip cell because it was already counted as the immediate reward.
+            if row == attented_candidate_action.row() and col == attented_candidate_action.col():
+                continue
+            # A cell can only be changed once.
+            # TODO don't count the cells outside of the puzzle board.
+            if attented_current_state[row][col].value() != VACANT_CELL_VALUE:
+                continue
+            cells_that_can_change += 1
+
+    for _ in range(cells_that_can_change):
+        # assume perfect play
+        future_reward = cell_match_reward
+        discounted_reward = discount**t * future_reward
+        expected_rewards += discounted_reward
+        t += 1
+
+    return expected_rewards
+
+
+def reward(expected_state: List[List[int]], candidate_action: QLearningAction) -> float:
+    row = candidate_action.row()
+    col = candidate_action.col()
+    action_cell_value = candidate_action.cell_value()
+    expected_cell_value = expected_state[row][col]
+    if expected_cell_value == action_cell_value:
+        return cell_match_reward
+    else:
+        return cell_mismatch_reward

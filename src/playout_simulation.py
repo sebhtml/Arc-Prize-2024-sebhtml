@@ -8,6 +8,7 @@ import concurrent
 from vision import Cell, do_visual_fixation
 from vision import VACANT_CELL_VALUE, VACANT_CELL_CHAR, MASKED_CELL_VALUE, MASKED_CELL_CHAR, OUTSIDE_CELL_VALUE, OUTSIDE_CELL_CHAR
 from q_learning import QLearningAction, ReplayBuffer, Experience, GameState
+from q_learning import reward, sum_of_future_rewards
 
 
 def generate_examples(train_dataset_path: str, total_train_examples: int, puzzle_train_examples, cell_value_size: int,
@@ -50,39 +51,6 @@ def generate_train_action_examples(puzzle_examples, cell_value_size, discount: f
             replay_buffer, discount, padding_char)
         train_examples += action_examples
     return train_examples
-
-
-def sum_of_future_rewards(immediate_reward: float, discount: float,
-                          attented_current_state: List[List[Cell]],
-                          attented_candidate_action: QLearningAction) -> float:
-    expected_rewards = 0.0
-    t = 0
-
-    discounted_reward = discount**t * immediate_reward
-    expected_rewards += discounted_reward
-    t += 1
-
-    # Count the number of remaining actions in the glimpe of the visual fixation.
-    cells_that_can_change = 0
-    for row in range(len(attented_current_state)):
-        for col in range(len(attented_current_state[row])):
-            # Skip cell because it was already counted as the immediate reward.
-            if row == attented_candidate_action.row() and col == attented_candidate_action.col():
-                continue
-            # A cell can only be changed once.
-            # TODO don't count the cells outside of the puzzle board.
-            if attented_current_state[row][col].value() != VACANT_CELL_VALUE:
-                continue
-            cells_that_can_change += 1
-
-    for _ in range(cells_that_can_change):
-        # assume perfect play
-        future_reward = cell_match_reward
-        discounted_reward = discount**t * future_reward
-        expected_rewards += discounted_reward
-        t += 1
-
-    return expected_rewards
 
 
 def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Tuple[SampleInputTokens, float]]:
@@ -201,21 +169,6 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
                 value = state[row][col]
             current_state[row][col] = Cell(value)
     return current_state
-
-
-cell_match_reward = 1.0
-cell_mismatch_reward = -1.0
-
-
-def reward(expected_state: List[List[int]], candidate_action: QLearningAction) -> float:
-    row = candidate_action.row()
-    col = candidate_action.col()
-    action_cell_value = candidate_action.cell_value()
-    expected_cell_value = expected_state[row][col]
-    if expected_cell_value == action_cell_value:
-        return cell_match_reward
-    else:
-        return cell_mismatch_reward
 
 
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
