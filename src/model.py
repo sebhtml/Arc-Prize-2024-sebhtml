@@ -202,8 +202,6 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.d_model = d_model
         self.input_embed = nn.Embedding(num_embeddings=vocab_size,
                                         embedding_dim=d_model)
-        self.counter_embed = nn.Embedding(num_embeddings=vocab_size,
-                                          embedding_dim=d_model)
         self.current_embed = nn.Embedding(num_embeddings=vocab_size,
                                           embedding_dim=d_model)
         self.action_embed = nn.Embedding(num_embeddings=vocab_size,
