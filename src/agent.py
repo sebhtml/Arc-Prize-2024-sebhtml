@@ -6,6 +6,8 @@ from typing import List
 from playout_simulation import get_puzzle_starting_state, get_state_texts, generate_cell_actions, do_visual_fixation
 from playout_simulation import tokenize_sample_input, tokens_to_text
 from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
+from q_learning import QLearningAction, Cell
+from model import DecoderOnlyTransformerModel
 
 
 def filter_token(token: int) -> bool:
@@ -85,78 +87,32 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
 
     # Each cell is allowed to change exactly once.
     for _ in range(puzzle_width * puzzle_height):
-        best_next_state = None
-        best_action_value = None
         candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
         np.random.shuffle(candidate_actions)
 
-        batch_tokens = []
-        batch_inputs = []
-        batch_actions = []
+        best_action, best_action_value = select_action_with_deep_q_network(
+            example_input,
+            current_state,
+            candidate_actions,
+            padding_char,
+            context_size,
+            batch_size,
+            device,
+            model,
+        )
 
-        for candidate_action_index in range(len(candidate_actions)):
-            candidate_action = candidate_actions[candidate_action_index]
-
-            (attented_example_input, attented_current_state, attented_candidate_action, translation_x,
-             translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
-
-            input_tokens = tokenize_sample_input(
-                attented_example_input, attented_current_state, attented_candidate_action, padding_char)
-
-            inputs = list(map(lambda tensor: tensor.unsqueeze(0),
-                          make_sample_tensor(input_tokens, context_size)))
-
-            batch_tokens.append(input_tokens)
-            batch_inputs.append(inputs)
-            batch_actions.append(candidate_action)
-
-            if len(batch_inputs) == batch_size or candidate_action_index == len(candidate_actions) - 1:
-                # batch_tensors contains:
-                # [
-                #   [ tensor1, tensor2, tensor3],
-                #   [ tensor1, tensor2, tensor3],
-                #   [ tensor1, tensor2, tensor3],
-                # ]
-                inputs = [
-                    torch.cat(
-                        list(map(lambda inputs: inputs[0], batch_inputs)), dim=0),
-                    torch.cat(
-                        list(map(lambda inputs: inputs[1], batch_inputs)), dim=0),
-                    torch.cat(
-                        list(map(lambda inputs: inputs[2], batch_inputs)), dim=0),
-                ]
-                inputs = [t.to(device) for t in inputs]
-                outputs = model(inputs)
-
-                for batch_index in range(len(batch_tokens)):
-                    input_tokens = batch_tokens[batch_index]
-                    candidate_action = batch_actions[batch_index]
-                    print("input_text")
-                    print(tokens_to_text(input_tokens))
-                    action_value = outputs[batch_index].argmax(dim=-1).item()
-                    row = candidate_action.row()
-                    col = candidate_action.col()
-                    cell_value = candidate_action.cell_value()
-                    next_state = copy.deepcopy(current_state)
-                    next_state[row][col].set_value(cell_value)
-
-                    print(
-                        f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
-                    if best_action_value == None or action_value > best_action_value:
-                        best_next_state = next_state
-                        best_action_value = action_value
-                for t in inputs:
-                    del t
-                del outputs
-                # Clear accumulated batch.
-                batch_tokens = []
-                batch_inputs = []
-                batch_actions = []
-        if best_next_state == None:
+        if best_action == None:
             print_current_state(example_input, current_state, padding_char)
             raise Exception("Failed to select action")
-        current_state = best_next_state
+
+        next_state = copy.deepcopy(current_state)
+        row = best_action.row()
+        col = best_action.col()
+        cell_value = best_action.cell_value()
+        next_state[row][col].set_value(cell_value)
+
+        current_state = next_state
         print(f"best_next_state with {best_action_value}")
         print("AUTO-REGRESSIVE wannabe AGI megabot current state")
         print_current_state(example_input, current_state, padding_char)
@@ -169,3 +125,80 @@ def print_current_state(input_state, current_state, padding_char):
 
     print(input_state_text)
     print(current_state_text)
+
+
+def select_action_with_deep_q_network(
+        example_input: List[List[Cell]],
+        current_state: List[List[Cell]],
+        candidate_actions: list[QLearningAction],
+        padding_char: str,
+        context_size: int,
+        batch_size: int,
+        device: torch.device,
+        model: DecoderOnlyTransformerModel,
+):
+    best_action = None
+    best_action_value = None
+
+    batch_tokens = []
+    batch_inputs = []
+    batch_actions = []
+
+    for candidate_action_index in range(len(candidate_actions)):
+        candidate_action = candidate_actions[candidate_action_index]
+
+        (attented_example_input, attented_current_state, attented_candidate_action,
+         translation_x, translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
+
+        input_tokens = tokenize_sample_input(
+            attented_example_input, attented_current_state, attented_candidate_action, padding_char)
+
+        inputs = list(map(lambda tensor: tensor.unsqueeze(0),
+                          make_sample_tensor(input_tokens, context_size)))
+
+        batch_tokens.append(input_tokens)
+        batch_inputs.append(inputs)
+        batch_actions.append(candidate_action)
+
+        if len(batch_inputs) == batch_size or candidate_action_index == len(candidate_actions) - 1:
+            # batch_tensors contains:
+            # [
+            #   [ tensor1, tensor2, tensor3],
+            #   [ tensor1, tensor2, tensor3],
+            #   [ tensor1, tensor2, tensor3],
+            # ]
+            inputs = [
+                torch.cat(
+                    list(map(lambda inputs: inputs[0], batch_inputs)), dim=0),
+                torch.cat(
+                    list(map(lambda inputs: inputs[1], batch_inputs)), dim=0),
+                torch.cat(
+                    list(map(lambda inputs: inputs[2], batch_inputs)), dim=0),
+            ]
+            inputs = [t.to(device) for t in inputs]
+            outputs = model(inputs)
+
+            for batch_index in range(len(batch_tokens)):
+                input_tokens = batch_tokens[batch_index]
+                candidate_action = batch_actions[batch_index]
+                print("input_text")
+                print(tokens_to_text(input_tokens))
+                action_value = outputs[batch_index].argmax(dim=-1).item()
+                row = candidate_action.row()
+                col = candidate_action.col()
+                cell_value = candidate_action.cell_value()
+
+                print(
+                    f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
+                if best_action_value == None or action_value > best_action_value:
+                    best_action = candidate_action
+                    best_action_value = action_value
+            for t in inputs:
+                del t
+            del outputs
+            # Clear accumulated batch.
+            batch_tokens = []
+            batch_inputs = []
+            batch_actions = []
+
+    return best_action, best_action_value
