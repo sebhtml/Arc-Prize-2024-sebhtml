@@ -31,12 +31,10 @@ import sys
 import torch
 import json
 import pandas as pd
-from torch.utils.data import DataLoader
 from model import DecoderOnlyTransformerModel
-from playout_simulation import generate_examples, tokens_to_text
 from infrastructure import terminate_pod
 from report import plot_train_loss_graph
-from agent import apply_puzzle_action_value_policy
+from agent import apply_puzzle_action_value_policy, generate_examples
 from training import MyDataset, train, print_model_outputs_for_train_examples
 
 device = torch.device("cuda")
@@ -79,7 +77,7 @@ train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = True
+terminate_pod_at_the_end = False
 
 #
 # Puzzle configuration
@@ -97,9 +95,10 @@ cell_value_size = 10
 
 generate_train_examples = True
 # Use 100000 for dev, and use 10000000 for training the model.
-total_train_examples = 10000000
+total_train_examples = 100000
 stop_after_generating_examples = False
-playout_simulation_cpu_count = 9
+# Since we use the model itself to generate games, we can not use more than one CPU
+playout_simulation_cpu_count = 1
 train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_examples}.hdf5"
 discount = 0.99
 padding_char = ' '
