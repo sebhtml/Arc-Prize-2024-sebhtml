@@ -97,8 +97,6 @@ generate_train_examples = True
 # Use 100000 for dev, and use 10000000 for training the model.
 total_train_examples = 100
 stop_after_generating_examples = False
-# Since we use the model itself to generate games, we can not use more than one CPU
-game_simulation_cpu_count = 1
 train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_examples}.hdf5"
 discount = 0.99
 padding_char = ' '
@@ -242,7 +240,7 @@ def main():
 
     if generate_train_examples:
         generate_examples(train_dataset_path, total_train_examples, puzzle_train_examples, cell_value_size,
-                          discount, padding_char, game_simulation_cpu_count)
+                          discount, padding_char)
 
         if stop_after_generating_examples:
             sys.exit(0)

@@ -2,8 +2,6 @@ import torch
 import numpy as np
 import copy
 import random
-import concurrent.futures
-import concurrent
 from typing import List, Tuple
 from file_storage import FileStorageWriter, ExampleInputTokens
 from context import get_puzzle_starting_state, get_state_texts
@@ -335,24 +333,19 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
 
 
 def generate_examples(train_dataset_path: str, total_train_examples: int, puzzle_train_examples, cell_value_size: int,
-                      discount: float, padding_char: str, cpu_count: int):
+                      discount: float, padding_char: str):
     writer = FileStorageWriter(train_dataset_path)
     generated_examples = 0
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers=cpu_count)
     must_generate_more_examples = True
     while must_generate_more_examples:
-        # Do this loop in parallel using ProcessPoolExecutor.
-        futures = list(map(
-            lambda _: executor.submit(generate_train_action_examples,
-                                      puzzle_train_examples, cell_value_size, discount, padding_char),
-            range(cpu_count)))
-        list_of_examples = list(map(lambda future: future.result(), futures))
-        for examples in list_of_examples:
-            writer.append(examples)
-            generated_examples += len(examples)
-            if generated_examples >= total_train_examples:
-                must_generate_more_examples = False
-                break
+        examples = generate_train_action_examples(
+            puzzle_train_examples, cell_value_size, discount, padding_char)
+
+        writer.append(examples)
+        generated_examples += len(examples)
+        if generated_examples >= total_train_examples:
+            must_generate_more_examples = False
+            break
 
 
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
