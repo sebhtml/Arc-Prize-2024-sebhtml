@@ -238,13 +238,15 @@ def main():
     puzzle_test_examples = load_puzzle_examples(
         "training", selected_puzzle_id, "test")
 
+    train_examples = []
+
     if generate_train_examples:
-        generate_examples(
+        train_examples = generate_examples(
             context_size,
             batch_size,
             device,
             model,
-            train_dataset_path, total_train_examples, puzzle_train_examples, cell_value_size,
+            total_train_examples, puzzle_train_examples, cell_value_size,
             discount, padding_char)
 
         if stop_after_generating_examples:
@@ -260,8 +262,7 @@ def main():
 
     if train_model:
         print("Training model")
-        # Create a dataset.
-        dataset = MyDataset(train_dataset_path, context_size, num_classes,)
+        dataset = MyDataset(train_examples, context_size, num_classes,)
 
         step = 0
         step, steps, losses = train(

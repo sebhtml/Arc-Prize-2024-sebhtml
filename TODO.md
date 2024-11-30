@@ -1,6 +1,7 @@
 # Sprint
 
 - interleave playing and learning using the ReplayBuffer
+- add class StateActionExample
 
 - don't assume perfect play to compute future rewards
 - use AROUND_ACTION_CHAR = ','

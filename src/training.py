@@ -4,9 +4,10 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import math
-from file_storage import FileStorageReader
+from typing import List, Tuple
 from agent import make_example_tensor
 from context import tokens_to_text
+from file_storage import ExampleInputTokens
 
 
 def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
@@ -24,21 +25,23 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
 
 
 class MyDataset(Dataset):
-    def __init__(self, h5_file_path: str, context_size: int, num_classes: int):
+    def __init__(self,
+                 train_examples: List[Tuple[ExampleInputTokens, float]],
+                 context_size: int, num_classes: int):
         self.context_size = context_size
         self.num_classes = num_classes
-        self.reader = FileStorageReader(h5_file_path)
-        min_value, max_value = self.reader.get_action_value_min_max()
+        self.train_examples = train_examples
+        min_value, max_value = self.get_action_value_min_max(train_examples)
         self._minimum_action_value = min_value
         self._maximum_action_value = max_value
         print(f"_minimum_action_value {self._minimum_action_value}")
         print(f"_maximum_action_value {self._maximum_action_value}")
 
     def __len__(self):
-        return self.reader.size()
+        return len(self.train_examples)
 
     def __getitem__(self, idx):
-        example = self.reader.get(idx)
+        example = self.train_examples[idx]
 
         input_tokens = example[0]
         item_input = make_example_tensor(input_tokens, self.context_size)
@@ -52,6 +55,11 @@ class MyDataset(Dataset):
 
         item = (item_input, action_value_bin)
         return item
+
+    def get_action_value_min_max(self, train_examples: List[Tuple[ExampleInputTokens, float]]) -> Tuple[float, float]:
+        min_action_value = min(map(lambda example: example[1], train_examples))
+        max_action_value = max(map(lambda example: example[1], train_examples))
+        return min_action_value, max_action_value
 
 
 def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, step: int, model,

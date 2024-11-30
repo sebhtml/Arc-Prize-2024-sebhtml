@@ -1,9 +1,8 @@
 import torch
 import numpy as np
 import copy
-import random
 from typing import List, Tuple
-from file_storage import FileStorageWriter, ExampleInputTokens
+from file_storage import ExampleInputTokens
 from context import get_puzzle_starting_state, get_state_texts
 from context import tokenize_example_input, tokens_to_text
 from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
@@ -299,7 +298,8 @@ def generate_train_action_examples(
         batch_size: int,
         device: torch.device,
         model: DecoderOnlyTransformerModel,
-        puzzle_examples, cell_value_size, discount: float, padding_char: str):
+        puzzle_examples, cell_value_size, discount: float, padding_char: str
+) -> List[Tuple[ExampleInputTokens, float]]:
     """
     Generate (state, action, action_value) experience examples for all puzzle examples.
     We start from an empty board, and generate legal actions, and choose the best action (argmax of action value)
@@ -364,10 +364,10 @@ def generate_examples(
         batch_size: int,
         device: torch.device,
         model: DecoderOnlyTransformerModel,
-    train_dataset_path: str, total_train_examples: int, puzzle_train_examples, cell_value_size: int,
-        discount: float, padding_char: str):
-    writer = FileStorageWriter(train_dataset_path)
-    generated_examples = 0
+    total_train_examples: int, puzzle_train_examples, cell_value_size: int,
+        discount: float, padding_char: str
+) -> List[Tuple[ExampleInputTokens, float]]:
+    generated_examples = []
     must_generate_more_examples = True
     while must_generate_more_examples:
         examples = generate_train_action_examples(
@@ -377,11 +377,11 @@ def generate_examples(
             model,
             puzzle_train_examples, cell_value_size, discount, padding_char)
 
-        writer.append(examples)
-        generated_examples += len(examples)
-        if generated_examples >= total_train_examples:
+        generated_examples += examples
+        if len(generated_examples) >= total_train_examples:
             must_generate_more_examples = False
             break
+    return generated_examples
 
 
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
