@@ -77,7 +77,7 @@ train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = False
+terminate_pod_at_the_end = True
 
 #
 # Puzzle configuration
@@ -95,7 +95,7 @@ cell_value_size = 10
 
 generate_train_examples = True
 # Use 100000 for dev, and use 10000000 for training the model.
-total_train_examples = 100
+total_train_examples = 1000
 stop_after_generating_examples = False
 train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_examples}.hdf5"
 discount = 0.99

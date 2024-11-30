@@ -88,6 +88,8 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
     puzzle_width = len(current_state[0])
     puzzle_height = len(current_state)
 
+    verbose = True
+
     # Each cell is allowed to change exactly once.
     for _ in range(puzzle_width * puzzle_height):
         candidate_actions = generate_cell_actions(
@@ -103,6 +105,7 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
             batch_size,
             device,
             model,
+            verbose,
         )
 
         if best_action == None:
@@ -139,6 +142,7 @@ def select_action_with_deep_q_network(
         batch_size: int,
         device: torch.device,
         model: DecoderOnlyTransformerModel,
+        verbose: bool,
 ):
     best_action = None
     best_action_value = None
@@ -184,15 +188,17 @@ def select_action_with_deep_q_network(
             for batch_index in range(len(batch_tokens)):
                 input_tokens = batch_tokens[batch_index]
                 candidate_action = batch_actions[batch_index]
-                print("input_text")
-                print(tokens_to_text(input_tokens))
+                if verbose:
+                    print("input_text")
+                    print(tokens_to_text(input_tokens))
                 action_value = outputs[batch_index].argmax(dim=-1).item()
                 row = candidate_action.row()
                 col = candidate_action.col()
                 cell_value = candidate_action.cell_value()
 
-                print(
-                    f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
+                if verbose:
+                    print(
+                        f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
                 if best_action_value == None or action_value > best_action_value:
                     best_action = candidate_action
                     best_action_value = action_value
@@ -224,6 +230,8 @@ def play_game_using_model(
     For any cell, 10% of the random games will have a correct value for that cell.
     """
 
+    print("play_game_using_model")
+    model.eval()
     replay_buffer = ReplayBuffer()
 
     (raw_example_input, raw_example_output) = puzzle_example
@@ -248,6 +256,8 @@ def play_game_using_model(
     puzzle_width = len(current_state[0])
     puzzle_height = len(current_state)
 
+    verbose = False
+
     # Each cell is allowed to change exactly once.
     for _ in range(puzzle_width * puzzle_height):
         candidate_actions = generate_cell_actions(
@@ -263,6 +273,7 @@ def play_game_using_model(
             batch_size,
             device,
             model,
+            verbose,
         )
 
         row = best_action.row()
@@ -369,7 +380,10 @@ def generate_examples(
 ) -> List[Tuple[ExampleInputTokens, float]]:
     generated_examples = []
     must_generate_more_examples = True
+    last_counter = 0
+    step = 1
     while must_generate_more_examples:
+        must_print = False
         examples = generate_train_action_examples(
             context_size,
             batch_size,
@@ -378,9 +392,16 @@ def generate_examples(
             puzzle_train_examples, cell_value_size, discount, padding_char)
 
         generated_examples += examples
+        if len(generated_examples) >= last_counter + step:
+            must_print = True
         if len(generated_examples) >= total_train_examples:
             must_generate_more_examples = False
+            must_print = True
             break
+        if must_print:
+            print(
+                f"Generating training examples... {len(generated_examples)}/{total_train_examples}")
+            last_counter = len(generated_examples)
     return generated_examples
 
 
