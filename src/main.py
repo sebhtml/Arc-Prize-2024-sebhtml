@@ -32,7 +32,7 @@ import json
 from model import DecoderOnlyTransformerModel
 from infrastructure import terminate_pod
 from agent import apply_puzzle_action_value_policy
-from training import train_model_with_experience_replay
+from training import train_model_using_experience_replay
 
 # device = xm.xla_device()
 # device = torch.device("cpu")
@@ -233,7 +233,7 @@ def main():
         model.load_state_dict(state_dict)
 
     if train_model:
-        train_model_with_experience_replay(
+        train_model_using_experience_replay(
             context_size, batch_size, device, model, total_train_examples,
             puzzle_train_examples, cell_value_size,
             discount, padding_char, num_classes, shuffle_train_examples, lr,

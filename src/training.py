@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+from torch.nn import CrossEntropyLoss
 from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
@@ -73,11 +73,12 @@ def trim_list(lst, k):
     return lst[-k:] if len(lst) > k else lst
 
 
-def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, step: int, model,
-          lr: float, weight_decay: float, max_grad_norm: float, device,):
+def train(
+        criterion: CrossEntropyLoss,
+        optimizer: AdamW,
+        dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, step: int, model,
+        max_grad_norm: float, device,):
     model.train()
-    criterion = nn.CrossEntropyLoss()
-    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     trained_train_examples = dataset.__len__()
     num_steps = 1 * math.ceil(trained_train_examples / batch_size)
@@ -92,29 +93,28 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, ste
     train_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle_train_examples, num_workers=8, drop_last=True)
 
-    for epoch in range(1):
-        for data in train_loader:
-            optimizer.zero_grad()
-            (inputs, targets) = data
-            inputs = [t.to(device) for t in inputs]
-            targets = targets.to(device)
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-            optimizer.step()
-            loss = loss.cpu().item()
+    data = next(iter(train_loader))
 
-            print(
-                f"Step: {step}/{num_steps}  epoch: {epoch}  loss: {loss:.8f}")
-            steps.append(step)
-            losses.append(loss)
-            for t in inputs:
-                del t
-            del targets
-            del outputs
-            step += 1
-            break
+    optimizer.zero_grad()
+    (inputs, targets) = data
+    inputs = [t.to(device) for t in inputs]
+    targets = targets.to(device)
+    outputs = model(inputs)
+    loss = criterion(outputs, targets)
+    loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+    optimizer.step()
+    loss = loss.cpu().item()
+
+    print(
+        f"Step: {step}/{num_steps}  loss: {loss:.8f}")
+    steps.append(step)
+    losses.append(loss)
+    for t in inputs:
+        del t
+    del targets
+    del outputs
+    step += 1
 
     return step, steps, losses
 
@@ -185,7 +185,7 @@ def get_grad_norm(model):
     return total_norm
 
 
-def train_model_with_experience_replay(
+def train_model_using_experience_replay(
         context_size: int, batch_size: int, device: torch.device,
     model: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
@@ -194,10 +194,14 @@ def train_model_with_experience_replay(
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
 
 ):
+    criterion = CrossEntropyLoss()
+    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     experience_replay_data_set = []
     for experience_replay_step in range(4):
         experience_replay_data_set = train_model_with_experience_replay_data_set(
+            criterion,
+            optimizer,
             experience_replay_step,
             experience_replay_data_set,
             context_size, batch_size, device, model, total_train_examples,
@@ -208,9 +212,11 @@ def train_model_with_experience_replay(
 
 
 def train_model_with_experience_replay_data_set(
-        experience_replay_step: int,
-        experience_replay_data_set: List[Tuple[ExampleInputTokens, float]],
-        context_size: int, batch_size: int, device: torch.device,
+    criterion: CrossEntropyLoss,
+    optimizer: AdamW,
+    experience_replay_step: int,
+    experience_replay_data_set: List[Tuple[ExampleInputTokens, float]],
+    context_size: int, batch_size: int, device: torch.device,
     model: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
@@ -241,8 +247,10 @@ def train_model_with_experience_replay_data_set(
 
     step = 0
     step, steps, losses = train(
+        criterion,
+        optimizer,
         dataset, batch_size, shuffle_train_examples, step, model,
-        lr, weight_decay, max_grad_norm, device,)
+        max_grad_norm, device,)
 
     if print_model_outputs:
         print_model_outputs_for_train_examples(
