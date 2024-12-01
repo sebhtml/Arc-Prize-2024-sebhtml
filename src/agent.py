@@ -347,10 +347,6 @@ def generate_examples(
     total_train_examples: int, puzzle_train_examples, cell_value_size: int,
         discount: float, padding_char: str
 ) -> List[Tuple[ExampleInputTokens, float]]:
-    """
-    Human-level control through deep reinforcement learning
-    https://www.nature.com/articles/nature14236
-    """
     generated_examples = []
     must_generate_more_examples = True
     last_counter = 0

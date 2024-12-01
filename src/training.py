@@ -1,4 +1,3 @@
-from typing import List, Tuple
 import torch
 from torch import nn
 from torch.optim import AdamW
@@ -6,9 +5,10 @@ from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import pandas as pd
 import math
+from datetime import datetime, timezone
 from typing import List, Tuple
 from agent import make_example_tensor, generate_examples
-from context import tokens_to_textq
+from context import tokens_to_text
 from context import ExampleInputTokens
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
@@ -35,7 +35,7 @@ class MyDataset(Dataset):
         self.context_size = context_size
         self.num_classes = num_classes
         self.train_examples = train_examples
-        min_value, max_value = self.get_action_value_min_max(train_examples)
+        min_value, max_value = -50.0, +50.0
         self._minimum_action_value = min_value
         self._maximum_action_value = max_value
         print(f"_minimum_action_value {self._minimum_action_value}")
@@ -64,6 +64,13 @@ class MyDataset(Dataset):
         min_action_value = min(map(lambda example: example[1], train_examples))
         max_action_value = max(map(lambda example: example[1], train_examples))
         return min_action_value, max_action_value
+
+
+def trim_list(lst, k):
+    """
+    keep at most k elements from list lst
+    """
+    return lst[-k:] if len(lst) > k else lst
 
 
 def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, step: int, model,
@@ -185,17 +192,52 @@ def train_model_with_experience_replay(
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool, num_epochs: int, lr: float, weight_decay: float,
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
-    train_loss_csv_path: str, train_loss_png_path: str,
+
 ):
-    train_examples = generate_examples(
+
+    experience_replay_data_set = []
+    for experience_replay_step in range(4):
+        experience_replay_data_set = train_model_with_experience_replay_data_set(
+            experience_replay_step,
+            experience_replay_data_set,
+            context_size, batch_size, device, model, total_train_examples,
+            puzzle_train_examples, cell_value_size,
+            discount, padding_char, num_classes, shuffle_train_examples, num_epochs, lr,
+            weight_decay, max_grad_norm, print_model_outputs, save_step_losses,
+        )
+
+
+def train_model_with_experience_replay_data_set(
+        experience_replay_step: int,
+        experience_replay_data_set: List[Tuple[ExampleInputTokens, float]],
+        context_size: int, batch_size: int, device: torch.device,
+    model: DecoderOnlyTransformerModel, total_train_examples: int,
+    puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
+    cell_value_size: int, discount: float, padding_char: str, num_classes: int,
+    shuffle_train_examples: bool, num_epochs: int, lr: float, weight_decay: float,
+    max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
+) -> List[Tuple[ExampleInputTokens, float]]:
+    """
+    Human-level control through deep reinforcement learning
+    https://www.nature.com/articles/nature14236
+    """
+    new_train_examples = generate_examples(
         context_size,
         batch_size,
         device,
         model,
         total_train_examples, puzzle_train_examples, cell_value_size,
         discount, padding_char)
-    print("Training model")
-    dataset = MyDataset(train_examples, context_size, num_classes,)
+    experience_replay_data_set_size = 1024 * batch_size
+    experience_replay_data_set += new_train_examples
+    experience_replay_data_set = trim_list(
+        experience_replay_data_set,
+        experience_replay_data_set_size,
+    )
+    print(
+        f"Training model with experience replay data set, {len(experience_replay_data_set)} examples.")
+    dataset = MyDataset(
+        experience_replay_data_set, context_size, num_classes,)
 
     step = 0
     step, steps, losses = train(
@@ -206,7 +248,17 @@ def train_model_with_experience_replay(
         print_model_outputs_for_train_examples(
             dataset, batch_size, model, device,)
 
+    dynamic_time_marker = datetime.now(timezone.utc).isoformat()
+    train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-{experience_replay_step}-step_loss.csv"
+    train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-{experience_replay_step}-step_loss.png"
+
+    step_train_loss_csv_path = f"" + \
+        train_loss_csv_path
+    step_train_loss_png_path = f"" + \
+        train_loss_png_path
     if save_step_losses:
         df = pd.DataFrame(data={'step': steps, 'loss': losses})
-        df.to_csv(train_loss_csv_path, index=False)
-        plot_train_loss_graph(steps, losses, train_loss_png_path)
+        df.to_csv(step_train_loss_csv_path, index=False)
+        plot_train_loss_graph(steps, losses, step_train_loss_png_path)
+
+    return experience_replay_data_set

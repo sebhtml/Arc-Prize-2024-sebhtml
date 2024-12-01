@@ -27,7 +27,6 @@
 from typing import List, Tuple
 import subprocess
 import time
-from datetime import datetime, timezone
 import torch
 import json
 from model import DecoderOnlyTransformerModel
@@ -65,9 +64,6 @@ kaggle_input_path = "/workspace/kaggle-input"
 logs_path = "/workspace/logs"
 
 time_marker = '2024-11-09T00:18:25.063611+00:00'
-dynamic_time_marker = datetime.now(timezone.utc).isoformat()
-train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.csv"
-train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 
 #
 # Infrastructure configuration
@@ -245,7 +241,6 @@ def main():
             puzzle_train_examples, cell_value_size,
             discount, padding_char, num_classes, shuffle_train_examples, num_epochs, lr,
             weight_decay, max_grad_norm, print_model_outputs, save_step_losses,
-            train_loss_csv_path, train_loss_png_path,
         )
 
     if save_neural_net_model:
