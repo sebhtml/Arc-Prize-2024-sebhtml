@@ -1,7 +1,13 @@
 # Research and Development
 
 - train once experience data set contains 4 * batch_size
+
 - train after every taken action
+- generate_train_action_examples should receive just one puzzle example
+- play a bunch of games, then extract examples
+
+# Target Q Network
+
 - make the QDN have only 10 actions: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 - use a target Q network for the future rewards
 - implement epsilon-greedy policy for random exploration
@@ -11,8 +17,6 @@
 - remove total_train_examples
 - add class for configuration
 
-- generate_train_action_examples should receive just one puzzle example
-- play a bunch of games, then extract examples
 
 - add class StateActionExample
 

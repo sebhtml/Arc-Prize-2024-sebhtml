@@ -162,7 +162,7 @@ save_neural_net_model = True
 #
 # Options for evaluating AI neural net model
 #
-print_model_outputs = True
+print_model_outputs = False
 run_autoregressive_inference_on_train_examples = True
 run_autoregressive_inference_on_test_examples = True
 

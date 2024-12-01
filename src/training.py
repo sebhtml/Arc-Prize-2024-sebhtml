@@ -192,20 +192,19 @@ def train_model_using_experience_replay(
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             criterion,
             optimizer,
-            step,
             experience_replay_data_set,
             context_size, batch_size, device, model, total_train_examples,
             puzzle_train_examples, cell_value_size,
-            discount, padding_char, num_classes, shuffle_train_examples, lr,
-            weight_decay, max_grad_norm, print_model_outputs, save_step_losses,
+            discount, padding_char, num_classes, shuffle_train_examples,
+            max_grad_norm, print_model_outputs,
         )
         steps.append(step)
         losses.append(loss)
         print(f"Step: {step}/{num_steps}  loss: {loss:.8f}")
 
     dynamic_time_marker = datetime.now(timezone.utc).isoformat()
-    train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-{step}-step_loss.csv"
-    train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-{step}-step_loss.png"
+    train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.csv"
+    train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 
     if save_step_losses:
         df = pd.DataFrame(data={'step': steps, 'loss': losses})
@@ -216,14 +215,13 @@ def train_model_using_experience_replay(
 def train_model_with_experience_replay_data_set(
     criterion: CrossEntropyLoss,
     optimizer: AdamW,
-    experience_replay_step: int,
     experience_replay_data_set: List[Tuple[ExampleInputTokens, float]],
     context_size: int, batch_size: int, device: torch.device,
     model: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
-    shuffle_train_examples: bool, lr: float, weight_decay: float,
-    max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
+    shuffle_train_examples: bool,
+    max_grad_norm: float, print_model_outputs: bool,
 ) -> List[Tuple[ExampleInputTokens, float]]:
     """
     Human-level control through deep reinforcement learning
