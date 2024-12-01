@@ -1,9 +1,9 @@
 # Sprint
 
-- generate_train_action_examples should receive just one puzzle example
-- play a bunch of games, then extract examples
 - interleave playing and learning using the ReplayBuffer
 
+- generate_train_action_examples should receive just one puzzle example
+- play a bunch of games, then extract examples
 - add class StateActionExample
 
 - use AROUND_ACTION_CHAR = ','
