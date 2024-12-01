@@ -74,17 +74,16 @@ def trim_list(lst, k):
 
 
 def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, step: int, model,
-          num_epochs: int, lr: float, weight_decay: float, max_grad_norm: float, device,):
+          lr: float, weight_decay: float, max_grad_norm: float, device,):
     model.train()
     criterion = nn.CrossEntropyLoss()
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     trained_train_examples = dataset.__len__()
-    num_steps = num_epochs * math.ceil(trained_train_examples / batch_size)
+    num_steps = 1 * math.ceil(trained_train_examples / batch_size)
 
     print(f"trained_train_examples {trained_train_examples}")
     print(f"batch_size {batch_size}")
-    print(f"num_epochs {num_epochs}")
     print(f"num_steps {num_steps}")
 
     steps = []
@@ -93,7 +92,7 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, ste
     train_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle_train_examples, num_workers=8, drop_last=True)
 
-    for epoch in range(num_epochs):
+    for epoch in range(1):
         for data in train_loader:
             optimizer.zero_grad()
             (inputs, targets) = data
@@ -115,6 +114,7 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, ste
             del targets
             del outputs
             step += 1
+            break
 
     return step, steps, losses
 
@@ -137,7 +137,7 @@ def print_train_examples(train_action_examples):
 def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, model, device,):
     print("[after training] print_model_outputs_for_train_examples")
     inference_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=False)
+        dataset, batch_size=batch_size, shuffle=True)
     for data in inference_loader:
         (inputs, targets) = data
         inputs = [t.to(device) for t in inputs]
@@ -190,7 +190,7 @@ def train_model_with_experience_replay(
     model: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
-    shuffle_train_examples: bool, num_epochs: int, lr: float, weight_decay: float,
+    shuffle_train_examples: bool, lr: float, weight_decay: float,
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
 
 ):
@@ -202,7 +202,7 @@ def train_model_with_experience_replay(
             experience_replay_data_set,
             context_size, batch_size, device, model, total_train_examples,
             puzzle_train_examples, cell_value_size,
-            discount, padding_char, num_classes, shuffle_train_examples, num_epochs, lr,
+            discount, padding_char, num_classes, shuffle_train_examples, lr,
             weight_decay, max_grad_norm, print_model_outputs, save_step_losses,
         )
 
@@ -214,7 +214,7 @@ def train_model_with_experience_replay_data_set(
     model: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
-    shuffle_train_examples: bool, num_epochs: int, lr: float, weight_decay: float,
+    shuffle_train_examples: bool, lr: float, weight_decay: float,
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
 ) -> List[Tuple[ExampleInputTokens, float]]:
     """
@@ -242,7 +242,7 @@ def train_model_with_experience_replay_data_set(
     step = 0
     step, steps, losses = train(
         dataset, batch_size, shuffle_train_examples, step, model,
-        num_epochs, lr, weight_decay, max_grad_norm, device,)
+        lr, weight_decay, max_grad_norm, device,)
 
     if print_model_outputs:
         print_model_outputs_for_train_examples(

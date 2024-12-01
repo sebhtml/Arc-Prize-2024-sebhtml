@@ -149,9 +149,6 @@ lr = 0.0001
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
 weight_decay = 0.1
 
-# Use 1 epoch when training the model, 4 for dev
-num_epochs = 1
-
 #
 # Options for loading AI neural net model
 #
@@ -239,7 +236,7 @@ def main():
         train_model_with_experience_replay(
             context_size, batch_size, device, model, total_train_examples,
             puzzle_train_examples, cell_value_size,
-            discount, padding_char, num_classes, shuffle_train_examples, num_epochs, lr,
+            discount, padding_char, num_classes, shuffle_train_examples, lr,
             weight_decay, max_grad_norm, print_model_outputs, save_step_losses,
         )
 
