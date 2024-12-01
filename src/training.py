@@ -8,8 +8,8 @@ import pandas as pd
 import math
 from typing import List, Tuple
 from agent import make_example_tensor, generate_examples
-from context import tokens_to_text
-from file_storage import ExampleInputTokens
+from context import tokens_to_textq
+from context import ExampleInputTokens
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
 

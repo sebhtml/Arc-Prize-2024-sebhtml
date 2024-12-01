@@ -35,8 +35,6 @@ from infrastructure import terminate_pod
 from agent import apply_puzzle_action_value_policy
 from training import train_model_with_experience_replay
 
-device = torch.device("cuda")
-
 # device = xm.xla_device()
 # device = torch.device("cpu")
 
@@ -213,6 +211,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type) -> List[Tuple[List[List
 
 
 def main():
+    device = torch.device("cuda")
     model = DecoderOnlyTransformerModel(
         vocab_size, d_model, d_ff,
         input_dropout, attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,

@@ -2,45 +2,14 @@ import torch
 import numpy as np
 import copy
 from typing import List, Tuple
-from file_storage import ExampleInputTokens
 from context import get_puzzle_starting_state, get_state_texts
-from context import tokenize_example_input, tokens_to_text
-from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
+from context import tokenize_example_input, tokens_to_text, make_example_tensor
+from context import ExampleInputTokens
 from vision import VACANT_CELL_VALUE
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, ReplayBuffer, Experience, GameState
 from q_learning import reward, sum_of_future_rewards
 from model import DecoderOnlyTransformerModel
-
-
-def filter_token(token: int) -> bool:
-    """
-    The ASCII codes of characters '0' to '9' and of character '_'
-    are the only allowed tokens in the context.
-    """
-    legal_tokens = list(map(lambda x: ord(str(x)), range(10))) + \
-        list(map(ord, [VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR]))
-    return token in legal_tokens
-
-
-def filter_tokens(tokens):
-    return list(filter(filter_token, tokens))
-
-
-def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: int):
-    example_input = filter_tokens(example_input_tokens._input_state)
-    current_state = filter_tokens(example_input_tokens._current_state)
-    candidate_action = filter_tokens(example_input_tokens._action)
-
-    input_tokens: List[int] = example_input + current_state + candidate_action
-    if len(input_tokens) > context_size:
-        raise Exception(
-            f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
-    item_input = [torch.tensor(example_input),
-                  torch.tensor(current_state),
-                  torch.tensor(candidate_action)
-                  ]
-    return item_input
 
 
 def infer_action_value(model, input_text, context_size, device):
@@ -378,6 +347,10 @@ def generate_examples(
     total_train_examples: int, puzzle_train_examples, cell_value_size: int,
         discount: float, padding_char: str
 ) -> List[Tuple[ExampleInputTokens, float]]:
+    """
+    Human-level control through deep reinforcement learning
+    https://www.nature.com/articles/nature14236
+    """
     generated_examples = []
     must_generate_more_examples = True
     last_counter = 0

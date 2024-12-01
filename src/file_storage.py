@@ -1,13 +1,7 @@
 import numpy as np
 import h5py
 from itertools import tee
-
-
-class ExampleInputTokens:
-    def __init__(self, input_state: str, current_state: str, action: str):
-        self._input_state = input_state
-        self._current_state = current_state
-        self._action = action
+from context import ExampleInputTokens
 
 
 def __get_np_structured_array_dtype():

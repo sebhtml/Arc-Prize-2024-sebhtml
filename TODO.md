@@ -1,6 +1,8 @@
 # Sprint
 
-- TODO remove total_train_examples
+- make the QDN have only 14 actions: left, up, down, right, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+- remove total_train_examples
+- add code for loading configuration from yml file
 
 - generate_train_action_examples should receive just one puzzle example
 - play a bunch of games, then extract examples

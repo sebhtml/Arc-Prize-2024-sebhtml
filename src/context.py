@@ -1,13 +1,17 @@
-from file_storage import FileStorageWriter, ExampleInputTokens
-import random
+import torch
 import copy
-import numpy as np
-from typing import List, Tuple
-from vision import Cell, do_visual_fixation
+from typing import List
+from vision import Cell
 from vision import VACANT_CELL_VALUE,  MASKED_CELL_VALUE,  OUTSIDE_CELL_VALUE
 from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
-from q_learning import QLearningAction, ReplayBuffer, Experience, GameState
-from q_learning import reward, sum_of_future_rewards
+from q_learning import QLearningAction
+
+
+class ExampleInputTokens:
+    def __init__(self, input_state: str, current_state: str, action: str):
+        self._input_state = input_state
+        self._current_state = current_state
+        self._action = action
 
 
 def actions_act_on_same_cell(action_1: QLearningAction, action_2: QLearningAction) -> bool:
@@ -100,3 +104,33 @@ def action_to_text(state, action: QLearningAction) -> str:
             output += value
         output += "\n"
     return output
+
+
+def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: int):
+    example_input = filter_tokens(example_input_tokens._input_state)
+    current_state = filter_tokens(example_input_tokens._current_state)
+    candidate_action = filter_tokens(example_input_tokens._action)
+
+    input_tokens: List[int] = example_input + current_state + candidate_action
+    if len(input_tokens) > context_size:
+        raise Exception(
+            f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
+    item_input = [torch.tensor(example_input),
+                  torch.tensor(current_state),
+                  torch.tensor(candidate_action)
+                  ]
+    return item_input
+
+
+def filter_tokens(tokens):
+    return list(filter(filter_token, tokens))
+
+
+def filter_token(token: int) -> bool:
+    """
+    The ASCII codes of characters '0' to '9' and of character '_'
+    are the only allowed tokens in the context.
+    """
+    legal_tokens = list(map(lambda x: ord(str(x)), range(10))) + \
+        list(map(ord, [VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR]))
+    return token in legal_tokens
