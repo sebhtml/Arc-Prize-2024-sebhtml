@@ -1,10 +1,12 @@
-# Research and Development Objective
+# Research and Development
 
+- train once experience data set contains 4 * batch_size
+- train after every taken action
 - make the QDN have only 10 actions: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+- use a target Q network for the future rewards
+- implement epsilon-greedy policy for random exploration
 
 # Backlog
-
-- use a target Q network for the future rewards
 
 - remove total_train_examples
 - add class for configuration

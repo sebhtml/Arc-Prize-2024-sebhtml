@@ -76,22 +76,13 @@ def trim_list(lst, k):
 def train(
         criterion: CrossEntropyLoss,
         optimizer: AdamW,
-        dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, step: int, model,
-        max_grad_norm: float, device,):
+        dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, model: DecoderOnlyTransformerModel,
+        max_grad_norm: float, device: torch.device,
+):
     model.train()
 
-    trained_train_examples = dataset.__len__()
-    num_steps = 1 * math.ceil(trained_train_examples / batch_size)
-
-    print(f"trained_train_examples {trained_train_examples}")
-    print(f"batch_size {batch_size}")
-    print(f"num_steps {num_steps}")
-
-    steps = []
-    losses = []
-
     train_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=shuffle_train_examples, num_workers=8, drop_last=True)
+        dataset, batch_size=batch_size, shuffle=shuffle_train_examples, num_workers=2, drop_last=True)
 
     data = next(iter(train_loader))
 
@@ -106,17 +97,12 @@ def train(
     optimizer.step()
     loss = loss.cpu().item()
 
-    print(
-        f"Step: {step}/{num_steps}  loss: {loss:.8f}")
-    steps.append(step)
-    losses.append(loss)
     for t in inputs:
         del t
     del targets
     del outputs
-    step += 1
 
-    return step, steps, losses
+    return loss
 
 
 def print_train_examples(train_action_examples):
@@ -197,18 +183,34 @@ def train_model_using_experience_replay(
     criterion = CrossEntropyLoss()
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
+    steps = []
+    losses = []
+    num_steps = 4
+
     experience_replay_data_set = []
-    for experience_replay_step in range(4):
-        experience_replay_data_set = train_model_with_experience_replay_data_set(
+    for step in range(num_steps):
+        experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             criterion,
             optimizer,
-            experience_replay_step,
+            step,
             experience_replay_data_set,
             context_size, batch_size, device, model, total_train_examples,
             puzzle_train_examples, cell_value_size,
             discount, padding_char, num_classes, shuffle_train_examples, lr,
             weight_decay, max_grad_norm, print_model_outputs, save_step_losses,
         )
+        steps.append(step)
+        losses.append(loss)
+        print(f"Step: {step}/{num_steps}  loss: {loss:.8f}")
+
+    dynamic_time_marker = datetime.now(timezone.utc).isoformat()
+    train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-{step}-step_loss.csv"
+    train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-{step}-step_loss.png"
+
+    if save_step_losses:
+        df = pd.DataFrame(data={'step': steps, 'loss': losses})
+        df.to_csv(train_loss_csv_path, index=False)
+        plot_train_loss_graph(steps, losses, train_loss_png_path)
 
 
 def train_model_with_experience_replay_data_set(
@@ -245,28 +247,14 @@ def train_model_with_experience_replay_data_set(
     dataset = MyDataset(
         experience_replay_data_set, context_size, num_classes,)
 
-    step = 0
-    step, steps, losses = train(
+    loss = train(
         criterion,
         optimizer,
-        dataset, batch_size, shuffle_train_examples, step, model,
+        dataset, batch_size, shuffle_train_examples, model,
         max_grad_norm, device,)
 
     if print_model_outputs:
         print_model_outputs_for_train_examples(
             dataset, batch_size, model, device,)
 
-    dynamic_time_marker = datetime.now(timezone.utc).isoformat()
-    train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-{experience_replay_step}-step_loss.csv"
-    train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-{experience_replay_step}-step_loss.png"
-
-    step_train_loss_csv_path = f"" + \
-        train_loss_csv_path
-    step_train_loss_png_path = f"" + \
-        train_loss_png_path
-    if save_step_losses:
-        df = pd.DataFrame(data={'step': steps, 'loss': losses})
-        df.to_csv(step_train_loss_csv_path, index=False)
-        plot_train_loss_graph(steps, losses, step_train_loss_png_path)
-
-    return experience_replay_data_set
+    return experience_replay_data_set, loss
