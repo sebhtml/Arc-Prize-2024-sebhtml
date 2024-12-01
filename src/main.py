@@ -24,18 +24,16 @@
 
 # import torch_xla
 # import torch_xla.core.xla_model as xm
+from typing import List, Tuple
 import subprocess
 import time
 from datetime import datetime, timezone
-import sys
 import torch
 import json
-import pandas as pd
 from model import DecoderOnlyTransformerModel
 from infrastructure import terminate_pod
-from report import plot_train_loss_graph
-from agent import apply_puzzle_action_value_policy, generate_examples
-from training import MyDataset, train, print_model_outputs_for_train_examples
+from agent import apply_puzzle_action_value_policy
+from training import train_model_with_experience_replay
 
 device = torch.device("cuda")
 
@@ -77,7 +75,7 @@ train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = True
+terminate_pod_at_the_end = False
 
 #
 # Puzzle configuration
@@ -93,11 +91,7 @@ cell_value_size = 10
 # Game simulation configuration
 #
 
-generate_train_examples = True
-# Use 100000 for dev, and use 10000000 for training the model.
-total_train_examples = 1000
-stop_after_generating_examples = False
-train_dataset_path = f"/workspace/train_datasets/{time_marker}-{selected_puzzle_id}-{total_train_examples}.hdf5"
+total_train_examples = 49 * 2
 discount = 0.99
 padding_char = ' '
 
@@ -155,7 +149,7 @@ max_grad_norm = 1.0
 # - 1536 with NVIDIA A40 (48 GB VRAM)
 # - 512 with NVIDIA A4000 (16 GB VRAM)
 # See https://x.com/ylecun/status/989610208497360896?lang=en
-batch_size = 512
+batch_size = 32
 lr = 0.0001
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
 # In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
@@ -190,7 +184,7 @@ def get_puzzle_solution(venue, puzzle_id):
     return solution
 
 
-def load_puzzle_examples(venue, puzzle_id, example_type):
+def load_puzzle_examples(venue, puzzle_id, example_type) -> List[Tuple[List[List[int]], List[List[int]]]]:
     """
     - venue is "training" or "evaluation" or "test"
     - example_type is "train" or "test"
@@ -238,20 +232,6 @@ def main():
     puzzle_test_examples = load_puzzle_examples(
         "training", selected_puzzle_id, "test")
 
-    train_examples = []
-
-    if generate_train_examples:
-        train_examples = generate_examples(
-            context_size,
-            batch_size,
-            device,
-            model,
-            total_train_examples, puzzle_train_examples, cell_value_size,
-            discount, padding_char)
-
-        if stop_after_generating_examples:
-            sys.exit(0)
-
     model_total_params = sum(p.numel() for p in model.parameters())
     print(f"parameters: {model_total_params}")
 
@@ -261,26 +241,17 @@ def main():
         model.load_state_dict(state_dict)
 
     if train_model:
-        print("Training model")
-        dataset = MyDataset(train_examples, context_size, num_classes,)
+        train_model_with_experience_replay(
+            context_size, batch_size, device, model, total_train_examples,
+            puzzle_train_examples, cell_value_size,
+            discount, padding_char, num_classes, shuffle_train_examples, num_epochs, lr,
+            weight_decay, max_grad_norm, print_model_outputs, save_step_losses,
+            train_loss_csv_path, train_loss_png_path,
+        )
 
-        step = 0
-        step, steps, losses = train(
-            dataset, batch_size, shuffle_train_examples, step, model,
-            num_epochs, lr, weight_decay, max_grad_norm, device,)
-
-        if print_model_outputs:
-            print_model_outputs_for_train_examples(
-                dataset, batch_size, model, device,)
-
-        if save_step_losses:
-            df = pd.DataFrame(data={'step': steps, 'loss': losses})
-            df.to_csv(train_loss_csv_path, index=False)
-            plot_train_loss_graph(steps, losses, train_loss_png_path)
-
-        if save_neural_net_model:
-            torch.save(model.state_dict(),
-                       model_file_path)
+    if save_neural_net_model:
+        torch.save(model.state_dict(),
+                   model_file_path)
 
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.
     if run_autoregressive_inference_on_train_examples:

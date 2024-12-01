@@ -1,9 +1,11 @@
 # Sprint
 
-- interleave playing and learning using the ReplayBuffer
+- TODO remove total_train_examples
 
 - generate_train_action_examples should receive just one puzzle example
 - play a bunch of games, then extract examples
+
+- use a target Q network for the future rewards
 - add class StateActionExample
 
 - use AROUND_ACTION_CHAR = ','

@@ -1,13 +1,17 @@
+from typing import List, Tuple
 import torch
 from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
+import pandas as pd
 import math
 from typing import List, Tuple
-from agent import make_example_tensor
+from agent import make_example_tensor, generate_examples
 from context import tokens_to_text
 from file_storage import ExampleInputTokens
+from report import plot_train_loss_graph
+from model import DecoderOnlyTransformerModel
 
 
 def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
@@ -80,7 +84,7 @@ def train(dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, ste
     losses = []
 
     train_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=shuffle_train_examples, num_workers=8)
+        dataset, batch_size=batch_size, shuffle=shuffle_train_examples, num_workers=8, drop_last=True)
 
     for epoch in range(num_epochs):
         for data in train_loader:
@@ -172,3 +176,37 @@ def get_grad_norm(model):
         total_norm = total_norm**0.5
 
     return total_norm
+
+
+def train_model_with_experience_replay(
+        context_size: int, batch_size: int, device: torch.device,
+    model: DecoderOnlyTransformerModel, total_train_examples: int,
+    puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
+    cell_value_size: int, discount: float, padding_char: str, num_classes: int,
+    shuffle_train_examples: bool, num_epochs: int, lr: float, weight_decay: float,
+    max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
+    train_loss_csv_path: str, train_loss_png_path: str,
+):
+    train_examples = generate_examples(
+        context_size,
+        batch_size,
+        device,
+        model,
+        total_train_examples, puzzle_train_examples, cell_value_size,
+        discount, padding_char)
+    print("Training model")
+    dataset = MyDataset(train_examples, context_size, num_classes,)
+
+    step = 0
+    step, steps, losses = train(
+        dataset, batch_size, shuffle_train_examples, step, model,
+        num_epochs, lr, weight_decay, max_grad_norm, device,)
+
+    if print_model_outputs:
+        print_model_outputs_for_train_examples(
+            dataset, batch_size, model, device,)
+
+    if save_step_losses:
+        df = pd.DataFrame(data={'step': steps, 'loss': losses})
+        df.to_csv(train_loss_csv_path, index=False)
+        plot_train_loss_graph(steps, losses, train_loss_png_path)
