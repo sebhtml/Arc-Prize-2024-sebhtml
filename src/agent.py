@@ -397,7 +397,6 @@ def generate_examples(
         if len(generated_examples) >= total_train_examples:
             must_generate_more_examples = False
             must_print = True
-            break
         if must_print:
             print(
                 f"Generating training examples... {len(generated_examples)}/{total_train_examples}")
