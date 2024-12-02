@@ -11,6 +11,7 @@
 - make the QDN have only 10 actions: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 - use a target Q network for the future rewards
 - implement epsilon-greedy policy for random exploration
+- also mask non-vacant cells in visual fixation
 
 # Backlog
 
