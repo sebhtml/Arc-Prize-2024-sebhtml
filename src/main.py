@@ -69,7 +69,7 @@ time_marker = '2024-11-09T00:18:25.063611+00:00'
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = False
+terminate_pod_at_the_end = True
 
 #
 # Puzzle configuration
@@ -162,7 +162,7 @@ save_neural_net_model = True
 #
 # Options for evaluating AI neural net model
 #
-print_model_outputs = False
+print_model_outputs = True
 run_autoregressive_inference_on_train_examples = True
 run_autoregressive_inference_on_test_examples = True
 

@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import copy
+import random
 from typing import List, Tuple
 from context import get_puzzle_starting_state, get_state_texts
 from context import tokenize_example_input, tokens_to_text, make_example_tensor
@@ -374,14 +375,28 @@ def generate_examples(
 
 
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
-    candidate_actions = []
     assert current_state != None
+
+    vacant_cells = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
             # A cell can only be changed once.
-            if current_state[row][col].value() != VACANT_CELL_VALUE:
-                continue
-            for new_value in range(cell_value_size):
-                action = QLearningAction(row, col, new_value)
-                candidate_actions.append(action)
+            if current_state[row][col].value() == VACANT_CELL_VALUE:
+                vacant_cells.append([row, col])
+
+    if len(vacant_cells) == 0:
+        return []
+
+    # Select randomly a cell to be filled.
+    i = random.randrange(0, len(vacant_cells))
+
+    vacant_cell = vacant_cells[i]
+    row = vacant_cell[0]
+    col = vacant_cell[1]
+
+    candidate_actions = []
+    for new_value in range(cell_value_size):
+        action = QLearningAction(row, col, new_value)
+        candidate_actions.append(action)
+
     return candidate_actions
