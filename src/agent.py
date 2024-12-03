@@ -305,13 +305,7 @@ def generate_train_action_examples(
 
 def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Tuple[ExampleInputTokens, float]]:
     """
-    This software used reinforcement learning.
-    It uses Q-learning.
-
-    See https://en.wikipedia.org/wiki/Q-learning
-    See https://en.wikipedia.org/wiki/Bellman_equation
-
-    See https://www.science.org/doi/10.1126/science.153.3731.34
+    Generate (state, action, action_value) action examples for a puzzle example.
     """
 
     examples = []

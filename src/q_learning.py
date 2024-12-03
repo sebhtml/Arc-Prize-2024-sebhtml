@@ -83,6 +83,16 @@ class ReplayBuffer:
 def sum_of_future_rewards(immediate_reward: float, discount: float,
                           attented_current_state: List[List[Cell]],
                           attented_candidate_action: QLearningAction) -> float:
+    """
+    This software used reinforcement learning.
+    It uses Q-learning.
+
+    See https://en.wikipedia.org/wiki/Q-learning
+    See https://en.wikipedia.org/wiki/Bellman_equation
+
+    See https://www.science.org/doi/10.1126/science.153.3731.34
+    """
+
     expected_rewards = 0.0
     t = 0
 
