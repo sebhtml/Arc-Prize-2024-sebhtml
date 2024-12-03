@@ -1,10 +1,7 @@
 # Research and Development
 
-- train once experience data set contains 4 * batch_size
-
 - train after every taken action
-- generate_train_action_examples should receive just one puzzle example
-- play a bunch of games, then extract examples
+- train once experience data set contains 4 * batch_size
 
 # Target Q Network
 
