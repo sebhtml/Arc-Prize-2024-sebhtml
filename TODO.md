@@ -2,6 +2,8 @@
 
 - train after every taken action
 - train once experience data set contains 4 * batch_size
+- use Emulator in unsupervised inference
+- remove type Cell
 
 # Target Q Network
 

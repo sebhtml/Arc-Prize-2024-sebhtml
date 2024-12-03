@@ -13,6 +13,7 @@ from context import tokens_to_text
 from context import ExampleInputTokens
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
+from emulator import Emulator
 
 
 def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
@@ -39,8 +40,6 @@ class MyDataset(Dataset):
         min_value, max_value = -50.0, +50.0
         self._minimum_action_value = min_value
         self._maximum_action_value = max_value
-        print(f"_minimum_action_value {self._minimum_action_value}")
-        print(f"_maximum_action_value {self._maximum_action_value}")
 
     def __len__(self):
         return len(self.train_examples)
@@ -184,6 +183,8 @@ def train_model_using_experience_replay(
     criterion = CrossEntropyLoss()
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
+    emulator = Emulator(cell_value_size)
+
     steps = []
     losses = []
     num_steps = 4000
@@ -191,6 +192,7 @@ def train_model_using_experience_replay(
     experience_replay_data_set = []
     for step in range(num_steps):
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
+            emulator,
             criterion,
             optimizer,
             experience_replay_data_set,
@@ -214,6 +216,7 @@ def train_model_using_experience_replay(
 
 
 def train_model_with_experience_replay_data_set(
+    emulator: Emulator,
     criterion: CrossEntropyLoss,
     optimizer: AdamW,
     experience_replay_data_set: List[Tuple[ExampleInputTokens, float]],
@@ -233,6 +236,7 @@ def train_model_with_experience_replay_data_set(
     puzzle_example = puzzle_train_examples[i]
 
     new_train_examples = generate_examples(
+        emulator,
         context_size,
         batch_size,
         device,
@@ -246,8 +250,7 @@ def train_model_with_experience_replay_data_set(
         experience_replay_data_set,
         experience_replay_data_set_size,
     )
-    print(
-        f"Training model with experience replay data set, {len(experience_replay_data_set)} examples.")
+
     dataset = MyDataset(
         experience_replay_data_set, context_size, num_classes,)
 

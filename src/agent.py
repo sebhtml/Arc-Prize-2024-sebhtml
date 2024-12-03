@@ -1,16 +1,15 @@
 import torch
 import numpy as np
 import copy
-import random
 from typing import List, Tuple
 from context import get_puzzle_starting_state, get_state_texts
 from context import tokenize_example_input, tokens_to_text, make_example_tensor
 from context import ExampleInputTokens
-from vision import VACANT_CELL_VALUE
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, ReplayBuffer, Experience, GameState
-from q_learning import reward, sum_of_future_rewards
+from q_learning import sum_of_future_rewards
 from model import DecoderOnlyTransformerModel
+from emulator import Emulator, generate_cell_actions
 
 
 def infer_action_value(model, input_text, context_size, device):
@@ -64,7 +63,6 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
     for _ in range(puzzle_width * puzzle_height):
         candidate_actions = generate_cell_actions(
             current_state, cell_value_size)
-        np.random.shuffle(candidate_actions)
 
         best_action, best_action_value = select_action_with_deep_q_network(
             example_input,
@@ -114,6 +112,8 @@ def select_action_with_deep_q_network(
         model: DecoderOnlyTransformerModel,
         verbose: bool,
 ):
+    np.random.shuffle(candidate_actions)
+
     best_action = None
     best_action_value = None
 
@@ -184,6 +184,7 @@ def select_action_with_deep_q_network(
 
 
 def play_game_using_model(
+        emulator: Emulator,
         padding_char: str,
         context_size: int,
         batch_size: int,
@@ -204,33 +205,15 @@ def play_game_using_model(
 
     (raw_example_input, raw_example_output) = puzzle_example
 
-    input_width = len(raw_example_input[0])
-    input_height = len(raw_example_input)
-    output_width = len(raw_example_output[0])
-    output_height = len(raw_example_output)
-
-    if (input_width, input_height) != (output_width, output_height):
-        raise Exception(
-            f"input and output have different sizes: {(input_width, input_height)} and {(output_width, output_height)}")
-
-    example_input = raw_example_input
-    example_output = raw_example_output
-
-    example_input = get_puzzle_starting_state(
-        example_input, "input_state")
-    current_state = get_puzzle_starting_state(
-        example_output, "current_state")
-
-    puzzle_width = len(current_state[0])
-    puzzle_height = len(current_state)
+    emulator.set_puzzle_example(raw_example_input, raw_example_output)
 
     verbose = False
 
-    # Each cell is allowed to change exactly once.
-    for _ in range(puzzle_width * puzzle_height):
-        candidate_actions = generate_cell_actions(
-            current_state, cell_value_size)
-        np.random.shuffle(candidate_actions)
+    candidate_actions = emulator.list_actions()
+
+    while len(candidate_actions) > 0:
+
+        example_input, current_state = emulator.game_state()
 
         best_action, best_action_value = select_action_with_deep_q_network(
             example_input,
@@ -244,27 +227,19 @@ def play_game_using_model(
             verbose,
         )
 
-        row = best_action.row()
-        col = best_action.col()
-        new_value = best_action.cell_value()
-        candidate_action = best_action
+        immediate_reward = emulator.take_action(best_action)
 
-        # An action assigns a correct color or an incorrect color to a cell.
-        # The only thing that matters is that we shuffled the legal actions before selecting the action.
-
-        next_state = copy.deepcopy(current_state)
-        next_state[row][col].set_value(new_value)
-
-        immediate_reward = reward(example_output, candidate_action)
+        _, next_state = emulator.game_state()
 
         experience = Experience(
             GameState(example_input, current_state),
-            candidate_action,
+            best_action,
             immediate_reward,
             GameState(example_input, next_state),
         )
         replay_buffer.add_experience(experience)
-        current_state = next_state
+
+        candidate_actions = emulator.list_actions()
 
     return replay_buffer
 
@@ -301,6 +276,7 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
 
 
 def generate_examples(
+        emulator: Emulator,
         context_size: int,
         batch_size: int,
         device: torch.device,
@@ -313,6 +289,7 @@ def generate_examples(
     """
 
     replay_buffer = play_game_using_model(
+        emulator,
         padding_char,
         context_size,
         batch_size,
@@ -324,31 +301,3 @@ def generate_examples(
         replay_buffer, discount, padding_char)
 
     return action_examples
-
-
-def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
-    assert current_state != None
-
-    vacant_cells = []
-    for row in range(len(current_state)):
-        for col in range(len(current_state[row])):
-            # A cell can only be changed once.
-            if current_state[row][col].value() == VACANT_CELL_VALUE:
-                vacant_cells.append([row, col])
-
-    if len(vacant_cells) == 0:
-        return []
-
-    # Select randomly a cell to be filled.
-    i = random.randrange(0, len(vacant_cells))
-
-    vacant_cell = vacant_cells[i]
-    row = vacant_cell[0]
-    col = vacant_cell[1]
-
-    candidate_actions = []
-    for new_value in range(cell_value_size):
-        action = QLearningAction(row, col, new_value)
-        candidate_actions.append(action)
-
-    return candidate_actions
