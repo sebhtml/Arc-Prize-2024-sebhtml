@@ -1,9 +1,12 @@
 # Research and Development
 
+- use Emulator in unsupervised inference
+
+- use GameState in Emulator
+- use GameState instead of List[List[Cell]] everywhere
+
 - train after every taken action
 - train once experience data set contains 4 * batch_size
-- use Emulator in unsupervised inference
-- remove type Cell
 
 # Target Q Network
 
@@ -14,6 +17,8 @@
 
 # Backlog
 
+
+- remove type Cell
 - remove total_train_examples
 - add class for configuration
 

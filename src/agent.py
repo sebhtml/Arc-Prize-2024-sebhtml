@@ -209,9 +209,8 @@ def play_game_using_model(
 
     verbose = False
 
-    candidate_actions = emulator.list_actions()
-
-    while len(candidate_actions) > 0:
+    while not emulator.is_in_terminal_state():
+        candidate_actions = emulator.list_actions()
 
         example_input, current_state = emulator.game_state()
 
@@ -238,8 +237,6 @@ def play_game_using_model(
             GameState(example_input, next_state),
         )
         replay_buffer.add_experience(experience)
-
-        candidate_actions = emulator.list_actions()
 
     return replay_buffer
 

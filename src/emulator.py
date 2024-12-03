@@ -43,6 +43,12 @@ class Emulator:
         self.__current_state = get_puzzle_starting_state(
             self.__puzzle_input, "current_state")
 
+        self.__available_actions = generate_cell_actions(
+            self.__current_state, self.__cell_value_size)
+
+    def is_in_terminal_state(self) -> bool:
+        return len(self.__available_actions) == 0
+
     def game_state(self) -> Tuple[List[List[Cell]], List[List[Cell]]]:
         return (self.__example_input, self.__current_state)
 
@@ -50,6 +56,10 @@ class Emulator:
         """
         Take an action and return a reward.
         """
+
+        if not action in self.__available_actions:
+            raise Exception("Illegal action provided.")
+
         row = action.row()
         col = action.col()
         new_value = action.cell_value()
@@ -60,11 +70,13 @@ class Emulator:
         if self.__puzzle_output != None:
             immediate_reward = reward(self.__puzzle_output, action)
 
+        self.__available_actions = generate_cell_actions(
+            self.__current_state, self.__cell_value_size)
+
         return immediate_reward
 
     def list_actions(self) -> list[QLearningAction]:
-        return generate_cell_actions(
-            self.__current_state, self.__cell_value_size)
+        return self.__available_actions
 
 
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
