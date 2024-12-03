@@ -184,23 +184,21 @@ def select_action_with_deep_q_network(
 
 
 def play_game_using_model(
-    padding_char: str,
-    context_size: int,
-    batch_size: int,
-    device: torch.device,
-    model: DecoderOnlyTransformerModel,
-        puzzle_example, cell_value_size) -> ReplayBuffer:
+        padding_char: str,
+        context_size: int,
+        batch_size: int,
+        device: torch.device,
+        model: DecoderOnlyTransformerModel,
+        puzzle_example: Tuple[List[List[int]], List[List[int]]], cell_value_size: int) -> ReplayBuffer:
     """
     Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by a random player.
 
     Each time that the player assigns a color to a cell, the assigned color is either correct or incorrect.
-    For the probability of selecting a correct color, the reasoning is that a cell can take 1 color out of 10 colors.
-    So, we use a probability of 1 / 10 = 0.1
 
-    For any cell, 10% of the random games will have a correct value for that cell.
+    We start from an empty board, and generate legal actions, and choose the best action (argmax of action value),
+    until the end of the game is reached.
     """
 
-    print("play_game_using_model")
     model.eval()
     replay_buffer = ReplayBuffer()
 
@@ -271,38 +269,6 @@ def play_game_using_model(
     return replay_buffer
 
 
-# TODO this function should receive just one puzzle example
-
-
-def generate_train_action_examples(
-        context_size: int,
-        batch_size: int,
-        device: torch.device,
-        model: DecoderOnlyTransformerModel,
-        puzzle_examples, cell_value_size, discount: float, padding_char: str
-) -> List[Tuple[ExampleInputTokens, float]]:
-    """
-    Generate (state, action, action_value) experience examples for all puzzle examples.
-    We start from an empty board, and generate legal actions, and choose the best action (argmax of action value)
-    until the end of the game is reached.
-    This is essentially a wrong incorrect half-baked MCTS (Monte Carlo tree search) in the sense that it's a
-    tree search. And there is no Monte Carlo or Markov Chain involved here since we are lazy at best.
-    """
-    train_examples = []
-    for puzzle_example in puzzle_examples:
-        replay_buffer = play_game_using_model(
-            padding_char,
-            context_size,
-            batch_size,
-            device,
-            model,
-            puzzle_example, cell_value_size)
-        action_examples = extract_action_examples(
-            replay_buffer, discount, padding_char)
-        train_examples += action_examples
-    return train_examples
-
-
 def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Tuple[ExampleInputTokens, float]]:
     """
     Generate (state, action, action_value) action examples for a puzzle example.
@@ -339,33 +305,25 @@ def generate_examples(
         batch_size: int,
         device: torch.device,
         model: DecoderOnlyTransformerModel,
-    total_train_examples: int, puzzle_train_examples, cell_value_size: int,
+        puzzle_example: Tuple[List[List[int]], List[List[int]]], cell_value_size: int,
         discount: float, padding_char: str
 ) -> List[Tuple[ExampleInputTokens, float]]:
-    generated_examples = []
-    must_generate_more_examples = True
-    last_counter = 0
-    step = 1
-    while must_generate_more_examples:
-        must_print = False
-        examples = generate_train_action_examples(
-            context_size,
-            batch_size,
-            device,
-            model,
-            puzzle_train_examples, cell_value_size, discount, padding_char)
+    """
+    Generate training examples from a puzzle example.
+    """
 
-        generated_examples += examples
-        if len(generated_examples) >= last_counter + step:
-            must_print = True
-        if len(generated_examples) >= total_train_examples:
-            must_generate_more_examples = False
-            must_print = True
-        if must_print:
-            print(
-                f"Generating training examples... {len(generated_examples)}/{total_train_examples}")
-            last_counter = len(generated_examples)
-    return generated_examples
+    replay_buffer = play_game_using_model(
+        padding_char,
+        context_size,
+        batch_size,
+        device,
+        model,
+        puzzle_example, cell_value_size)
+
+    action_examples = extract_action_examples(
+        replay_buffer, discount, padding_char)
+
+    return action_examples
 
 
 def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:

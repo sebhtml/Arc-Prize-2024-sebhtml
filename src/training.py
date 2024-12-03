@@ -4,6 +4,7 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import pandas as pd
+import random
 import math
 from datetime import datetime, timezone
 from typing import List, Tuple
@@ -227,13 +228,18 @@ def train_model_with_experience_replay_data_set(
     Human-level control through deep reinforcement learning
     https://www.nature.com/articles/nature14236
     """
+
+    i = random.randrange(0, len(puzzle_train_examples))
+    puzzle_example = puzzle_train_examples[i]
+
     new_train_examples = generate_examples(
         context_size,
         batch_size,
         device,
         model,
-        total_train_examples, puzzle_train_examples, cell_value_size,
+        puzzle_example, cell_value_size,
         discount, padding_char)
+
     experience_replay_data_set_size = 1024 * batch_size
     experience_replay_data_set += new_train_examples
     experience_replay_data_set = trim_list(
