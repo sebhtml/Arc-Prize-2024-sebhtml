@@ -29,40 +29,45 @@ def apply_puzzle_action_value_policy(puzzle_examples, model,
                                      padding_char: str, cell_value_size: int,
                                      context_size: int, batch_size: int,
                                      device,):
+    emulator = Emulator(cell_value_size)
     for example_input, example_target in puzzle_examples:
         print("example")
-        example_input = get_puzzle_starting_state(
-            example_input, "input_state")
-        current_state = get_puzzle_starting_state(
-            example_target, "current_state")
-        output_state = solve_puzzle_example_auto_regressive(
-            example_input, current_state, model,
-            padding_char, cell_value_size, context_size, batch_size,
+        solve_puzzle_example_auto_regressive(
+            emulator,
+            example_input, model,
+            padding_char, context_size, batch_size,
             device,)
+
+        example_input, current_state = emulator.game_state()
+
         print("final output_state")
-        print_current_state(example_input, output_state, padding_char)
+        print_current_state(example_input, current_state, padding_char)
+
         # TODO make the code work to print the example_target.
         # print("Expected output")
         # print_current_state(
         # example_input, example_target, padding_char)
 
 
-def solve_puzzle_example_auto_regressive(example_input, current_state, model, padding_char: str, cell_value_size: int,
+def solve_puzzle_example_auto_regressive(emulator: Emulator,
+                                         example_input: List[List[int]], model: DecoderOnlyTransformerModel, padding_char: str,
                                          context_size: int, batch_size: int,
-                                         device):
+                                         device: torch.device):
     model.eval()
+
+    emulator.set_puzzle_example(example_input, None)
+
+    example_input, current_state = emulator.game_state()
+
     print("AUTO-REGRESSIVE wannabe AGI megabot current state")
     print_current_state(example_input, current_state, padding_char)
 
-    puzzle_width = len(current_state[0])
-    puzzle_height = len(current_state)
-
     verbose = True
 
-    # Each cell is allowed to change exactly once.
-    for _ in range(puzzle_width * puzzle_height):
-        candidate_actions = generate_cell_actions(
-            current_state, cell_value_size)
+    while not emulator.is_in_terminal_state():
+        candidate_actions = emulator.list_actions()
+
+        example_input, current_state = emulator.game_state()
 
         best_action, best_action_value = select_action_with_deep_q_network(
             example_input,
@@ -80,16 +85,14 @@ def solve_puzzle_example_auto_regressive(example_input, current_state, model, pa
             print_current_state(example_input, current_state, padding_char)
             raise Exception("Failed to select action")
 
-        next_state = copy.deepcopy(current_state)
-        row = best_action.row()
-        col = best_action.col()
-        cell_value = best_action.cell_value()
-        next_state[row][col].set_value(cell_value)
+        immediate_reward = emulator.take_action(best_action)
 
-        current_state = next_state
+        example_input, current_state = emulator.game_state()
+
         print(f"best_next_state with {best_action_value}")
         print("AUTO-REGRESSIVE wannabe AGI megabot current state")
         print_current_state(example_input, current_state, padding_char)
+
     return current_state
 
 
@@ -228,7 +231,7 @@ def play_game_using_model(
 
         immediate_reward = emulator.take_action(best_action)
 
-        _, next_state = emulator.game_state()
+        example_input, next_state = emulator.game_state()
 
         experience = Experience(
             GameState(example_input, current_state),
