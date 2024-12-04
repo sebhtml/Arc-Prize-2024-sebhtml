@@ -233,16 +233,13 @@ def train_model_with_experience_replay_data_set(
     https://www.nature.com/articles/nature14236
     """
 
-    i = random.randrange(0, len(puzzle_train_examples))
-    puzzle_example = puzzle_train_examples[i]
-
     new_train_examples = generate_examples(
         emulator,
         context_size,
         batch_size,
         device,
         model,
-        puzzle_example, cell_value_size,
+        puzzle_train_examples, cell_value_size,
         discount, padding_char)
 
     experience_replay_data_set_size = 1024 * batch_size
