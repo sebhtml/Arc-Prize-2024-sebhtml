@@ -206,9 +206,9 @@ def play_game_using_model(
     model.eval()
     replay_buffer = ReplayBuffer()
 
-    (raw_example_input, raw_example_output) = puzzle_example
-
-    emulator.set_puzzle_example(raw_example_input, raw_example_output)
+    if emulator.is_in_terminal_state():
+        (raw_example_input, raw_example_output) = puzzle_example
+        emulator.set_puzzle_example(raw_example_input, raw_example_output)
 
     verbose = False
 

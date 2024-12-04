@@ -19,6 +19,7 @@ class Emulator:
         self.__example_input = None
         self.__current_state = None
         self.__cell_value_size = cell_value_size
+        self.__available_actions = []
 
     def set_puzzle_example(self, puzzle_input: List[List[int]], puzzle_output: Union[List[List[int]], None]):
         """
