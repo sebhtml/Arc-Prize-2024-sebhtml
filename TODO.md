@@ -1,8 +1,9 @@
 # Research and Development
-
 - train after every taken action
 - train once experience data set contains 4 * batch_size
+- add class for configuration
 
+- move print_current_state in GameState
 - use GameState in Emulator
 - use GameState instead of List[List[Cell]] everywhere
 
@@ -17,9 +18,6 @@
 
 
 - remove type Cell
-- remove total_train_examples
-- add class for configuration
-
 
 - add class StateActionExample
 
