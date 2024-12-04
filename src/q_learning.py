@@ -67,6 +67,10 @@ class Experience:
 
 class ReplayBuffer:
     """
+    See:
+    Amortized Planning with Large-Scale Transformers: A Case Study on Chess
+    https://arxiv.org/abs/2402.04494
+
     See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
     """
 

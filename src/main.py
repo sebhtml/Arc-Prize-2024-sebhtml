@@ -146,7 +146,6 @@ max_grad_norm = 1.0
 batch_size = 32
 lr = 0.0001
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
-# In "Grandmaster-Level Chess Without Search" https://arxiv.org/html/2402.04494v1, they don't say what weight decay they used.
 weight_decay = 0.1
 
 #
