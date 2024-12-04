@@ -3,8 +3,11 @@ import copy
 from typing import List
 from vision import Cell
 from vision import VACANT_CELL_VALUE,  MASKED_CELL_VALUE,  OUTSIDE_CELL_VALUE
-from vision import VACANT_CELL_CHAR, MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR
 from q_learning import QLearningAction
+
+VACANT_CELL_CHAR = '_'
+MASKED_CELL_CHAR = 'X'
+OUTSIDE_CELL_CHAR = '.'
 
 
 class ExampleInputTokens:

@@ -5,10 +5,6 @@ import random
 from q_learning import QLearningAction, Cell
 from q_learning import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE, MASKED_CELL_VALUE
 
-VACANT_CELL_CHAR = '_'
-MASKED_CELL_CHAR = 'X'
-OUTSIDE_CELL_CHAR = '.'
-
 
 def get_total_cells(board: List[List[Cell]]) -> int:
     width = len(board[0])
