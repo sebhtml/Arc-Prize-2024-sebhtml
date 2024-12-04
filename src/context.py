@@ -1,6 +1,6 @@
 import torch
 import copy
-from typing import List
+from typing import List, Tuple
 from vision import Cell
 from vision import VACANT_CELL_VALUE,  MASKED_CELL_VALUE,  OUTSIDE_CELL_VALUE
 from q_learning import QLearningAction
@@ -11,7 +11,7 @@ OUTSIDE_CELL_CHAR = '.'
 
 
 class ExampleInputTokens:
-    def __init__(self, input_state: str, current_state: str, action: str):
+    def __init__(self, input_state: List[int], current_state: List[int], action: List[int]):
         self._input_state = input_state
         self._current_state = current_state
         self._action = action
@@ -32,7 +32,7 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     return current_state
 
 
-def tokenize_example_input(input_state, current_state, action: QLearningAction, padding_char: str) -> ExampleInputTokens:
+def tokenize_example_input(input_state: List[List[Cell]], current_state: List[List[Cell]], action: QLearningAction, padding_char: str) -> ExampleInputTokens:
     """
     Tokenize a example input for the Q-network Q(s, a).
     Note that:
@@ -65,7 +65,7 @@ def tokens_to_text(example_input_tokens: ExampleInputTokens) -> str:
     return "".join(map(chr, tokens))
 
 
-def get_state_texts(input_state, current_state, padding_char: str):
+def get_state_texts(input_state: List[List[Cell]], current_state: List[List[Cell]], padding_char: str) -> Tuple[str, str]:
     input_state_text = ""
     input_state_text += "ini" + "\n"
     input_state_text += state_to_text(input_state)
@@ -77,7 +77,7 @@ def get_state_texts(input_state, current_state, padding_char: str):
     return input_state_text, current_state_text
 
 
-def state_to_text(state) -> str:
+def state_to_text(state: List[List[Cell]]) -> str:
     output = ""
     for row in range(len(state)):
         for col in range(len(state[row])):
@@ -95,7 +95,7 @@ def state_to_text(state) -> str:
     return output
 
 
-def action_to_text(state, action: QLearningAction) -> str:
+def action_to_text(state: List[List[Cell]], action: QLearningAction) -> str:
     output = ""
     for row in range(len(state)):
         for col in range(len(state[row])):
