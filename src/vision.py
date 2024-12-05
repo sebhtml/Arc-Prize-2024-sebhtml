@@ -77,7 +77,7 @@ def mask_cells(current_state: List[List[Cell]], attented_current_state: List[Lis
     vacant_cells = get_vacant_cells(attented_current_state)
 
     # When the number of vacant cells in the visual fixation is lower than
-    # the maximum number ofunmasked vacant cells, then it is fine.
+    # the maximum number of unmasked vacant cells, then it is fine.
     if len(vacant_cells) <= maximum_unmasked_vacant_cells:
         return attented_current_state
 

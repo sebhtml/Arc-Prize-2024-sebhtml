@@ -184,15 +184,16 @@ def train_model_using_experience_replay(
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     emulator = Emulator(cell_value_size)
-
+    max_taken_actions_per_step = 1
     steps = []
     losses = []
-    num_steps = 10  # 4000
+    num_steps = 32000
 
     experience_replay_data_set = []
     for step in range(num_steps):
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             emulator,
+            max_taken_actions_per_step,
             criterion,
             optimizer,
             experience_replay_data_set,
@@ -201,9 +202,11 @@ def train_model_using_experience_replay(
             discount, padding_char, num_classes, shuffle_train_examples,
             max_grad_norm, print_model_outputs,
         )
-        steps.append(step)
-        losses.append(loss)
-        print(f"Step: {step}/{num_steps}  loss: {loss:.8f}")
+
+        if loss != None:
+            steps.append(step)
+            losses.append(loss)
+            print(f"Step: {step}/{num_steps}  loss: {loss:.8f}")
 
     dynamic_time_marker = datetime.now(timezone.utc).isoformat()
     train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.csv"
@@ -217,6 +220,7 @@ def train_model_using_experience_replay(
 
 def train_model_with_experience_replay_data_set(
     emulator: Emulator,
+    max_taken_actions_per_step: int,
     criterion: CrossEntropyLoss,
     optimizer: AdamW,
     experience_replay_data_set: List[Tuple[ExampleInputTokens, float]],
@@ -235,6 +239,7 @@ def train_model_with_experience_replay_data_set(
 
     new_train_examples = generate_examples(
         emulator,
+        max_taken_actions_per_step,
         context_size,
         batch_size,
         device,
@@ -242,24 +247,28 @@ def train_model_with_experience_replay_data_set(
         puzzle_train_examples, cell_value_size,
         discount, padding_char)
 
-    experience_replay_data_set_size = 1024 * batch_size
+    experience_replay_data_set_size = 4096
     experience_replay_data_set += new_train_examples
     experience_replay_data_set = trim_list(
         experience_replay_data_set,
         experience_replay_data_set_size,
     )
 
-    dataset = MyDataset(
-        experience_replay_data_set, context_size, num_classes,)
+    min_experience_replay_data_set_size = 4 * batch_size
+    loss = None
 
-    loss = train(
-        criterion,
-        optimizer,
-        dataset, batch_size, shuffle_train_examples, model,
-        max_grad_norm, device,)
+    if len(experience_replay_data_set) >= min_experience_replay_data_set_size:
+        dataset = MyDataset(
+            experience_replay_data_set, context_size, num_classes,)
 
-    if print_model_outputs:
-        print_model_outputs_for_train_examples(
-            dataset, batch_size, model, device,)
+        loss = train(
+            criterion,
+            optimizer,
+            dataset, batch_size, shuffle_train_examples, model,
+            max_grad_norm, device,)
+
+        if print_model_outputs:
+            print_model_outputs_for_train_examples(
+                dataset, batch_size, model, device,)
 
     return experience_replay_data_set, loss

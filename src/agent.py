@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import random
+import copy
 from typing import List, Tuple
 from context import get_puzzle_starting_state, get_state_texts
 from context import tokenize_example_input, tokens_to_text, make_example_tensor
@@ -188,6 +189,7 @@ def select_action_with_deep_q_network(
 
 def play_game_using_model(
         emulator: Emulator,
+        max_taken_actions_per_step: int,
         padding_char: str,
         context_size: int,
         batch_size: int,
@@ -215,10 +217,12 @@ def play_game_using_model(
 
     verbose = False
 
-    while not emulator.is_in_terminal_state():
+    while not emulator.is_in_terminal_state() and \
+            len(replay_buffer.experiences()) < max_taken_actions_per_step:
         candidate_actions = emulator.list_actions()
 
         example_input, current_state = emulator.game_state()
+        current_state = copy.deepcopy(current_state)
 
         best_action, best_action_value = select_action_with_deep_q_network(
             example_input,
@@ -235,6 +239,7 @@ def play_game_using_model(
         immediate_reward = emulator.take_action(best_action)
 
         example_input, next_state = emulator.game_state()
+        next_state = copy.deepcopy(next_state)
 
         experience = Experience(
             GameState(example_input, current_state),
@@ -280,6 +285,7 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
 
 def generate_examples(
         emulator: Emulator,
+        max_taken_actions_per_step: int,
         context_size: int,
         batch_size: int,
         device: torch.device,
@@ -293,6 +299,7 @@ def generate_examples(
 
     replay_buffer = play_game_using_model(
         emulator,
+        max_taken_actions_per_step,
         padding_char,
         context_size,
         batch_size,
