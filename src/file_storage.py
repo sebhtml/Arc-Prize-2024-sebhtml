@@ -8,7 +8,7 @@ def __get_np_structured_array_dtype():
     """
     See https://numpy.org/doc/stable/user/basics.rec.html
     """
-    composite_dtype = [('input_state', 'uint8', (60)), (
+    composite_dtype = [('example_input', 'uint8', (60)), (
         'current_state', 'uint8', (60)), ('action', 'uint8', (60)), ('action_value', 'float32')]
     return composite_dtype
 
@@ -23,11 +23,11 @@ def create_file_storage(h5_file_path):
 
 
 def __to_h5_example(example: tuple[ExampleInputTokens, float]):
-    input_state: str = example[0]._input_state
+    example_input: str = example[0]._example_input
     current_state: str = example[0]._current_state
     action: str = example[0]._action
     action_value: str = example[1]
-    return (input_state, current_state, action, action_value)
+    return (example_input, current_state, action, action_value)
 
 
 def append_to_file_storage(f: h5py.File, train_action_examples):
@@ -85,12 +85,12 @@ class FileStorageReader:
     def get(self, idx) -> tuple[ExampleInputTokens, float]:
         examples = self.f["examples"]
         example = examples[idx]
-        input_state = example['input_state'].tolist()
+        example_input = example['example_input'].tolist()
         current_state = example['current_state'].tolist()
         action = example['action'].tolist()
         action_value = example['action_value']
         tokens = ExampleInputTokens(
-            input_state, current_state, action)
+            example_input, current_state, action)
         return (tokens, action_value)
 
 

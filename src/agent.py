@@ -97,11 +97,11 @@ def solve_puzzle_example_auto_regressive(emulator: Emulator,
     return current_state
 
 
-def print_current_state(input_state, current_state, padding_char):
-    input_state_text, current_state_text = get_state_texts(
-        input_state, current_state, padding_char)
+def print_current_state(example_input, current_state, padding_char):
+    example_input_text, current_state_text = get_state_texts(
+        example_input, current_state, padding_char)
 
-    print(input_state_text)
+    print(example_input_text)
     print(current_state_text)
 
 

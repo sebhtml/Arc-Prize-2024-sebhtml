@@ -11,8 +11,8 @@ OUTSIDE_CELL_CHAR = '.'
 
 
 class ExampleInputTokens:
-    def __init__(self, input_state: List[int], current_state: List[int], action: List[int]):
-        self._input_state = input_state
+    def __init__(self, example_input: List[int], current_state: List[int], action: List[int]):
+        self._example_input = example_input
         self._current_state = current_state
         self._action = action
 
@@ -26,30 +26,30 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
             value = VACANT_CELL_VALUE
-            if mode == "input_state":
+            if mode == "example_input":
                 value = state[row][col]
             current_state[row][col] = Cell(value)
     return current_state
 
 
-def tokenize_example_input(input_state: List[List[Cell]], current_state: List[List[Cell]], action: QLearningAction, padding_char: str) -> ExampleInputTokens:
+def tokenize_example_input(example_input: List[List[Cell]], current_state: List[List[Cell]], action: QLearningAction, padding_char: str) -> ExampleInputTokens:
     """
     Tokenize a example input for the Q-network Q(s, a).
     Note that:
-    - s contains the state which is (input_state, current_state)
+    - s contains the state which is (example_input, current_state)
     - a contains the action which is (next_state)
     """
 
     # state s
-    input_state_text, current_state_text = get_state_texts(
-        input_state, current_state, padding_char)
+    example_input_text, current_state_text = get_state_texts(
+        example_input, current_state, padding_char)
 
     action_text = ""
     action_text += "act" + "\n"
     action_text += action_to_text(current_state, action)
 
     return ExampleInputTokens(
-        text_to_tokens(input_state_text),
+        text_to_tokens(example_input_text),
         text_to_tokens(current_state_text),
         text_to_tokens(action_text)
     )
@@ -60,21 +60,21 @@ def text_to_tokens(s: str) -> List[int]:
 
 
 def tokens_to_text(example_input_tokens: ExampleInputTokens) -> str:
-    tokens: List[int] = example_input_tokens._input_state + \
+    tokens: List[int] = example_input_tokens._example_input + \
         example_input_tokens._current_state + example_input_tokens._action
     return "".join(map(chr, tokens))
 
 
-def get_state_texts(input_state: List[List[Cell]], current_state: List[List[Cell]], padding_char: str) -> Tuple[str, str]:
-    input_state_text = ""
-    input_state_text += "ini" + "\n"
-    input_state_text += state_to_text(input_state)
+def get_state_texts(example_input: List[List[Cell]], current_state: List[List[Cell]], padding_char: str) -> Tuple[str, str]:
+    example_input_text = ""
+    example_input_text += "ini" + "\n"
+    example_input_text += state_to_text(example_input)
 
     current_state_text = ""
     current_state_text += "cur" + "\n"
     current_state_text += state_to_text(current_state)
 
-    return input_state_text, current_state_text
+    return example_input_text, current_state_text
 
 
 def state_to_text(state: List[List[Cell]]) -> str:
@@ -110,7 +110,7 @@ def action_to_text(state: List[List[Cell]], action: QLearningAction) -> str:
 
 
 def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: int):
-    example_input = filter_tokens(example_input_tokens._input_state)
+    example_input = filter_tokens(example_input_tokens._example_input)
     current_state = filter_tokens(example_input_tokens._current_state)
     candidate_action = filter_tokens(example_input_tokens._action)
 

@@ -222,11 +222,11 @@ class DecoderOnlyTransformerModel(nn.Module):
             in_features=d_model, out_features=num_classes)
 
     def forward(self, x):
-        input_state, current_state, action = x
-        x_input_state = self.input_embed(input_state)
+        example_input, current_state, action = x
+        x_example_input = self.input_embed(example_input)
         x_current_state = self.current_embed(current_state)
         x_action = self.action_embed(action)
-        x = torch.cat([x_input_state, x_current_state, x_action], dim=1)
+        x = torch.cat([x_example_input, x_current_state, x_action], dim=1)
         x = x / math.sqrt(self.d_model)
         # We use Dropout after computing embedding.
         # See File:Full GPT architecture.svg

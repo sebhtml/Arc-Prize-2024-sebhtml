@@ -187,7 +187,7 @@ def train_model_using_experience_replay(
     max_taken_actions_per_step = 1
     steps = []
     losses = []
-    num_steps = 32000
+    num_steps = 100  # 32000
 
     experience_replay_data_set = []
     for step in range(num_steps):

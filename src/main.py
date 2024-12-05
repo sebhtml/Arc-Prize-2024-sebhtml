@@ -69,7 +69,7 @@ time_marker = '2024-11-09T00:18:25.063611+00:00'
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = True
+terminate_pod_at_the_end = False
 
 #
 # Puzzle configuration

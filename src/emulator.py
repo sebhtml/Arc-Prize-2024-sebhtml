@@ -40,7 +40,7 @@ class Emulator:
                     f"input and output have different sizes: {(input_width, input_height)} and {(output_width, output_height)}")
 
         self.__example_input = get_puzzle_starting_state(
-            self.__puzzle_input, "input_state")
+            self.__puzzle_input, "example_input")
         self.__current_state = get_puzzle_starting_state(
             self.__puzzle_input, "current_state")
 
