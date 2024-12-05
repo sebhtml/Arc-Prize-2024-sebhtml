@@ -3,9 +3,8 @@ import numpy as np
 import random
 import copy
 from typing import List, Tuple
-from context import get_puzzle_starting_state, get_state_texts
 from context import tokenize_example_input, tokens_to_text, make_example_tensor
-from context import ExampleInputTokens
+from context import ExampleInputTokens, state_to_text
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, ReplayBuffer, Experience, GameState
 from q_learning import sum_of_future_rewards
@@ -98,8 +97,13 @@ def solve_puzzle_example_auto_regressive(emulator: Emulator,
 
 
 def print_current_state(example_input, current_state, padding_char):
-    example_input_text, current_state_text = get_state_texts(
-        example_input, current_state, padding_char)
+    example_input_text = ""
+    example_input_text += "exampleInput" + "\n"
+    example_input_text += state_to_text(example_input)
+
+    current_state_text = ""
+    current_state_text += "currentState" + "\n"
+    current_state_text += state_to_text(current_state)
 
     print(example_input_text)
     print(current_state_text)

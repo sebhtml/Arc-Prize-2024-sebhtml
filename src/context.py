@@ -40,12 +40,16 @@ def tokenize_example_input(example_input: List[List[Cell]], current_state: List[
     - a contains the action which is (next_state)
     """
 
-    # state s
-    example_input_text, current_state_text = get_state_texts(
-        example_input, current_state, padding_char)
+    example_input_text = ""
+    example_input_text += "exampleInput" + "\n"
+    example_input_text += state_to_text(example_input)
+
+    current_state_text = ""
+    current_state_text += "currentState" + "\n"
+    current_state_text += state_to_text(current_state)
 
     action_text = ""
-    action_text += "act" + "\n"
+    action_text += "action" + "\n"
     action_text += action_to_text(current_state, action)
 
     return ExampleInputTokens(
@@ -63,18 +67,6 @@ def tokens_to_text(example_input_tokens: ExampleInputTokens) -> str:
     tokens: List[int] = example_input_tokens._example_input + \
         example_input_tokens._current_state + example_input_tokens._action
     return "".join(map(chr, tokens))
-
-
-def get_state_texts(example_input: List[List[Cell]], current_state: List[List[Cell]], padding_char: str) -> Tuple[str, str]:
-    example_input_text = ""
-    example_input_text += "ini" + "\n"
-    example_input_text += state_to_text(example_input)
-
-    current_state_text = ""
-    current_state_text += "cur" + "\n"
-    current_state_text += state_to_text(current_state)
-
-    return example_input_text, current_state_text
 
 
 def state_to_text(state: List[List[Cell]]) -> str:
