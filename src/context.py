@@ -32,7 +32,10 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     return current_state
 
 
-def tokenize_example_input(example_input: List[List[Cell]], current_state: List[List[Cell]], action: QLearningAction, padding_char: str) -> ExampleInputTokens:
+def tokenize_example_input(
+        attended_example_input: List[List[Cell]],
+        attended_current_state: List[List[Cell]],
+        action: QLearningAction, padding_char: str) -> ExampleInputTokens:
     """
     Tokenize a example input for the Q-network Q(s, a).
     Note that:
@@ -40,21 +43,21 @@ def tokenize_example_input(example_input: List[List[Cell]], current_state: List[
     - a contains the action which is (next_state)
     """
 
-    example_input_text = ""
-    example_input_text += "exampleInput" + "\n"
-    example_input_text += state_to_text(example_input)
+    attended_example_input_text = ""
+    attended_example_input_text += "exampleInput" + "\n"
+    attended_example_input_text += state_to_text(attended_example_input)
 
-    current_state_text = ""
-    current_state_text += "currentState" + "\n"
-    current_state_text += state_to_text(current_state)
+    attended_current_state_text = ""
+    attended_current_state_text += "currentState" + "\n"
+    attended_current_state_text += state_to_text(attended_current_state)
 
     action_text = ""
     action_text += "action" + "\n"
-    action_text += action_to_text(current_state, action)
+    action_text += action_to_text(attended_current_state, action)
 
     return ExampleInputTokens(
-        text_to_tokens(example_input_text),
-        text_to_tokens(current_state_text),
+        text_to_tokens(attended_example_input_text),
+        text_to_tokens(attended_current_state_text),
         text_to_tokens(action_text)
     )
 
