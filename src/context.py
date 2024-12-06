@@ -12,12 +12,17 @@ OUTSIDE_CELL_CHAR = '.'
 
 class ExampleInputTokens:
     def __init__(self,
+                 current_state: List[int],
                  attended_example_input: List[int],
                  attended_current_state: List[int],
                  attended_action: List[int]):
+        self.__current_state = current_state
         self.__attended_example_input = attended_example_input
         self.__attended_current_state = attended_current_state
         self.__attended_action = attended_action
+
+    def current_state(self) -> List[int]:
+        return self.__current_state
 
     def attended_example_input(self) -> List[int]:
         return self.__attended_example_input
@@ -45,6 +50,7 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
 
 
 def tokenize_example_input(
+        current_state: List[List[Cell]],
         attended_example_input: List[List[Cell]],
         attended_current_state: List[List[Cell]],
         action: QLearningAction, padding_char: str) -> ExampleInputTokens:
@@ -55,12 +61,16 @@ def tokenize_example_input(
     - a contains the action which is (next_state)
     """
 
+    current_state_text = ""
+    current_state_text += "currentState" + "\n"
+    current_state_text += state_to_text(current_state)
+
     attended_example_input_text = ""
-    attended_example_input_text += "exampleInput" + "\n"
+    attended_example_input_text += "attendedExampleInput" + "\n"
     attended_example_input_text += state_to_text(attended_example_input)
 
     attended_current_state_text = ""
-    attended_current_state_text += "currentState" + "\n"
+    attended_current_state_text += "attendedCurrentState" + "\n"
     attended_current_state_text += state_to_text(attended_current_state)
 
     action_text = ""
@@ -68,6 +78,7 @@ def tokenize_example_input(
     action_text += action_to_text(attended_current_state, action)
 
     return ExampleInputTokens(
+        text_to_tokens(current_state_text),
         text_to_tokens(attended_example_input_text),
         text_to_tokens(attended_current_state_text),
         text_to_tokens(action_text)
@@ -118,20 +129,25 @@ def action_to_text(state: List[List[Cell]], action: QLearningAction) -> str:
 
 
 def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: int):
-    example_input = filter_tokens(
-        example_input_tokens.attended_example_input())
     current_state = filter_tokens(
+        example_input_tokens.current_state())
+    attended_example_input = filter_tokens(
+        example_input_tokens.attended_example_input())
+    attended_current_state = filter_tokens(
         example_input_tokens.attended_current_state())
-    candidate_action = filter_tokens(example_input_tokens.attended_action())
+    attended_action = filter_tokens(example_input_tokens.attended_action())
 
-    input_tokens: List[int] = example_input + current_state + candidate_action
+    input_tokens: List[int] = current_state + \
+        attended_example_input + attended_current_state + attended_action
     if len(input_tokens) > context_size:
         raise Exception(
             f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
-    item_input = [torch.tensor(example_input),
-                  torch.tensor(current_state),
-                  torch.tensor(candidate_action)
-                  ]
+    item_input = [
+        torch.tensor(current_state),
+        torch.tensor(attended_example_input),
+        torch.tensor(attended_current_state),
+        torch.tensor(attended_action)
+    ]
     return item_input
 
 

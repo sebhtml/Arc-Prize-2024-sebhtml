@@ -136,6 +136,7 @@ def select_action_with_deep_q_network(
          translation_x, translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
 
         input_tokens = tokenize_example_input(
+            current_state,
             attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
         inputs = list(map(lambda tensor: tensor.unsqueeze(0),
@@ -148,9 +149,9 @@ def select_action_with_deep_q_network(
         if len(batch_inputs) == batch_size or candidate_action_index == len(candidate_actions) - 1:
             # batch_tensors contains:
             # [
-            #   [ tensor1, tensor2, tensor3],
-            #   [ tensor1, tensor2, tensor3],
-            #   [ tensor1, tensor2, tensor3],
+            #   [ tensor1, tensor2, tensor3, tensor4],
+            #   [ tensor1, tensor2, tensor3, tensor4],
+            #   [ tensor1, tensor2, tensor3, tensor4],
             # ]
             inputs = [
                 torch.cat(
@@ -159,6 +160,8 @@ def select_action_with_deep_q_network(
                     list(map(lambda inputs: inputs[1], batch_inputs)), dim=0),
                 torch.cat(
                     list(map(lambda inputs: inputs[2], batch_inputs)), dim=0),
+                torch.cat(
+                    list(map(lambda inputs: inputs[3], batch_inputs)), dim=0),
             ]
             inputs = [t.to(device) for t in inputs]
             outputs = model(inputs)
@@ -275,6 +278,7 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
             example_input, current_state, candidate_action)
 
         input_tokens = tokenize_example_input(
+            current_state,
             attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
         expected_rewards = sum_of_future_rewards(
