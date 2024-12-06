@@ -12,19 +12,6 @@ from model import DecoderOnlyTransformerModel
 from emulator import Emulator
 
 
-def infer_action_value(model, input_text, context_size, device):
-    inputs = make_example_tensor(input_text, context_size).unsqueeze(0)
-    inputs = inputs.to(device)
-    outputs = model(inputs)
-    action_value = outputs[0].argmax(dim=-1).item()
-    return action_value
-
-
-def print_inferred_action_value(model, input_text):
-    action_value = infer_action_value(model, input_text)
-    print(f"action_value: {action_value}")
-
-
 def apply_puzzle_action_value_policy(puzzle_examples, model,
                                      padding_char: str, cell_value_size: int,
                                      context_size: int, batch_size: int,
