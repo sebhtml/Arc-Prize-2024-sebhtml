@@ -11,10 +11,22 @@ OUTSIDE_CELL_CHAR = '.'
 
 
 class ExampleInputTokens:
-    def __init__(self, example_input: List[int], current_state: List[int], action: List[int]):
-        self._example_input = example_input
-        self._current_state = current_state
-        self._action = action
+    def __init__(self,
+                 attended_example_input: List[int],
+                 attended_current_state: List[int],
+                 attended_action: List[int]):
+        self.__attended_example_input = attended_example_input
+        self.__attended_current_state = attended_current_state
+        self.__attended_action = attended_action
+
+    def attended_example_input(self) -> List[int]:
+        return self.__attended_example_input
+
+    def attended_current_state(self) -> List[int]:
+        return self.__attended_current_state
+
+    def attended_action(self) -> List[int]:
+        return self.__attended_action
 
 
 def actions_act_on_same_cell(action_1: QLearningAction, action_2: QLearningAction) -> bool:
@@ -67,8 +79,9 @@ def text_to_tokens(s: str) -> List[int]:
 
 
 def tokens_to_text(example_input_tokens: ExampleInputTokens) -> str:
-    tokens: List[int] = example_input_tokens._example_input + \
-        example_input_tokens._current_state + example_input_tokens._action
+    tokens: List[int] = example_input_tokens.attended_example_input() + \
+        example_input_tokens.attended_current_state(
+    ) + example_input_tokens.attended_action()
     return "".join(map(chr, tokens))
 
 
@@ -105,9 +118,11 @@ def action_to_text(state: List[List[Cell]], action: QLearningAction) -> str:
 
 
 def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: int):
-    example_input = filter_tokens(example_input_tokens._example_input)
-    current_state = filter_tokens(example_input_tokens._current_state)
-    candidate_action = filter_tokens(example_input_tokens._action)
+    example_input = filter_tokens(
+        example_input_tokens.attended_example_input())
+    current_state = filter_tokens(
+        example_input_tokens.attended_current_state())
+    candidate_action = filter_tokens(example_input_tokens.attended_action())
 
     input_tokens: List[int] = example_input + current_state + candidate_action
     if len(input_tokens) > context_size:

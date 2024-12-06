@@ -8,8 +8,8 @@ def __get_np_structured_array_dtype():
     """
     See https://numpy.org/doc/stable/user/basics.rec.html
     """
-    composite_dtype = [('example_input', 'uint8', (60)), (
-        'current_state', 'uint8', (60)), ('action', 'uint8', (60)), ('action_value', 'float32')]
+    composite_dtype = [('attended_example_input', 'uint8', (60)), (
+        'attended_current_state', 'uint8', (60)), ('attended_action', 'uint8', (60)), ('action_value', 'float32')]
     return composite_dtype
 
 
@@ -23,11 +23,11 @@ def create_file_storage(h5_file_path):
 
 
 def __to_h5_example(example: tuple[ExampleInputTokens, float]):
-    example_input: str = example[0]._example_input
-    current_state: str = example[0]._current_state
-    action: str = example[0]._action
-    action_value: str = example[1]
-    return (example_input, current_state, action, action_value)
+    attended_example_input = example[0].attended_example_input()
+    attended_current_state = example[0].attended_current_state()
+    attended_action = example[0].attended_action()
+    action_value = example[1]
+    return (attended_example_input, attended_current_state, attended_action, action_value)
 
 
 def append_to_file_storage(f: h5py.File, train_action_examples):
@@ -85,12 +85,12 @@ class FileStorageReader:
     def get(self, idx) -> tuple[ExampleInputTokens, float]:
         examples = self.f["examples"]
         example = examples[idx]
-        example_input = example['example_input'].tolist()
-        current_state = example['current_state'].tolist()
-        action = example['action'].tolist()
+        attended_example_input = example['attended_example_input'].tolist()
+        attended_current_state = example['attended_current_state'].tolist()
+        attended_action = example['attended_action'].tolist()
         action_value = example['action_value']
         tokens = ExampleInputTokens(
-            example_input, current_state, action)
+            attended_example_input, attended_current_state, attended_action)
         return (tokens, action_value)
 
 
