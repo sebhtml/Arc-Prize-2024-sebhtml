@@ -1,3 +1,7 @@
+import xformers.ops as xops
+from xformers.components.positional_embedding import RotaryEmbedding
+from torch import nn
+
 
 class CustomMemoryEfficientAttention(nn.Module):
     """
