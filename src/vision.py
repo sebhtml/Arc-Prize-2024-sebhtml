@@ -213,9 +213,6 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
     attented_candidate_action = QLearningAction(
         center_y, center_x, new_value)
 
-    attented_current_state = mask_cells(
-        current_state, attented_current_state)
-
     rotations = random.randrange(0, 4)
 
     for _ in range(rotations):
