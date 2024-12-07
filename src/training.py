@@ -1,10 +1,9 @@
 import torch
-from torch.nn import CrossEntropyLoss
+from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 import pandas as pd
-import random
 import math
 from datetime import datetime, timezone
 from typing import List, Tuple
@@ -16,7 +15,7 @@ from model import DecoderOnlyTransformerModel
 from emulator import Emulator
 
 
-def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
+def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> int:
     """
     convert action_value to { 0, 1, ..., num_classes - 1 }
     Example:
@@ -54,8 +53,6 @@ class MyDataset(Dataset):
         action_value_bin = bin_action_value(
             action_value, self._minimum_action_value, self._maximum_action_value, self.num_classes)
         action_value_bin = torch.tensor(action_value_bin)
-        action_value_bin = F.one_hot(
-            action_value_bin, num_classes=self.num_classes).float()
 
         item = (item_input, action_value_bin)
         return item
@@ -74,7 +71,7 @@ def trim_list(lst, k):
 
 
 def train(
-        criterion: CrossEntropyLoss,
+        criterion: nn.NLLLoss,
         optimizer: AdamW,
         dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, model: DecoderOnlyTransformerModel,
         max_grad_norm: float, device: torch.device,
@@ -91,7 +88,9 @@ def train(
     inputs = [t.to(device) for t in inputs]
     targets = targets.to(device)
     outputs = model(inputs)
+
     loss = criterion(outputs, targets)
+
     loss.backward()
     torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
     optimizer.step()
@@ -180,14 +179,14 @@ def train_model_using_experience_replay(
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
 
 ):
-    criterion = CrossEntropyLoss()
+    criterion = nn.NLLLoss()
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     emulator = Emulator(cell_value_size)
     max_taken_actions_per_step = 1
     steps = []
     losses = []
-    num_steps = 300  # 32000
+    num_steps = 32000  # 300
 
     experience_replay_data_set = []
     for step in range(num_steps):
@@ -221,7 +220,7 @@ def train_model_using_experience_replay(
 def train_model_with_experience_replay_data_set(
     emulator: Emulator,
     max_taken_actions_per_step: int,
-    criterion: CrossEntropyLoss,
+    criterion: nn.NLLLoss,
     optimizer: AdamW,
     experience_replay_data_set: List[Tuple[ExampleInputTokens, float]],
     context_size: int, batch_size: int, device: torch.device,

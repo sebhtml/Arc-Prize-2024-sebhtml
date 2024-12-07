@@ -151,13 +151,13 @@ weight_decay = 0.1
 #
 # Options for loading AI neural net model
 #
-load_model = False
+load_model = True
 #
 # Options for training AI neural net model
 #
-train_model = True
+train_model = False
 save_step_losses = True
-save_neural_net_model = True
+save_neural_net_model = False
 #
 # Options for evaluating AI neural net model
 #

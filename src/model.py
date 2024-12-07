@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-import xformers.ops as xops
-from xformers.components.positional_embedding import RotaryEmbedding
+import torch.nn.functional as F
 from xformers.components import MultiHeadDispatch, build_attention
 
 from torch import nn
@@ -129,8 +128,6 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.blocks = nn.Sequential(*modules)
         self.norm = nn.RMSNorm(d_model)
 
-        self.gap = nn.AdaptiveAvgPool1d(1)
-
         self.classifier = nn.Linear(
             in_features=d_model, out_features=num_classes)
 
@@ -153,8 +150,8 @@ class DecoderOnlyTransformerModel(nn.Module):
         embed_drop = self.dropout_1(x)
         transformed = self.blocks(embed_drop)
         transformed_ln = self.norm(transformed)
-        last_hidden_state = transformed_ln
-        output = self.gap(last_hidden_state.transpose(1, 2))
-        output = output.squeeze(2)
-        logits = self.classifier(output)
-        return logits
+
+        logits = self.classifier(transformed_ln)
+        mean_logits = logits.mean(dim=1)
+        softmax_output = F.log_softmax(mean_logits)
+        return softmax_output

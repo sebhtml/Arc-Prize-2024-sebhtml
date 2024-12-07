@@ -1,5 +1,14 @@
 # Research and Development
 
+- use 1 Linear in SwiGLU and reshape it in (2, dim)
+- produce 10 action values with neural network with 1 Linear 
+self.linear = nn.Linear(input_dim, 2*input_dim)
+chunks = x_linear_pos, x_linear_neg = x_linear.chunk(2, dim=1)
+- make the QDN have only 10 actions: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+
+- also mask non-vacant cells in visual fixation
+- use Bellman equation
+
 - add class for configuration
 
 - move print_current_state in GameState
@@ -8,10 +17,9 @@
 
 # Target Q Network
 
-- make the QDN have only 10 actions: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-- use a target Q network for the future rewards
+
 - implement epsilon-greedy policy for random exploration
-- also mask non-vacant cells in visual fixation
+
 
 # Backlog
 
@@ -27,9 +35,5 @@
 - move norm and dropout at same scope in transformer block
 - increase dropout
 
-- don't assume perfect play to compute future rewards
 - reduce number of train steps
-- reduce batch size
 - use half precision float16
-
-- make the QDN have only 14 actions: left, up, down, right, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
