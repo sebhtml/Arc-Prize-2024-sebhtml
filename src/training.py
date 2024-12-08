@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import List, Tuple
 from agent import make_example_tensor, generate_examples
 from context import tokens_to_text
-from context import ExampleInputTokens
+from context import StateActionExample
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
 from emulator import Emulator
@@ -31,7 +31,7 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
 
 class MyDataset(Dataset):
     def __init__(self,
-                 train_examples: List[Tuple[ExampleInputTokens, float]],
+                 train_examples: List[StateActionExample],
                  context_size: int, num_classes: int):
         self.context_size = context_size
         self.num_classes = num_classes
@@ -46,10 +46,10 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         example = self.train_examples[idx]
 
-        input_tokens = example[0]
+        input_tokens = example.tokens()
         item_input = make_example_tensor(input_tokens, self.context_size)
 
-        action_value = example[1]
+        action_value = example.action_value()
         action_value_bin = bin_action_value(
             action_value, self._minimum_action_value, self._maximum_action_value, self.num_classes)
         action_value_bin = torch.tensor(action_value_bin)
@@ -57,7 +57,7 @@ class MyDataset(Dataset):
         item = (item_input, action_value_bin)
         return item
 
-    def get_action_value_min_max(self, train_examples: List[Tuple[ExampleInputTokens, float]]) -> Tuple[float, float]:
+    def get_action_value_min_max(self, train_examples: List[StateActionExample]) -> Tuple[float, float]:
         min_action_value = min(map(lambda example: example[1], train_examples))
         max_action_value = max(map(lambda example: example[1], train_examples))
         return min_action_value, max_action_value
@@ -221,14 +221,14 @@ def train_model_with_experience_replay_data_set(
     max_taken_actions_per_step: int,
     criterion: nn.NLLLoss,
     optimizer: AdamW,
-    experience_replay_data_set: List[Tuple[ExampleInputTokens, float]],
+    experience_replay_data_set: List[StateActionExample],
     context_size: int, batch_size: int, device: torch.device,
     model: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool,
     max_grad_norm: float, print_model_outputs: bool,
-) -> List[Tuple[ExampleInputTokens, float]]:
+) -> List[StateActionExample]:
     """
     See:
     Human-level control through deep reinforcement learning

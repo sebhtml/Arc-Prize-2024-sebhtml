@@ -34,6 +34,18 @@ class ExampleInputTokens:
         return self.__attended_action
 
 
+class StateActionExample:
+    def __init__(self, tokens: ExampleInputTokens, action_value: float):
+        self.__tokens = tokens
+        self.__action_value = action_value
+
+    def tokens(self) -> ExampleInputTokens:
+        return self.__tokens
+
+    def action_value(self) -> float:
+        return self.__action_value
+
+
 def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     current_state = copy.deepcopy(state)
     for row in range(len(current_state)):

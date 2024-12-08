@@ -16,8 +16,6 @@
 
 - remove type Cell
 
-- add class StateActionExample
-
 - use AROUND_ACTION_CHAR = ','
 - don't pass the AROUND_ACTION_CHAR chars to the neural network
 

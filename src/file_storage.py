@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 from itertools import tee
-from context import ExampleInputTokens
+from context import ExampleInputTokens, StateActionExample
 
 
 def __get_np_structured_array_dtype():
@@ -82,7 +82,7 @@ class FileStorageReader:
 
         return accumulator_min, accumulator_max
 
-    def get(self, idx) -> tuple[ExampleInputTokens, float]:
+    def get(self, idx) -> StateActionExample:
         examples = self.f["examples"]
         example = examples[idx]
         attended_example_input = example['attended_example_input'].tolist()
@@ -91,7 +91,7 @@ class FileStorageReader:
         action_value = example['action_value']
         tokens = ExampleInputTokens(
             attended_example_input, attended_current_state, attended_action)
-        return (tokens, action_value)
+        return StateActionExample(tokens, action_value)
 
 
 class FileStorageWriter:
