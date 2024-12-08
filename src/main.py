@@ -69,7 +69,7 @@ time_marker = '2024-11-09T00:18:25.063611+00:00'
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = False
+terminate_pod_at_the_end = True
 
 #
 # Puzzle configuration
@@ -98,7 +98,7 @@ models_path = "/workspace/models"
 model_file_path = f"{models_path}/{time_marker}-{total_train_examples}-q-network.pth"
 # Multiple of 4 for NVIDIA cublas WMMA
 # See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
-context_size = 196
+context_size = 148
 # Hidden size
 d_model = 384
 # Feed-forward size in transformer block
@@ -131,7 +131,7 @@ ffn_sublayer_dropout = 0.1
 # See: A Recipe for Training Neural Networks
 # http://karpathy.github.io/2019/04/25/recipe/
 
-num_steps = 300  # 32000
+num_steps = 32000  # 300
 shuffle_train_examples = True
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
 max_grad_norm = 1.0

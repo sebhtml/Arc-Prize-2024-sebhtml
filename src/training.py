@@ -49,12 +49,13 @@ class MyDataset(Dataset):
         input_tokens = example.tokens()
         item_input = make_example_tensor(input_tokens, self.context_size)
 
+        action_index = torch.tensor(example.action_index())
         action_value = example.action_value()
         action_value_bin = bin_action_value(
             action_value, self._minimum_action_value, self._maximum_action_value, self.num_classes)
         action_value_bin = torch.tensor(action_value_bin)
 
-        item = (item_input, action_value_bin)
+        item = (item_input, action_value_bin, action_index)
         return item
 
     def get_action_value_min_max(self, train_examples: List[StateActionExample]) -> Tuple[float, float]:
@@ -84,10 +85,15 @@ def train(
     data = next(iter(train_loader))
 
     optimizer.zero_grad()
-    (inputs, targets) = data
+    (inputs, targets, action_indices) = data
+
     inputs = [t.to(device) for t in inputs]
     targets = targets.to(device)
-    outputs = model(inputs)[:, 0, :]
+
+    # outputs has shape [batch_size, num_actions, num_classes].
+    # We need a shape of [batch_size, num_classes] to use the criterion.
+    outputs = model(inputs)
+    outputs = outputs[torch.arange(batch_size), action_indices]
 
     loss = criterion(outputs, targets)
 
@@ -124,16 +130,17 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True)
     for data in inference_loader:
-        (inputs, targets) = data
+        (inputs, targets, action_indices) = data
         inputs = [t.to(device) for t in inputs]
         targets = targets.to(device)
-        outputs = model(inputs)[:, 0, :]
+        outputs = model(inputs)
+        outputs = outputs[torch.arange(batch_size), action_indices]
         for idx in range(len(inputs[0])):
             print("--------------------")
             print(f"idx: {idx} ")
             input = [inputs[0][idx], inputs[1][idx],
                      inputs[2][idx]]
-            target = targets[idx].argmax(dim=-1).item()
+            target = targets[idx].item()
             output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")

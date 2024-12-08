@@ -9,7 +9,7 @@ def __get_np_structured_array_dtype():
     See https://numpy.org/doc/stable/user/basics.rec.html
     """
     composite_dtype = [('attended_example_input', 'uint8', (60)), (
-        'attended_current_state', 'uint8', (60)), ('attended_action', 'uint8', (60)), ('action_index', 'uint8'), ('action_value', 'float32')]
+        'attended_current_state', 'uint8', (60)), ('action_index', 'uint8'), ('action_value', 'float32')]
     return composite_dtype
 
 
@@ -22,12 +22,12 @@ def create_file_storage(h5_file_path):
     return f
 
 
-def __to_h5_example(example: tuple[ExampleInputTokens, float]):
-    attended_example_input = example[0].attended_example_input()
-    attended_current_state = example[0].attended_current_state()
-    attended_action = example[0].attended_action()
-    action_value = example[1]
-    return (attended_example_input, attended_current_state, attended_action, action_value)
+def __to_h5_example(example: StateActionExample):
+    attended_example_input = example.tokens().attended_example_input()
+    attended_current_state = example.tokens().attended_current_state()
+    action_index = example.action_index()
+    action_value = example.action_value()
+    return (attended_example_input, attended_current_state, action_index, action_value)
 
 
 def append_to_file_storage(f: h5py.File, train_action_examples):
@@ -87,11 +87,10 @@ class FileStorageReader:
         example = examples[idx]
         attended_example_input = example['attended_example_input'].tolist()
         attended_current_state = example['attended_current_state'].tolist()
-        attended_action = example['attended_action'].tolist()
         action_index = example['action_index']
         action_value = example['action_value']
         tokens = ExampleInputTokens(
-            attended_example_input, attended_current_state, attended_action)
+            attended_example_input, attended_current_state,)
         return StateActionExample(tokens, action_index, action_value)
 
 

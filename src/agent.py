@@ -107,76 +107,55 @@ def select_action_with_deep_q_network(
         model: DecoderOnlyTransformerModel,
         verbose: bool,
 ):
-    np.random.shuffle(candidate_actions)
+    # Note that all candidate actions act on the same cell.
+    candidate_action = candidate_actions[0]
+
+    (attented_example_input, attented_current_state, attented_candidate_action,
+     translation_x, translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
+
+    input_tokens = tokenize_example_input(
+        current_state,
+        attented_example_input, attented_current_state, padding_char)
+
+    if verbose:
+        print("input_text")
+        print(tokens_to_text(input_tokens))
+
+    # Add a dimension for the batch_size
+    inputs = list(map(lambda tensor: tensor.unsqueeze(0),
+                      make_example_tensor(input_tokens, context_size)))
+
+    inputs = [t.to(device) for t in inputs]
+    outputs = model(inputs)
+
+    action_values = []
+
+    # outputs.shape is [batch_size, num_actions, num_classes]
+    for action_index in range(outputs.shape[1]):
+        action_value = outputs[0, action_index, :].argmax(dim=-1).item()
+        action_values.append([action_index, action_value])
+
+    np.random.shuffle(action_values)
 
     best_action = None
     best_action_value = None
 
-    batch_tokens = []
-    batch_inputs = []
-    batch_actions = []
+    for action_index, action_value in action_values:
+        candidate_action = candidate_actions[action_index]
+        row = candidate_action.row()
+        col = candidate_action.col()
+        cell_value = candidate_action.cell_value()
 
-    for candidate_action_index in range(len(candidate_actions)):
-        candidate_action = candidate_actions[candidate_action_index]
+        if verbose:
+            print(
+                f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
+        if best_action_value == None or action_value > best_action_value:
+            best_action = candidate_action
+            best_action_value = action_value
 
-        (attented_example_input, attented_current_state, attented_candidate_action,
-         translation_x, translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
-
-        input_tokens = tokenize_example_input(
-            current_state,
-            attented_example_input, attented_current_state, attented_candidate_action, padding_char)
-
-        inputs = list(map(lambda tensor: tensor.unsqueeze(0),
-                          make_example_tensor(input_tokens, context_size)))
-
-        batch_tokens.append(input_tokens)
-        batch_inputs.append(inputs)
-        batch_actions.append(candidate_action)
-
-        if len(batch_inputs) == batch_size or candidate_action_index == len(candidate_actions) - 1:
-            # batch_tensors contains:
-            # [
-            #   [ tensor1, tensor2, tensor3, tensor4],
-            #   [ tensor1, tensor2, tensor3, tensor4],
-            #   [ tensor1, tensor2, tensor3, tensor4],
-            # ]
-            inputs = [
-                torch.cat(
-                    list(map(lambda inputs: inputs[0], batch_inputs)), dim=0),
-                torch.cat(
-                    list(map(lambda inputs: inputs[1], batch_inputs)), dim=0),
-                torch.cat(
-                    list(map(lambda inputs: inputs[2], batch_inputs)), dim=0),
-                torch.cat(
-                    list(map(lambda inputs: inputs[3], batch_inputs)), dim=0),
-            ]
-            inputs = [t.to(device) for t in inputs]
-            outputs = model(inputs)[:, 0, :]
-
-            for batch_index in range(len(batch_tokens)):
-                input_tokens = batch_tokens[batch_index]
-                candidate_action = batch_actions[batch_index]
-                if verbose:
-                    print("input_text")
-                    print(tokens_to_text(input_tokens))
-                action_value = outputs[batch_index].argmax(dim=-1).item()
-                row = candidate_action.row()
-                col = candidate_action.col()
-                cell_value = candidate_action.cell_value()
-
-                if verbose:
-                    print(
-                        f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
-                if best_action_value == None or action_value > best_action_value:
-                    best_action = candidate_action
-                    best_action_value = action_value
-            for t in inputs:
-                del t
-            del outputs
-            # Clear accumulated batch.
-            batch_tokens = []
-            batch_inputs = []
-            batch_actions = []
+    for t in inputs:
+        del t
+    del outputs
 
     return best_action, best_action_value
 
@@ -266,7 +245,7 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
 
         input_tokens = tokenize_example_input(
             current_state,
-            attented_example_input, attented_current_state, attented_candidate_action, padding_char)
+            attented_example_input, attented_current_state, padding_char)
 
         action_index = attented_candidate_action.cell_value()
         expected_rewards = sum_of_future_rewards(

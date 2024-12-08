@@ -115,8 +115,6 @@ class DecoderOnlyTransformerModel(nn.Module):
                                                          embedding_dim=d_model)
         self.attended_current_state_embed = nn.Embedding(num_embeddings=vocab_size,
                                                          embedding_dim=d_model)
-        self.attended_action_embed = nn.Embedding(num_embeddings=vocab_size,
-                                                  embedding_dim=d_model)
 
         self.dropout_1 = nn.Dropout(input_dropout)
         modules = [NonCausalSelfAttentionTransformerBlock(
@@ -134,17 +132,16 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.num_classes = num_classes
 
     def forward(self, x):
-        current_state, attended_example_input, attended_current_state, attended_action = x
+        current_state, attended_example_input, attended_current_state = x
         x_current_state = self.current_state_embed(
             current_state)
         x_attended_example_input = self.attended_example_input_embed(
             attended_example_input)
         x_attended_current_state = self.attended_current_state_embed(
             attended_current_state)
-        x_attended_action = self.attended_action_embed(attended_action)
         x = torch.cat([x_current_state,
                        x_attended_example_input,
-                      x_attended_current_state, x_attended_action], dim=1)
+                      x_attended_current_state], dim=1)
         x = x / math.sqrt(self.d_model)
         # We use Dropout after computing embedding.
         # See File:Full GPT architecture.svg
