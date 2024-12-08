@@ -87,7 +87,7 @@ def train(
     (inputs, targets) = data
     inputs = [t.to(device) for t in inputs]
     targets = targets.to(device)
-    outputs = model(inputs)
+    outputs = model(inputs)[:, 0, :]
 
     loss = criterion(outputs, targets)
 
@@ -127,7 +127,7 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
         (inputs, targets) = data
         inputs = [t.to(device) for t in inputs]
         targets = targets.to(device)
-        outputs = model(inputs)
+        outputs = model(inputs)[:, 0, :]
         for idx in range(len(inputs[0])):
             print("--------------------")
             print(f"idx: {idx} ")
@@ -177,7 +177,7 @@ def train_model_using_experience_replay(
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool, lr: float, weight_decay: float,
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
-
+    num_steps: int,
 ):
     criterion = nn.NLLLoss()
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -186,7 +186,6 @@ def train_model_using_experience_replay(
     max_taken_actions_per_step = 1
     steps = []
     losses = []
-    num_steps = 32000  # 300
 
     experience_replay_data_set = []
     for step in range(num_steps):

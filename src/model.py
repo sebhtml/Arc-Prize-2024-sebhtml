@@ -106,7 +106,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
 class DecoderOnlyTransformerModel(nn.Module):
     def __init__(self, vocab_size, d_model, ffn_size,
                  input_dropout, attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
-                 num_heads, context_size, num_layers, num_classes, device):
+                 num_heads, context_size, num_layers, num_actions, num_classes, device):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.d_model = d_model
         self.current_state_embed = nn.Embedding(num_embeddings=vocab_size,
@@ -128,7 +128,10 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.norm = nn.RMSNorm(d_model)
 
         self.classifier = nn.Linear(
-            in_features=d_model, out_features=num_classes)
+            in_features=d_model, out_features=num_actions * num_classes)
+
+        self.num_actions = num_actions
+        self.num_classes = num_classes
 
     def forward(self, x):
         current_state, attended_example_input, attended_current_state, attended_action = x
@@ -151,6 +154,11 @@ class DecoderOnlyTransformerModel(nn.Module):
         transformed_ln = self.norm(transformed)
 
         logits = self.classifier(transformed_ln)
+        # [batch_size, seq_len, num_actions*num_classes] -> [batch_size, num_actions*num_classes]
         mean_logits = logits.mean(dim=1)
-        softmax_output = F.log_softmax(mean_logits)
+        batch_size = mean_logits.shape[0]
+        # [batch_size, num_actions*num_classes] -> [batch_size, num_actions, num_classes]
+        action_mean_logits = mean_logits.view(
+            batch_size, self.num_actions, self.num_classes)
+        softmax_output = F.log_softmax(action_mean_logits, dim=-1)
         return softmax_output

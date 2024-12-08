@@ -151,7 +151,7 @@ def select_action_with_deep_q_network(
                     list(map(lambda inputs: inputs[3], batch_inputs)), dim=0),
             ]
             inputs = [t.to(device) for t in inputs]
-            outputs = model(inputs)
+            outputs = model(inputs)[:, 0, :]
 
             for batch_index in range(len(batch_tokens)):
                 input_tokens = batch_tokens[batch_index]

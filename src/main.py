@@ -69,7 +69,7 @@ time_marker = '2024-11-09T00:18:25.063611+00:00'
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = True
+terminate_pod_at_the_end = False
 
 #
 # Puzzle configuration
@@ -103,6 +103,7 @@ context_size = 196
 d_model = 384
 # Feed-forward size in transformer block
 d_ff = 1024
+num_actions = 10
 num_classes = 128
 num_heads = 8
 num_layers = 8
@@ -130,6 +131,7 @@ ffn_sublayer_dropout = 0.1
 # See: A Recipe for Training Neural Networks
 # http://karpathy.github.io/2019/04/25/recipe/
 
+num_steps = 300  # 32000
 shuffle_train_examples = True
 # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
 max_grad_norm = 1.0
@@ -207,7 +209,7 @@ def main():
     model = DecoderOnlyTransformerModel(
         vocab_size, d_model, d_ff,
         input_dropout, attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
-        num_heads, context_size, num_layers, num_classes, device)
+        num_heads, context_size, num_layers, num_actions, num_classes, device)
     # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
     # torch.compile does not work on the NVIDIA P100
     # torch.compile works on runpod.io with a NVIDIA A40
@@ -237,6 +239,7 @@ def main():
             puzzle_train_examples, cell_value_size,
             discount, padding_char, num_classes, shuffle_train_examples, lr,
             weight_decay, max_grad_norm, print_model_outputs, save_step_losses,
+            num_steps,
         )
 
     if save_neural_net_model:
