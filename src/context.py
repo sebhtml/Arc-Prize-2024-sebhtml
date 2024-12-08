@@ -34,10 +34,6 @@ class ExampleInputTokens:
         return self.__attended_action
 
 
-def actions_act_on_same_cell(action_1: QLearningAction, action_2: QLearningAction) -> bool:
-    return (action_1.row(), action_1.col()) == (action_2.row(), action_2.col())
-
-
 def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     current_state = copy.deepcopy(state)
     for row in range(len(current_state)):
