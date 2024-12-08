@@ -6,12 +6,24 @@ import pandas as pd
 import math
 from datetime import datetime, timezone
 from typing import List, Tuple
-from agent import make_example_tensor, generate_examples
+from agent import make_example_tensor, generate_examples, select_action_with_deep_q_network
 from context import tokens_to_text, tokenize_example_input, QLearningExample
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
-from emulator import Emulator
+from emulator import Emulator, generate_cell_actions
 from vision import do_visual_fixation
+
+
+def unbin_action_value(action_value_bin: int, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
+    """
+    Convert a bin between 0 and num_classes-1 to a float between minimum_action_value and maximum_action_value
+    """
+    minimum_action_value_bin = 0
+    maximum_action_value_bin = num_classes - 1
+
+    action_value = minimum_action_value + (
+        ((action_value_bin - minimum_action_value_bin) / (maximum_action_value_bin - minimum_action_value_bin)) * maximum_action_value)
+    return action_value
 
 
 def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> int:
@@ -23,9 +35,68 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
     _maximum_action_value: 7.0
     action_value_bin = (3.0 - -4.0) / (7.0 - -4.0)
     """
-    action_value_bin = math.floor(
-        ((action_value - minimum_action_value) / (maximum_action_value - minimum_action_value)) * (num_classes - 1))
+    minimum_action_value_bin = 0
+    maximum_action_value_bin = num_classes - 1
+
+    action_value_bin = minimum_action_value_bin + math.floor(
+        ((action_value - minimum_action_value) / (maximum_action_value - minimum_action_value)) * maximum_action_value_bin)
     return action_value_bin
+
+
+def get_target_action_value(
+        example: QLearningExample,
+        padding_char: str,
+        context_size: int,
+        cell_value_size: int,
+        minimum_action_value: float,
+        maximum_action_value: float,
+        num_classes: int,
+        batch_size: int,
+        discount: float,
+        device: torch.device,
+        target_model: DecoderOnlyTransformerModel,
+        verbose: bool,
+) -> float:
+    """
+    See https://en.wikipedia.org/wiki/Q-learning
+    See https://en.wikipedia.org/wiki/Bellman_equation
+
+    See
+    Dynamic Programming
+    https://www.science.org/doi/10.1126/science.153.3731.34
+
+    See:
+    Human-level control through deep reinforcement learning
+    https://www.nature.com/articles/nature14236
+    """
+
+    reward = example.experience().reward()
+
+    if example.is_terminal():
+        return reward
+    else:
+        experience = example.experience()
+        example_input = experience.next_state().example_input()
+        current_state = experience.next_state().current_state()
+
+        candidate_actions = generate_cell_actions(
+            current_state, cell_value_size)
+
+        best_action, best_action_value = select_action_with_deep_q_network(
+            example_input,
+            current_state,
+            candidate_actions,
+            padding_char,
+            context_size,
+            batch_size,
+            device,
+            target_model,
+            verbose,
+        )
+
+        best_action_value = unbin_action_value(
+            best_action_value, minimum_action_value, maximum_action_value, num_classes)
+        return best_action_value + discount * best_action_value
 
 
 class MyDataset(Dataset):

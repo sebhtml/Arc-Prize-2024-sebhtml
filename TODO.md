@@ -1,8 +1,8 @@
 # Research and Development
 
-- use target Q network to use Bellman equation 
-
 - add class for configuration
+- unit tests for bin_action_value and unbin_action_value
+- use target Q network to use Bellman equation
 
 - move print_current_state in GameState
 - use GameState in Emulator

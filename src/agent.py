@@ -106,7 +106,8 @@ def select_action_with_deep_q_network(
         device: torch.device,
         model: DecoderOnlyTransformerModel,
         verbose: bool,
-):
+) -> Tuple[QLearningAction, int]:
+
     # Note that all candidate actions act on the same cell.
     candidate_action = candidate_actions[0]
 

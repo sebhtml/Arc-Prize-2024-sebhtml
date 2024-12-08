@@ -76,11 +76,14 @@ class Emulator:
 
         return immediate_reward
 
-    def list_actions(self) -> list[QLearningAction]:
+    def list_actions(self) -> List[QLearningAction]:
         return self.__available_actions
 
 
-def generate_cell_actions(current_state, cell_value_size) -> list[QLearningAction]:
+def generate_cell_actions(
+        current_state: List[List[Cell]],
+        cell_value_size: int,
+) -> List[QLearningAction]:
 
     vacant_cells = []
     for row in range(len(current_state)):
