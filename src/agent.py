@@ -268,10 +268,11 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
             current_state,
             attented_example_input, attented_current_state, attented_candidate_action, padding_char)
 
+        action_index = attented_candidate_action.cell_value()
         expected_rewards = sum_of_future_rewards(
             immediate_reward, discount, current_state, candidate_action)
         action_value = expected_rewards
-        example = StateActionExample(input_tokens, action_value)
+        example = StateActionExample(input_tokens, action_index, action_value)
 
         examples.append(example)
 

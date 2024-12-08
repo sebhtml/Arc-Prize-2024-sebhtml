@@ -35,12 +35,16 @@ class ExampleInputTokens:
 
 
 class StateActionExample:
-    def __init__(self, tokens: ExampleInputTokens, action_value: float):
+    def __init__(self, tokens: ExampleInputTokens, action_index: int, action_value: float):
         self.__tokens = tokens
+        self.__action_index = action_index
         self.__action_value = action_value
 
     def tokens(self) -> ExampleInputTokens:
         return self.__tokens
+
+    def action_index(self) -> float:
+        return self.__action_index
 
     def action_value(self) -> float:
         return self.__action_value

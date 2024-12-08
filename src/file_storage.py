@@ -9,7 +9,7 @@ def __get_np_structured_array_dtype():
     See https://numpy.org/doc/stable/user/basics.rec.html
     """
     composite_dtype = [('attended_example_input', 'uint8', (60)), (
-        'attended_current_state', 'uint8', (60)), ('attended_action', 'uint8', (60)), ('action_value', 'float32')]
+        'attended_current_state', 'uint8', (60)), ('attended_action', 'uint8', (60)), ('action_index', 'uint8'), ('action_value', 'float32')]
     return composite_dtype
 
 
@@ -88,10 +88,11 @@ class FileStorageReader:
         attended_example_input = example['attended_example_input'].tolist()
         attended_current_state = example['attended_current_state'].tolist()
         attended_action = example['attended_action'].tolist()
+        action_index = example['action_index']
         action_value = example['action_value']
         tokens = ExampleInputTokens(
             attended_example_input, attended_current_state, attended_action)
-        return StateActionExample(tokens, action_value)
+        return StateActionExample(tokens, action_index, action_value)
 
 
 class FileStorageWriter:

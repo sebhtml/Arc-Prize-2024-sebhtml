@@ -14,11 +14,6 @@
 
 # Backlog
 
-- remove type Cell
-
-- use AROUND_ACTION_CHAR = ','
-- don't pass the AROUND_ACTION_CHAR chars to the neural network
-
 - move functions that load json files to puzzle_data.py
 - move norm and dropout at same scope in transformer block
 - increase dropout
