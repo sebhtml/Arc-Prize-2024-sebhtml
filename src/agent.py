@@ -4,7 +4,7 @@ import random
 import copy
 from typing import List, Tuple
 from context import tokenize_example_input, tokens_to_text, make_example_tensor
-from context import ExampleInputTokens, state_to_text, StateActionExample
+from context import state_to_text, StateActionExample
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, ReplayBuffer, Experience, GameState
 from q_learning import sum_of_future_rewards
@@ -253,7 +253,7 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
         action_value = expected_rewards
         is_terminal = idx == len(experiences)
         example = StateActionExample(
-            input_tokens, action_index, action_value, reward, is_terminal)
+            experience, input_tokens, action_index, action_value, reward, is_terminal)
 
         examples.append(example)
 

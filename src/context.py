@@ -1,9 +1,9 @@
 import torch
 import copy
-from typing import List, Tuple
+from typing import List
 from vision import Cell
 from vision import VACANT_CELL_VALUE,  MASKED_CELL_VALUE,  OUTSIDE_CELL_VALUE
-from q_learning import QLearningAction
+from q_learning import Experience
 
 VACANT_CELL_CHAR = '_'
 MASKED_CELL_CHAR = 'X'
@@ -31,8 +31,11 @@ class ExampleInputTokens:
 
 
 class StateActionExample:
-    def __init__(self, tokens: ExampleInputTokens, action_index: int, action_value: float,
+    def __init__(self,
+                 experience: Experience,
+                 tokens: ExampleInputTokens, action_index: int, action_value: float,
                  reward: float, is_terminal: bool):
+        self.__experience = experience
         self.__tokens = tokens
         self.__action_index = action_index
         self.__action_value = action_value
@@ -53,6 +56,9 @@ class StateActionExample:
 
     def is_terminal(self) -> float:
         return self.__is_terminal
+
+    def experience(self) -> Experience:
+        return self.__experience
 
 
 def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
