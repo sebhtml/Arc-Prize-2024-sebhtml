@@ -235,24 +235,15 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
     experiences = replay_buffer.experiences()
     for idx, experience in enumerate(experiences):
         reward = experience.reward()
-        example_input = experience.state().example_input()
         current_state = experience.state().current_state()
         candidate_action = experience.action()
-
-        (attented_example_input, attented_current_state, attented_candidate_action,
-         translation_x, translation_y) = do_visual_fixation(
-            example_input, current_state, candidate_action)
-
-        input_tokens = tokenize_example_input(
-            current_state,
-            attented_example_input, attented_current_state, padding_char)
 
         expected_rewards = sum_of_future_rewards(
             reward, discount, current_state, candidate_action)
         action_value = expected_rewards
         is_terminal = idx == len(experiences)
         example = QLearningExample(
-            experience, input_tokens, action_value, is_terminal)
+            experience, action_value, is_terminal)
 
         examples.append(example)
 

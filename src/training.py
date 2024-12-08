@@ -2,17 +2,16 @@ import torch
 from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
-import torch.nn.functional as F
 import pandas as pd
 import math
 from datetime import datetime, timezone
 from typing import List, Tuple
-from agent import make_example_tensor, generate_examples, select_action_with_deep_q_network
-from context import tokens_to_text
-from context import QLearningExample
+from agent import make_example_tensor, generate_examples
+from context import tokens_to_text, tokenize_example_input, QLearningExample
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
 from emulator import Emulator
+from vision import do_visual_fixation
 
 
 def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> int:
@@ -32,21 +31,34 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
 class MyDataset(Dataset):
     def __init__(self,
                  train_examples: List[QLearningExample],
-                 context_size: int, num_classes: int):
+                 context_size: int, num_classes: int, padding_char: str,):
         self.context_size = context_size
         self.num_classes = num_classes
         self.train_examples = train_examples
         min_value, max_value = -50.0, +50.0
         self._minimum_action_value = min_value
         self._maximum_action_value = max_value
+        self.__padding_char = padding_char
 
     def __len__(self):
         return len(self.train_examples)
 
     def __getitem__(self, idx):
         example = self.train_examples[idx]
+        experience = example.experience()
+        example_input = experience.state().example_input()
+        current_state = experience.state().current_state()
+        candidate_action = experience.action()
+        padding_char = self.__padding_char
 
-        input_tokens = example.tokens()
+        (attented_example_input, attented_current_state, attented_candidate_action,
+         translation_x, translation_y) = do_visual_fixation(
+            example_input, current_state, candidate_action)
+
+        input_tokens = tokenize_example_input(
+            current_state,
+            attented_example_input, attented_current_state, padding_char)
+
         item_input = make_example_tensor(input_tokens, self.context_size)
 
         action_index = torch.tensor(example.action_index())
@@ -264,7 +276,7 @@ def train_model_with_experience_replay_data_set(
 
     if len(experience_replay_data_set) >= min_experience_replay_data_set_size:
         dataset = MyDataset(
-            experience_replay_data_set, context_size, num_classes,)
+            experience_replay_data_set, context_size, num_classes, padding_char,)
 
         loss = train(
             criterion,

@@ -64,6 +64,9 @@ class Experience:
     def action(self) -> QLearningAction:
         return self.__action
 
+    def next_state(self) -> GameState:
+        return self.__next_state
+
 
 class ReplayBuffer:
     """

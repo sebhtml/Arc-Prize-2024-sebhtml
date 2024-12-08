@@ -33,17 +33,12 @@ class ExampleInputTokens:
 class QLearningExample:
     def __init__(self,
                  experience: Experience,
-                 tokens: ExampleInputTokens,
                  action_value: float,
                  is_terminal: bool
                  ):
         self.__experience = experience
-        self.__tokens = tokens
         self.__action_value = action_value
         self.__is_terminal = is_terminal
-
-    def tokens(self) -> ExampleInputTokens:
-        return self.__tokens
 
     def action_index(self) -> float:
         return self.experience().action().cell_value()
