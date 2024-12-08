@@ -233,8 +233,8 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
     examples = []
 
     experiences = replay_buffer.experiences()
-    for experience in experiences:
-        immediate_reward = experience.reward()
+    for idx, experience in enumerate(experiences):
+        reward = experience.reward()
         example_input = experience.state().example_input()
         current_state = experience.state().current_state()
         candidate_action = experience.action()
@@ -249,9 +249,11 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
 
         action_index = attented_candidate_action.cell_value()
         expected_rewards = sum_of_future_rewards(
-            immediate_reward, discount, current_state, candidate_action)
+            reward, discount, current_state, candidate_action)
         action_value = expected_rewards
-        example = StateActionExample(input_tokens, action_index, action_value)
+        is_terminal = idx == len(experiences)
+        example = StateActionExample(
+            input_tokens, action_index, action_value, reward, is_terminal)
 
         examples.append(example)
 

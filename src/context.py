@@ -31,10 +31,13 @@ class ExampleInputTokens:
 
 
 class StateActionExample:
-    def __init__(self, tokens: ExampleInputTokens, action_index: int, action_value: float):
+    def __init__(self, tokens: ExampleInputTokens, action_index: int, action_value: float,
+                 reward: float, is_terminal: bool):
         self.__tokens = tokens
         self.__action_index = action_index
         self.__action_value = action_value
+        self.__reward = reward
+        self.__is_terminal = is_terminal
 
     def tokens(self) -> ExampleInputTokens:
         return self.__tokens
@@ -44,6 +47,12 @@ class StateActionExample:
 
     def action_value(self) -> float:
         return self.__action_value
+
+    def reward(self) -> float:
+        return self.__reward
+
+    def is_terminal(self) -> float:
+        return self.__is_terminal
 
 
 def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:

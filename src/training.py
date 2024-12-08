@@ -7,7 +7,7 @@ import pandas as pd
 import math
 from datetime import datetime, timezone
 from typing import List, Tuple
-from agent import make_example_tensor, generate_examples
+from agent import make_example_tensor, generate_examples, select_action_with_deep_q_network
 from context import tokens_to_text
 from context import StateActionExample
 from report import plot_train_loss_graph
