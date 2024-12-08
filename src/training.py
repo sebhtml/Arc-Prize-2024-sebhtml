@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import List, Tuple
 from agent import make_example_tensor, generate_examples, select_action_with_deep_q_network
 from context import tokens_to_text
-from context import StateActionExample
+from context import QLearningExample
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
 from emulator import Emulator
@@ -31,7 +31,7 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
 
 class MyDataset(Dataset):
     def __init__(self,
-                 train_examples: List[StateActionExample],
+                 train_examples: List[QLearningExample],
                  context_size: int, num_classes: int):
         self.context_size = context_size
         self.num_classes = num_classes
@@ -58,7 +58,7 @@ class MyDataset(Dataset):
         item = (item_input, action_value_bin, action_index)
         return item
 
-    def get_action_value_min_max(self, train_examples: List[StateActionExample]) -> Tuple[float, float]:
+    def get_action_value_min_max(self, train_examples: List[QLearningExample]) -> Tuple[float, float]:
         min_action_value = min(map(lambda example: example[1], train_examples))
         max_action_value = max(map(lambda example: example[1], train_examples))
         return min_action_value, max_action_value
@@ -228,14 +228,14 @@ def train_model_with_experience_replay_data_set(
     max_taken_actions_per_step: int,
     criterion: nn.NLLLoss,
     optimizer: AdamW,
-    experience_replay_data_set: List[StateActionExample],
+    experience_replay_data_set: List[QLearningExample],
     context_size: int, batch_size: int, device: torch.device,
     model: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool,
     max_grad_norm: float, print_model_outputs: bool,
-) -> List[StateActionExample]:
+) -> List[QLearningExample]:
     """
     See:
     Human-level control through deep reinforcement learning

@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 from itertools import tee
-from context import ExampleInputTokens, StateActionExample
+from context import ExampleInputTokens, QLearningExample
 
 
 def __get_np_structured_array_dtype():
@@ -22,7 +22,7 @@ def create_file_storage(h5_file_path):
     return f
 
 
-def __to_h5_example(example: StateActionExample):
+def __to_h5_example(example: QLearningExample):
     attended_example_input = example.tokens().attended_example_input()
     attended_current_state = example.tokens().attended_current_state()
     action_index = example.action_index()
@@ -82,7 +82,7 @@ class FileStorageReader:
 
         return accumulator_min, accumulator_max
 
-    def get(self, idx) -> StateActionExample:
+    def get(self, idx) -> QLearningExample:
         examples = self.f["examples"]
         example = examples[idx]
         attended_example_input = example['attended_example_input'].tolist()
@@ -91,7 +91,7 @@ class FileStorageReader:
         action_value = example['action_value']
         tokens = ExampleInputTokens(
             attended_example_input, attended_current_state,)
-        return StateActionExample(tokens, action_index, action_value)
+        return QLearningExample(tokens, action_index, action_value)
 
 
 class FileStorageWriter:

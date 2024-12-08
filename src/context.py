@@ -30,29 +30,29 @@ class ExampleInputTokens:
         return self.__attended_current_state
 
 
-class StateActionExample:
+class QLearningExample:
     def __init__(self,
                  experience: Experience,
-                 tokens: ExampleInputTokens, action_index: int, action_value: float,
-                 reward: float, is_terminal: bool):
+                 tokens: ExampleInputTokens,
+                 action_value: float,
+                 is_terminal: bool
+                 ):
         self.__experience = experience
         self.__tokens = tokens
-        self.__action_index = action_index
         self.__action_value = action_value
-        self.__reward = reward
         self.__is_terminal = is_terminal
 
     def tokens(self) -> ExampleInputTokens:
         return self.__tokens
 
     def action_index(self) -> float:
-        return self.__action_index
+        return self.experience().action().cell_value()
 
     def action_value(self) -> float:
         return self.__action_value
 
     def reward(self) -> float:
-        return self.__reward
+        return self.experience().reward()
 
     def is_terminal(self) -> float:
         return self.__is_terminal
