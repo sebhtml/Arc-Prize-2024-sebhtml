@@ -69,7 +69,7 @@ time_marker = '2024-11-09T00:18:25.063611+00:00'
 # Infrastructure configuration
 #
 api_key_file = "/workspace/runpod_api_key.yml"
-terminate_pod_at_the_end = False
+terminate_pod_at_the_end = True
 
 #
 # Puzzle configuration
@@ -151,13 +151,13 @@ weight_decay = 0.1
 #
 # Options for loading AI neural net model
 #
-load_model = True
+load_model = False
 #
 # Options for training AI neural net model
 #
-train_model = False
+train_model = True
 save_step_losses = True
-save_neural_net_model = False
+save_neural_net_model = True
 #
 # Options for evaluating AI neural net model
 #

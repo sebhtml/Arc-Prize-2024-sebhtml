@@ -1,13 +1,9 @@
 # Research and Development
 
-- use 1 Linear in SwiGLU and reshape it in (2, dim)
 - produce 10 action values with neural network with 1 Linear 
-self.linear = nn.Linear(input_dim, 2*input_dim)
-chunks = x_linear_pos, x_linear_neg = x_linear.chunk(2, dim=1)
 - make the QDN have only 10 actions: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 
-- also mask non-vacant cells in visual fixation
-- use Bellman equation
+- use target Q network to use Bellman equation 
 
 - add class for configuration
 
@@ -15,14 +11,9 @@ chunks = x_linear_pos, x_linear_neg = x_linear.chunk(2, dim=1)
 - use GameState in Emulator
 - use GameState instead of List[List[Cell]] everywhere
 
-# Target Q Network
-
-
 - implement epsilon-greedy policy for random exploration
 
-
 # Backlog
-
 
 - remove type Cell
 

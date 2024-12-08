@@ -20,12 +20,11 @@ class SwiGLU(nn.Module):
     def __init__(self, dim):
         super().__init__()
         self.swish = nn.SiLU()
-        self.input_proj = nn.Linear(dim, dim, bias=False)
-        self.gate_proj = nn.Linear(dim, dim, bias=False)
+        self.linear = nn.Linear(dim, 2 * dim, bias=False)
 
     def forward(self, x):
-        input = self.input_proj(x)
-        gate = self.swish(self.gate_proj(x))
+        input, gate_input = self.linear(x).chunk(2, dim=-1)
+        gate = self.swish(gate_input)
         return input * gate
 
 
