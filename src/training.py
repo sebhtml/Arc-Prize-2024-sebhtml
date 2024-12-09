@@ -165,7 +165,7 @@ def train(
     model.train()
 
     train_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=shuffle_train_examples, num_workers=2, drop_last=True)
+        dataset, batch_size=batch_size, shuffle=shuffle_train_examples)
 
     data = next(iter(train_loader))
 
@@ -210,7 +210,7 @@ def print_train_examples(train_action_examples):
         print(example_target)
 
 
-def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, model, device,):
+def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, model: DecoderOnlyTransformerModel, device: torch.device,):
     print("[after training] print_model_outputs_for_train_examples")
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True)
