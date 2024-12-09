@@ -41,7 +41,7 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
 
     action_value_bin = minimum_action_value_bin + math.floor(
         ((action_value - minimum_action_value) / (maximum_action_value - minimum_action_value)) * maximum_action_value_bin)
-    return action_value_bin
+    return max(min(action_value_bin, maximum_action_value_bin), minimum_action_value_bin)
 
 
 def get_target_action_value(
