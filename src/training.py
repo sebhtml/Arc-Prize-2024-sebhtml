@@ -272,7 +272,6 @@ def train_model_using_experience_replay(
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     emulator = Emulator(cell_value_size)
-    max_taken_actions_per_step = 1
     steps = []
     losses = []
 
@@ -281,7 +280,6 @@ def train_model_using_experience_replay(
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             config,
             emulator,
-            max_taken_actions_per_step,
             criterion,
             optimizer,
             experience_replay_data_set,
@@ -307,9 +305,8 @@ def train_model_using_experience_replay(
 
 
 def train_model_with_experience_replay_data_set(
-        config: Configuration,
+    config: Configuration,
     emulator: Emulator,
-    max_taken_actions_per_step: int,
     criterion: nn.NLLLoss,
     optimizer: AdamW,
     experience_replay_data_set: List[QLearningExample],
@@ -328,7 +325,7 @@ def train_model_with_experience_replay_data_set(
 
     new_train_examples = generate_examples(
         emulator,
-        max_taken_actions_per_step,
+        config.max_taken_actions_per_step,
         context_size,
         batch_size,
         device,

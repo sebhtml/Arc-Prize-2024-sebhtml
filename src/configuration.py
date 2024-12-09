@@ -94,6 +94,7 @@ class Configuration:
     # http://karpathy.github.io/2019/04/25/recipe/
 
     num_steps = 300  # 32000
+    max_taken_actions_per_step = 1
     shuffle_train_examples = True
     # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
     max_grad_norm = 1.0
