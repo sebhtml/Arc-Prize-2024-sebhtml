@@ -23,8 +23,8 @@ def unbin_action_value(action_value_bin: int, minimum_action_value: float, maxim
     maximum_action_value_bin = num_classes - 1
 
     action_value = minimum_action_value + (
-        ((action_value_bin - minimum_action_value_bin) / (maximum_action_value_bin - minimum_action_value_bin)) * maximum_action_value)
-    return action_value
+        ((action_value_bin - minimum_action_value_bin) / (maximum_action_value_bin - minimum_action_value_bin)) * (maximum_action_value - minimum_action_value))
+    return max(min(action_value, maximum_action_value), minimum_action_value)
 
 
 def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> int:
@@ -40,7 +40,7 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
     maximum_action_value_bin = num_classes - 1
 
     action_value_bin = minimum_action_value_bin + math.floor(
-        ((action_value - minimum_action_value) / (maximum_action_value - minimum_action_value)) * maximum_action_value_bin)
+        ((action_value - minimum_action_value) / (maximum_action_value - minimum_action_value)) * (maximum_action_value_bin - minimum_action_value_bin))
     return max(min(action_value_bin, maximum_action_value_bin), minimum_action_value_bin)
 
 

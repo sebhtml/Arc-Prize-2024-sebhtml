@@ -1,6 +1,5 @@
 # Research and Development
 
-- unit tests for and unbin_action_value
 - use target Q network to use Bellman equation
 - remove class QLearningExample
 
