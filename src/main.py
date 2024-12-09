@@ -35,7 +35,7 @@ from agent import apply_puzzle_action_value_policy
 from training import train_model_using_experience_replay
 from configuration import Configuration
 
-config = Configuration
+config = Configuration()
 
 # device = xm.xla_device()
 # device = torch.device("cpu")

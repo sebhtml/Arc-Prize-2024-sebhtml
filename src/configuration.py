@@ -128,3 +128,8 @@ class Configuration:
     print_model_outputs = False
     run_autoregressive_inference_on_train_examples = True
     run_autoregressive_inference_on_test_examples = True
+
+    def __init__(self):
+        for key, value in dict(Configuration.__dict__).items():
+            if not key.startswith('_'):
+                setattr(self, key, value)
