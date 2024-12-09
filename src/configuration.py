@@ -111,6 +111,8 @@ class Configuration:
     lr = 0.0001
     # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
     weight_decay = 0.1
+    minimum_action_value = -50.0
+    maximum_action_value = +50.0
 
     #
     # Options for loading AI neural net model

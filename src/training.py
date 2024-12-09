@@ -12,6 +12,7 @@ from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
 from emulator import Emulator, generate_cell_actions
 from vision import do_visual_fixation
+from configuration import Configuration
 
 
 def unbin_action_value(action_value_bin: int, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
@@ -104,25 +105,19 @@ def get_target_action_value(
 class MyDataset(Dataset):
     def __init__(self,
                  train_examples: List[QLearningExample],
-                 context_size: int, num_classes: int, padding_char: str,):
-        self.context_size = context_size
-        self.num_classes = num_classes
-        self.train_examples = train_examples
-        min_value, max_value = -50.0, +50.0
-        self._minimum_action_value = min_value
-        self._maximum_action_value = max_value
-        self.__padding_char = padding_char
+                 config: Configuration,):
+        self.__train_examples = train_examples
+        self.__config = config
 
     def __len__(self):
-        return len(self.train_examples)
+        return len(self.__train_examples)
 
     def __getitem__(self, idx):
-        example = self.train_examples[idx]
+        example = self.__train_examples[idx]
         experience = example.experience()
         example_input = experience.state().example_input()
         current_state = experience.state().current_state()
         candidate_action = experience.action()
-        padding_char = self.__padding_char
 
         (attented_example_input, attented_current_state, attented_candidate_action,
          translation_x, translation_y) = do_visual_fixation(
@@ -130,14 +125,15 @@ class MyDataset(Dataset):
 
         input_tokens = tokenize_example_input(
             current_state,
-            attented_example_input, attented_current_state, padding_char)
+            attented_example_input, attented_current_state, self.__config.padding_char)
 
-        item_input = make_example_tensor(input_tokens, self.context_size)
+        item_input = make_example_tensor(
+            input_tokens, self.__config.context_size)
 
         action_index = torch.tensor(example.action_index())
         action_value = example.action_value()
         action_value_bin = bin_action_value(
-            action_value, self._minimum_action_value, self._maximum_action_value, self.num_classes)
+            action_value, self.__config.minimum_action_value, self.__config.maximum_action_value, self.__config.num_classes)
         action_value_bin = torch.tensor(action_value_bin)
 
         item = (item_input, action_value_bin, action_index)
@@ -263,7 +259,8 @@ def get_grad_norm(model):
 
 
 def train_model_using_experience_replay(
-        context_size: int, batch_size: int, device: torch.device,
+    config: Configuration,
+    context_size: int, batch_size: int, device: torch.device,
     model: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
@@ -282,6 +279,7 @@ def train_model_using_experience_replay(
     experience_replay_data_set = []
     for step in range(num_steps):
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
+            config,
             emulator,
             max_taken_actions_per_step,
             criterion,
@@ -309,6 +307,7 @@ def train_model_using_experience_replay(
 
 
 def train_model_with_experience_replay_data_set(
+        config: Configuration,
     emulator: Emulator,
     max_taken_actions_per_step: int,
     criterion: nn.NLLLoss,
@@ -349,7 +348,7 @@ def train_model_with_experience_replay_data_set(
 
     if len(experience_replay_data_set) >= min_experience_replay_data_set_size:
         dataset = MyDataset(
-            experience_replay_data_set, context_size, num_classes, padding_char,)
+            experience_replay_data_set, config,)
 
         loss = train(
             criterion,
