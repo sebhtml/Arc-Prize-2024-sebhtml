@@ -242,9 +242,8 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
         expected_rewards = sum_of_future_rewards(
             reward, discount, current_state, candidate_action)
         action_value = expected_rewards
-        is_terminal = idx == len(experiences)
         example = QLearningExample(
-            experience, action_value, is_terminal)
+            experience, action_value,)
 
         examples.append(example)
 

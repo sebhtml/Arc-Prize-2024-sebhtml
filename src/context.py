@@ -34,11 +34,9 @@ class QLearningExample:
     def __init__(self,
                  experience: Experience,
                  action_value: float,
-                 is_terminal: bool
                  ):
         self.__experience = experience
         self.__action_value = action_value
-        self.__is_terminal = is_terminal
 
     def action_index(self) -> float:
         return self.experience().action().cell_value()
@@ -48,9 +46,6 @@ class QLearningExample:
 
     def reward(self) -> float:
         return self.experience().reward()
-
-    def is_terminal(self) -> float:
-        return self.__is_terminal
 
     def experience(self) -> Experience:
         return self.__experience

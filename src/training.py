@@ -72,31 +72,33 @@ def get_target_action_value(
 
     reward = example.experience().reward()
 
-    if example.is_terminal():
+    experience = example.experience()
+    example_input = experience.next_state().example_input()
+    current_state = experience.next_state().current_state()
+
+    candidate_actions = generate_cell_actions(
+        current_state, cell_value_size)
+
+    is_terminal = len(candidate_actions) == 0
+
+    if is_terminal:
         return reward
-    else:
-        experience = example.experience()
-        example_input = experience.next_state().example_input()
-        current_state = experience.next_state().current_state()
 
-        candidate_actions = generate_cell_actions(
-            current_state, cell_value_size)
+    best_action, best_action_value = select_action_with_deep_q_network(
+        example_input,
+        current_state,
+        candidate_actions,
+        padding_char,
+        context_size,
+        batch_size,
+        device,
+        target_model,
+        verbose,
+    )
 
-        best_action, best_action_value = select_action_with_deep_q_network(
-            example_input,
-            current_state,
-            candidate_actions,
-            padding_char,
-            context_size,
-            batch_size,
-            device,
-            target_model,
-            verbose,
-        )
-
-        best_action_value = unbin_action_value(
-            best_action_value, minimum_action_value, maximum_action_value, num_classes)
-        return best_action_value + discount * best_action_value
+    best_action_value = unbin_action_value(
+        best_action_value, minimum_action_value, maximum_action_value, num_classes)
+    return best_action_value + discount * best_action_value
 
 
 class MyDataset(Dataset):
