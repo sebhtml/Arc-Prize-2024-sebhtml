@@ -1,6 +1,5 @@
 # Research and Development
 
-- add class for configuration
 - unit tests for bin_action_value and unbin_action_value
 - use target Q network to use Bellman equation
 
