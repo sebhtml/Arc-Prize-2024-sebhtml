@@ -68,25 +68,6 @@ class Experience:
         return self.__next_state
 
 
-class ReplayBuffer:
-    """
-    See:
-    Amortized Planning with Large-Scale Transformers: A Case Study on Chess
-    https://arxiv.org/abs/2402.04494
-
-    See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
-    """
-
-    def __init__(self):
-        self.__experiences: List[Experience] = []
-
-    def add_experience(self, experience: Experience):
-        self.__experiences.append(experience)
-
-    def experiences(self) -> List[Experience]:
-        return self.__experiences
-
-
 def sum_of_future_rewards(immediate_reward: float, discount: float,
                           attented_current_state: List[List[Cell]],
                           attented_candidate_action: QLearningAction) -> float:

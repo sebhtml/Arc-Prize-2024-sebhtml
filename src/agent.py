@@ -6,7 +6,7 @@ from typing import List, Tuple
 from context import tokenize_example_input, tokens_to_text, make_example_tensor
 from context import state_to_text
 from vision import do_visual_fixation
-from q_learning import QLearningAction, Cell, ReplayBuffer, Experience, GameState
+from q_learning import QLearningAction, Cell, Experience, GameState
 from q_learning import sum_of_future_rewards
 from model import DecoderOnlyTransformerModel
 from emulator import Emulator
@@ -169,7 +169,7 @@ def play_game_using_model(
         batch_size: int,
         device: torch.device,
         model: DecoderOnlyTransformerModel,
-        puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]], cell_value_size: int) -> ReplayBuffer:
+        puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]], cell_value_size: int) -> List[Experience]:
     """
     Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by a random player.
 
@@ -177,10 +177,16 @@ def play_game_using_model(
 
     We start from an empty board, and generate legal actions, and choose the best action (argmax of action value),
     until the end of the game is reached.
+
+    See:
+    Amortized Planning with Large-Scale Transformers: A Case Study on Chess
+    https://arxiv.org/abs/2402.04494
+
+    See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
     """
 
     model.eval()
-    replay_buffer = ReplayBuffer()
+    replay_buffer = []
 
     if emulator.is_in_terminal_state():
         i = random.randrange(0, len(puzzle_train_examples))
@@ -192,7 +198,7 @@ def play_game_using_model(
     verbose = False
 
     while not emulator.is_in_terminal_state() and \
-            len(replay_buffer.experiences()) < max_taken_actions_per_step:
+            len(replay_buffer) < max_taken_actions_per_step:
         candidate_actions = emulator.list_actions()
 
         example_input, current_state = emulator.game_state()
@@ -221,35 +227,6 @@ def play_game_using_model(
             immediate_reward,
             GameState(example_input, next_state),
         )
-        replay_buffer.add_experience(experience)
+        replay_buffer.append(experience)
 
     return replay_buffer
-
-
-def generate_examples(
-        emulator: Emulator,
-        max_taken_actions_per_step: int,
-        context_size: int,
-        batch_size: int,
-        device: torch.device,
-        model: DecoderOnlyTransformerModel,
-        puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]], cell_value_size: int,
-        discount: float, padding_char: str
-) -> List[Experience]:
-    """
-    Generate training examples from a puzzle example.
-    """
-
-    replay_buffer = play_game_using_model(
-        emulator,
-        max_taken_actions_per_step,
-        padding_char,
-        context_size,
-        batch_size,
-        device,
-        model,
-        puzzle_train_examples, cell_value_size)
-
-    action_examples = replay_buffer.experiences()
-
-    return action_examples

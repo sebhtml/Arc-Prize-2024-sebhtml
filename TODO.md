@@ -1,6 +1,5 @@
 # Research and Development
 
-- remove class ReplayBuffer
 - remove get_action_value_min_max
 - remove sum_of_future_rewards
 - remove unused arguments in all modules

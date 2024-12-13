@@ -7,7 +7,7 @@ import math
 import copy
 from datetime import datetime, timezone
 from typing import List, Tuple
-from agent import make_example_tensor, generate_examples, select_action_with_deep_q_network
+from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model
 from context import tokens_to_text, tokenize_example_input
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
@@ -404,15 +404,15 @@ def train_model_with_experience_replay_data_set(
     https://www.nature.com/articles/nature14236
     """
 
-    new_train_examples = generate_examples(
+    new_train_examples = play_game_using_model(
         emulator,
         config.max_taken_actions_per_step,
+        padding_char,
         context_size,
         batch_size,
         device,
         model,
-        puzzle_train_examples, cell_value_size,
-        discount, padding_char)
+        puzzle_train_examples, cell_value_size)
 
     experience_replay_data_set_size = 4096
     experience_replay_data_set += new_train_examples
