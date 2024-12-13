@@ -226,28 +226,6 @@ def play_game_using_model(
     return replay_buffer
 
 
-def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Experience]:
-    """
-    Generate (state, action, action_value) action examples for a puzzle example.
-    """
-
-    examples = []
-
-    experiences = replay_buffer.experiences()
-    for idx, experience in enumerate(experiences):
-        reward = experience.reward()
-        current_state = experience.state().current_state()
-        candidate_action = experience.action()
-
-        expected_rewards = sum_of_future_rewards(
-            reward, discount, current_state, candidate_action)
-        action_value = expected_rewards
-
-        examples.append(experience)
-
-    return examples
-
-
 def generate_examples(
         emulator: Emulator,
         max_taken_actions_per_step: int,
@@ -272,7 +250,6 @@ def generate_examples(
         model,
         puzzle_train_examples, cell_value_size)
 
-    action_examples = extract_action_examples(
-        replay_buffer, discount, padding_char)
+    action_examples = replay_buffer.experiences()
 
     return action_examples

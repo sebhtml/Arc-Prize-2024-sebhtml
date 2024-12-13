@@ -1,9 +1,11 @@
 # Research and Development
 
-- remove extract_action_examples
+- remove class ReplayBuffer
 - remove get_action_value_min_max
 - remove sum_of_future_rewards
 - remove unused arguments in all modules
+
+- use mean action value from distributional action values, see https://arxiv.org/pdf/1710.02298 and https://arxiv.org/abs/1707.06887
 
 # Backlog
 
