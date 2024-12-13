@@ -4,7 +4,7 @@ import random
 import copy
 from typing import List, Tuple
 from context import tokenize_example_input, tokens_to_text, make_example_tensor
-from context import state_to_text, QLearningExample
+from context import state_to_text
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, ReplayBuffer, Experience, GameState
 from q_learning import sum_of_future_rewards
@@ -226,7 +226,7 @@ def play_game_using_model(
     return replay_buffer
 
 
-def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[QLearningExample]:
+def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, padding_char: str) -> List[Experience]:
     """
     Generate (state, action, action_value) action examples for a puzzle example.
     """
@@ -242,10 +242,8 @@ def extract_action_examples(replay_buffer: ReplayBuffer, discount: float, paddin
         expected_rewards = sum_of_future_rewards(
             reward, discount, current_state, candidate_action)
         action_value = expected_rewards
-        example = QLearningExample(
-            experience, action_value,)
 
-        examples.append(example)
+        examples.append(experience)
 
     return examples
 
@@ -259,7 +257,7 @@ def generate_examples(
         model: DecoderOnlyTransformerModel,
         puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]], cell_value_size: int,
         discount: float, padding_char: str
-) -> List[QLearningExample]:
+) -> List[Experience]:
     """
     Generate training examples from a puzzle example.
     """

@@ -32,7 +32,7 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = True
+    terminate_pod_at_the_end = False
 
     #
     # Puzzle configuration
@@ -93,8 +93,8 @@ class Configuration:
     # See: A Recipe for Training Neural Networks
     # http://karpathy.github.io/2019/04/25/recipe/
 
-    num_steps = 32000  # 300
-    target_network_update_period = 100
+    num_steps = 300  # 32000
+    target_network_update_period = 100  # 1000
     verbose_target_network = False
     max_taken_actions_per_step = 1
     shuffle_train_examples = True

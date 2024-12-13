@@ -1,6 +1,6 @@
 # Research and Development
 
-- remove class QLearningExample
+- remove extract_action_examples
 - remove get_action_value_min_max
 - remove sum_of_future_rewards
 - remove unused arguments in all modules
