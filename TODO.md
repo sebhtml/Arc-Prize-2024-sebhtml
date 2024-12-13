@@ -1,7 +1,9 @@
 # Research and Development
 
-- use target Q network to use Bellman equation
 - remove class QLearningExample
+- remove get_action_value_min_max
+- remove sum_of_future_rewards
+- remove unused arguments in all modules
 
 # Backlog
 

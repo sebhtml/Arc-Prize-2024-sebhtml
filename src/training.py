@@ -4,6 +4,7 @@ from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 import math
+import copy
 from datetime import datetime, timezone
 from typing import List, Tuple
 from agent import make_example_tensor, generate_examples, select_action_with_deep_q_network
@@ -99,15 +100,66 @@ def get_target_action_value(
 
     best_action_value = unbin_action_value(
         best_action_value, minimum_action_value, maximum_action_value, num_classes)
-    return best_action_value + discount * best_action_value
+
+    # We use the Bellman equation.
+    # See https://en.wikipedia.org/wiki/Bellman_equation
+    #
+    # Given an experience
+    # (x, a, r, x')
+    # where
+    #   x                        is the state
+    #   a in Gamma(x)            is the action
+    #   r = F(s, a)              is the reward
+    #   x' = T(s, a)             is the new state
+    #
+    # We have
+    #
+    # V(x) = max_{a \in \Gamma(x)} [ F(x, a) + \beta * V(T(x, a)) ]
+    #
+    # Here, concretely, we have:
+    #
+    #
+    #  Mathematical expression           Python expression
+    #  -----------------------------------------------------
+    #  a                                 experience.action()
+    #  F(x, a)                           reward
+    #  \beta                             discount
+    #  V(T(x, a))                        best_action_value
+    #
+
+    # In Q-learning (https://en.wikipedia.org/wiki/Q-learning)
+    # we write the Bellman equation as the following mathematical expresssion:
+    #
+    # We note the state with s instead of x.
+    #
+    # The discount is noted with gamma instead of beta.
+    #
+    # Q: S x A -> R
+    #
+    #
+    # \hat{Q}(s, a) = r + gamma * max_{a' \in \Gamma(s')} \hat{Q}(s', a')
+    #
+    #
+    # with
+    # s' = T(s, a)
+    # s \in S
+    # a \in A
+    # a \in \Gamma(s)
+
+    return reward + discount * best_action_value
 
 
 class MyDataset(Dataset):
     def __init__(self,
                  train_examples: List[QLearningExample],
-                 config: Configuration,):
+                 config: Configuration,
+                 device: torch.device,
+                 target_model: DecoderOnlyTransformerModel,
+                 ):
         self.__train_examples = train_examples
         self.__config = config
+        self.__device = device
+        self.__target_model = target_model
 
     def __len__(self):
         return len(self.__train_examples)
@@ -131,7 +183,22 @@ class MyDataset(Dataset):
             input_tokens, self.__config.context_size)
 
         action_index = torch.tensor(example.action_index())
-        action_value = example.action_value()
+
+        verbose = self.__config.verbose_target_network
+        action_value = get_target_action_value(
+            example,
+            self.__config.padding_char,
+            self.__config.context_size,
+            self.__config.cell_value_size,
+            self.__config.minimum_action_value,
+            self.__config.maximum_action_value,
+            self.__config.num_classes,
+            self.__config.batch_size,
+            self.__config.discount,
+            self.__device,
+            self.__target_model,
+            verbose,
+        )
         action_value_bin = bin_action_value(
             action_value, self.__config.minimum_action_value, self.__config.maximum_action_value, self.__config.num_classes)
         action_value_bin = torch.tensor(action_value_bin)
@@ -275,15 +342,28 @@ def train_model_using_experience_replay(
     steps = []
     losses = []
 
+    target_model = None
+
     experience_replay_data_set = []
     for step in range(num_steps):
+        if step % config.target_network_update_period == 0:
+            if target_model != None:
+                target_model.to('cpu')
+                del target_model
+                target_model = None
+            target_model = copy.deepcopy(model)
+            target_model.to(device)
+
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             config,
             emulator,
             criterion,
             optimizer,
             experience_replay_data_set,
-            context_size, batch_size, device, model, total_train_examples,
+            context_size, batch_size, device,
+            model,
+            target_model,
+            total_train_examples,
             puzzle_train_examples, cell_value_size,
             discount, padding_char, num_classes, shuffle_train_examples,
             max_grad_norm, print_model_outputs,
@@ -311,7 +391,9 @@ def train_model_with_experience_replay_data_set(
     optimizer: AdamW,
     experience_replay_data_set: List[QLearningExample],
     context_size: int, batch_size: int, device: torch.device,
-    model: DecoderOnlyTransformerModel, total_train_examples: int,
+    model: DecoderOnlyTransformerModel,
+    target_model: DecoderOnlyTransformerModel,
+    total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool,
@@ -345,7 +427,7 @@ def train_model_with_experience_replay_data_set(
 
     if len(experience_replay_data_set) >= min_experience_replay_data_set_size:
         dataset = MyDataset(
-            experience_replay_data_set, config,)
+            experience_replay_data_set, config, device, target_model,)
 
         loss = train(
             criterion,
