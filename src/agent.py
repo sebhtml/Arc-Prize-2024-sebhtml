@@ -7,7 +7,6 @@ from context import tokenize_example_input, tokens_to_text, make_example_tensor
 from context import state_to_text
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, Experience, GameState
-from q_learning import sum_of_future_rewards
 from model import DecoderOnlyTransformerModel
 from emulator import Emulator
 

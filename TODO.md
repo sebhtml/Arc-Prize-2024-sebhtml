@@ -1,6 +1,5 @@
 # Research and Development
 
-- remove sum_of_future_rewards
 - remove unused arguments in all modules
 
 - use mean action value from distributional action values, see https://arxiv.org/pdf/1710.02298 and https://arxiv.org/abs/1707.06887

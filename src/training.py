@@ -61,6 +61,9 @@ def get_target_action_value(
         verbose: bool,
 ) -> float:
     """
+    This software used reinforcement learning.
+    It uses Q-learning.
+
     See https://en.wikipedia.org/wiki/Q-learning
     See https://en.wikipedia.org/wiki/Bellman_equation
 
