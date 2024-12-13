@@ -205,11 +205,6 @@ class MyDataset(Dataset):
         item = (item_input, action_value_bin, action_index)
         return item
 
-    def get_action_value_min_max(self, train_examples: List[Experience]) -> Tuple[float, float]:
-        min_action_value = min(map(lambda example: example[1], train_examples))
-        max_action_value = max(map(lambda example: example[1], train_examples))
-        return min_action_value, max_action_value
-
 
 def trim_list(lst, k):
     """
