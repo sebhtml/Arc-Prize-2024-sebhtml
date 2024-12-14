@@ -1,11 +1,10 @@
 # Research and Development
 
-- remove unused arguments in all modules
-
 - use mean action value from distributional action values, see https://arxiv.org/pdf/1710.02298 and https://arxiv.org/abs/1707.06887
 
 # Backlog
 
+- remove unused arguments in all modules
 - move print_current_state in GameState
 - use GameState in Emulator
 - use GameState instead of List[List[Cell]] everywhere
