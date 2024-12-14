@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import List, Tuple
 from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model
 from context import tokens_to_text, tokenize_example_input
-from report import plot_train_loss_graph
+from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import DecoderOnlyTransformerModel
 from emulator import Emulator, generate_cell_actions
 from vision import do_visual_fixation
@@ -379,6 +379,17 @@ def train_model_using_experience_replay(
         df = pd.DataFrame(data={'step': steps, 'loss': losses})
         df.to_csv(train_loss_csv_path, index=False)
         plot_train_loss_graph(steps, losses, train_loss_png_path)
+
+    # Plot total rewards per episode
+    total_rewards_csv_path = f"/workspace/reports/{dynamic_time_marker}-total_rewards.csv"
+    total_rewards_png_path = f"/workspace/reports/{dynamic_time_marker}-total_rewards.png"
+    total_rewards = emulator.get_total_rewards_per_episode()
+    episodes = range(len(total_rewards))
+    df = pd.DataFrame(data={'episodes': episodes,
+                      'total_rewards': total_rewards})
+    df.to_csv(total_rewards_csv_path, index=False)
+    plot_total_rewards_graph(episodes,
+                             total_rewards, total_rewards_png_path)
 
 
 def train_model_with_experience_replay_data_set(

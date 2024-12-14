@@ -4,10 +4,20 @@ import csv
 
 
 def plot_train_loss_graph(steps, losses, file_path):
+    plt.clf()
     plt.plot(steps, losses, label='Training Loss')
     plt.title('Training Loss')
     plt.xlabel('Step')
     plt.ylabel('Loss')
+    plt.savefig(file_path)
+
+
+def plot_total_rewards_graph(episodes, total_rewards, file_path):
+    plt.clf()
+    plt.plot(episodes, total_rewards, label='Total rewards per episode')
+    plt.title('Total rewards per episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Total rewards')
     plt.savefig(file_path)
 
 
