@@ -94,7 +94,7 @@ class Configuration:
     # http://karpathy.github.io/2019/04/25/recipe/
 
     num_steps = 32000  # 300
-    target_network_update_period = 100
+    target_network_update_period = 1000  # 100
     verbose_target_network = False
     max_taken_actions_per_step = 1
     shuffle_train_examples = True

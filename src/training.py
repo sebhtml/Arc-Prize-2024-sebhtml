@@ -7,13 +7,14 @@ import math
 import copy
 from datetime import datetime, timezone
 from typing import List, Tuple
-from agent import make_example_tensor, generate_examples, select_action_with_deep_q_network
-from context import tokens_to_text, tokenize_example_input, QLearningExample
+from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model
+from context import tokens_to_text, tokenize_example_input
 from report import plot_train_loss_graph
 from model import DecoderOnlyTransformerModel
 from emulator import Emulator, generate_cell_actions
 from vision import do_visual_fixation
 from configuration import Configuration
+from q_learning import Experience
 
 
 def unbin_action_value(action_value_bin: int, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
@@ -46,7 +47,7 @@ def bin_action_value(action_value: float, minimum_action_value: float, maximum_a
 
 
 def get_target_action_value(
-        example: QLearningExample,
+        experience: Experience,
         padding_char: str,
         context_size: int,
         cell_value_size: int,
@@ -60,6 +61,9 @@ def get_target_action_value(
         verbose: bool,
 ) -> float:
     """
+    This software used reinforcement learning.
+    It uses Q-learning.
+
     See https://en.wikipedia.org/wiki/Q-learning
     See https://en.wikipedia.org/wiki/Bellman_equation
 
@@ -72,9 +76,8 @@ def get_target_action_value(
     https://www.nature.com/articles/nature14236
     """
 
-    reward = example.experience().reward()
+    reward = experience.reward()
 
-    experience = example.experience()
     example_input = experience.next_state().example_input()
     current_state = experience.next_state().current_state()
 
@@ -151,7 +154,7 @@ def get_target_action_value(
 
 class MyDataset(Dataset):
     def __init__(self,
-                 train_examples: List[QLearningExample],
+                 train_examples: List[Experience],
                  config: Configuration,
                  device: torch.device,
                  target_model: DecoderOnlyTransformerModel,
@@ -165,8 +168,7 @@ class MyDataset(Dataset):
         return len(self.__train_examples)
 
     def __getitem__(self, idx):
-        example = self.__train_examples[idx]
-        experience = example.experience()
+        experience = self.__train_examples[idx]
         example_input = experience.state().example_input()
         current_state = experience.state().current_state()
         candidate_action = experience.action()
@@ -182,11 +184,11 @@ class MyDataset(Dataset):
         item_input = make_example_tensor(
             input_tokens, self.__config.context_size)
 
-        action_index = torch.tensor(example.action_index())
+        action_index = torch.tensor(experience.action().cell_value())
 
         verbose = self.__config.verbose_target_network
         action_value = get_target_action_value(
-            example,
+            experience,
             self.__config.padding_char,
             self.__config.context_size,
             self.__config.cell_value_size,
@@ -205,11 +207,6 @@ class MyDataset(Dataset):
 
         item = (item_input, action_value_bin, action_index)
         return item
-
-    def get_action_value_min_max(self, train_examples: List[QLearningExample]) -> Tuple[float, float]:
-        min_action_value = min(map(lambda example: example[1], train_examples))
-        max_action_value = max(map(lambda example: example[1], train_examples))
-        return min_action_value, max_action_value
 
 
 def trim_list(lst, k):
@@ -389,7 +386,7 @@ def train_model_with_experience_replay_data_set(
     emulator: Emulator,
     criterion: nn.NLLLoss,
     optimizer: AdamW,
-    experience_replay_data_set: List[QLearningExample],
+    experience_replay_data_set: List[Experience],
     context_size: int, batch_size: int, device: torch.device,
     model: DecoderOnlyTransformerModel,
     target_model: DecoderOnlyTransformerModel,
@@ -398,22 +395,22 @@ def train_model_with_experience_replay_data_set(
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool,
     max_grad_norm: float, print_model_outputs: bool,
-) -> List[QLearningExample]:
+) -> List[Experience]:
     """
     See:
     Human-level control through deep reinforcement learning
     https://www.nature.com/articles/nature14236
     """
 
-    new_train_examples = generate_examples(
+    new_train_examples = play_game_using_model(
         emulator,
         config.max_taken_actions_per_step,
+        padding_char,
         context_size,
         batch_size,
         device,
         model,
-        puzzle_train_examples, cell_value_size,
-        discount, padding_char)
+        puzzle_train_examples, cell_value_size)
 
     experience_replay_data_set_size = 4096
     experience_replay_data_set += new_train_examples

@@ -68,68 +68,6 @@ class Experience:
         return self.__next_state
 
 
-class ReplayBuffer:
-    """
-    See:
-    Amortized Planning with Large-Scale Transformers: A Case Study on Chess
-    https://arxiv.org/abs/2402.04494
-
-    See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
-    """
-
-    def __init__(self):
-        self.__experiences: List[Experience] = []
-
-    def add_experience(self, experience: Experience):
-        self.__experiences.append(experience)
-
-    def experiences(self) -> List[Experience]:
-        return self.__experiences
-
-
-def sum_of_future_rewards(immediate_reward: float, discount: float,
-                          attented_current_state: List[List[Cell]],
-                          attented_candidate_action: QLearningAction) -> float:
-    """
-    This software used reinforcement learning.
-    It uses Q-learning.
-
-    See https://en.wikipedia.org/wiki/Q-learning
-    See https://en.wikipedia.org/wiki/Bellman_equation
-
-    See https://www.science.org/doi/10.1126/science.153.3731.34
-    """
-
-    expected_rewards = 0.0
-    t = 0
-
-    discounted_reward = discount**t * immediate_reward
-    expected_rewards += discounted_reward
-    t += 1
-
-    # Count the number of remaining actions in the glimpe of the visual fixation.
-    cells_that_can_change = 0
-    for row in range(len(attented_current_state)):
-        for col in range(len(attented_current_state[row])):
-            # Skip cell because it was already counted as the immediate reward.
-            if row == attented_candidate_action.row() and col == attented_candidate_action.col():
-                continue
-            # A cell can only be changed once.
-            # TODO don't count the cells outside of the puzzle board.
-            if attented_current_state[row][col].value() != VACANT_CELL_VALUE:
-                continue
-            cells_that_can_change += 1
-
-    for _ in range(cells_that_can_change):
-        # assume perfect play
-        future_reward = cell_match_reward
-        discounted_reward = discount**t * future_reward
-        expected_rewards += discounted_reward
-        t += 1
-
-    return expected_rewards
-
-
 def reward(expected_state: List[List[int]], candidate_action: QLearningAction) -> float:
     row = candidate_action.row()
     col = candidate_action.col()

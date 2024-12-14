@@ -30,27 +30,6 @@ class ExampleInputTokens:
         return self.__attended_current_state
 
 
-class QLearningExample:
-    def __init__(self,
-                 experience: Experience,
-                 action_value: float,
-                 ):
-        self.__experience = experience
-        self.__action_value = action_value
-
-    def action_index(self) -> float:
-        return self.experience().action().cell_value()
-
-    def action_value(self) -> float:
-        return self.__action_value
-
-    def reward(self) -> float:
-        return self.experience().reward()
-
-    def experience(self) -> Experience:
-        return self.__experience
-
-
 def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
     current_state = copy.deepcopy(state)
     for row in range(len(current_state)):
