@@ -20,6 +20,9 @@ class Emulator:
         self.__current_state = None
         self.__cell_value_size = cell_value_size
         self.__available_actions = []
+        # Metrics
+        self.__total_rewards_per_episode = []
+        self.__current_episode_total_rewards = 0.0
 
     def set_puzzle_example(self, puzzle_input: List[List[int]], puzzle_output: Union[List[List[int]], None]):
         """
@@ -47,6 +50,9 @@ class Emulator:
         self.__available_actions = generate_cell_actions(
             self.__current_state, self.__cell_value_size)
 
+        if self.is_in_terminal_state():
+            self.__terminate_episode()
+
     def is_in_terminal_state(self) -> bool:
         return len(self.__available_actions) == 0
 
@@ -70,14 +76,26 @@ class Emulator:
         immediate_reward = None
         if self.__puzzle_output != None:
             immediate_reward = reward(self.__puzzle_output, action)
+            self.__current_episode_total_rewards += immediate_reward
 
         self.__available_actions = generate_cell_actions(
             self.__current_state, self.__cell_value_size)
+
+        if self.is_in_terminal_state():
+            self.__terminate_episode()
 
         return immediate_reward
 
     def list_actions(self) -> List[QLearningAction]:
         return self.__available_actions
+
+    def __terminate_episode(self):
+        self.__total_rewards_per_episode.append(
+            self.__current_episode_total_rewards)
+        self.__current_episode_total_rewards = 0.0
+
+    def get_total_rewards_per_episode(self):
+        return self.__total_rewards_per_episode
 
 
 def generate_cell_actions(
