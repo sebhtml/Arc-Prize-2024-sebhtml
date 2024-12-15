@@ -7,11 +7,21 @@ from context import tokenize_example_input, tokens_to_text, make_example_tensor
 from context import state_to_text
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, Experience, GameState
-from model import DecoderOnlyTransformerModel
+from model import ActionValueNetworkModel
 from environment import Environment
+from configuration import Configuration
 
 
-def apply_puzzle_action_value_policy(puzzle_examples, action_value_network: DecoderOnlyTransformerModel,
+class Agent:
+    def __init__(self, config: Configuration, device: torch.device):
+        self.__action_value_network = ActionValueNetworkModel(config, device)
+        self.__action_value_network.to(device)
+
+    def action_value_network(self) -> ActionValueNetworkModel:
+        return self.__action_value_network
+
+
+def apply_puzzle_action_value_policy(puzzle_examples, action_value_network: ActionValueNetworkModel,
                                      padding_char: str, cell_value_size: int,
                                      context_size: int, batch_size: int,
                                      device,):
@@ -36,7 +46,7 @@ def apply_puzzle_action_value_policy(puzzle_examples, action_value_network: Deco
 
 
 def solve_puzzle_example_auto_regressive(environment: Environment,
-                                         example_input: List[List[int]], action_value_network: DecoderOnlyTransformerModel, padding_char: str,
+                                         example_input: List[List[int]], action_value_network: ActionValueNetworkModel, padding_char: str,
                                          context_size: int, batch_size: int,
                                          device: torch.device):
     action_value_network.eval()
@@ -103,7 +113,7 @@ def select_action_with_deep_q_network(
         context_size: int,
         batch_size: int,
         device: torch.device,
-        action_value_network: DecoderOnlyTransformerModel,
+        action_value_network: ActionValueNetworkModel,
         verbose: bool,
 ) -> Tuple[QLearningAction, int]:
 
@@ -189,7 +199,7 @@ def play_game_using_model(
         context_size: int,
         batch_size: int,
         device: torch.device,
-        action_value_network: DecoderOnlyTransformerModel,
+        action_value_network: ActionValueNetworkModel,
         puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]], cell_value_size: int) -> List[Experience]:
     """
     Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by a random player.
