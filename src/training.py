@@ -11,7 +11,7 @@ from agent import make_example_tensor, select_action_with_deep_q_network, play_g
 from context import tokens_to_text, tokenize_example_input
 from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import DecoderOnlyTransformerModel
-from emulator import Emulator, generate_cell_actions
+from environment import Environment, generate_cell_actions
 from vision import do_visual_fixation
 from configuration import Configuration
 from q_learning import Experience
@@ -57,7 +57,7 @@ def get_target_action_value(
         batch_size: int,
         discount: float,
         device: torch.device,
-        target_model: DecoderOnlyTransformerModel,
+        target_action_value_network: DecoderOnlyTransformerModel,
         verbose: bool,
 ) -> float:
     """
@@ -97,7 +97,7 @@ def get_target_action_value(
         context_size,
         batch_size,
         device,
-        target_model,
+        target_action_value_network,
         verbose,
     )
 
@@ -157,12 +157,12 @@ class MyDataset(Dataset):
                  train_examples: List[Experience],
                  config: Configuration,
                  device: torch.device,
-                 target_model: DecoderOnlyTransformerModel,
+                 target_action_value_network: DecoderOnlyTransformerModel,
                  ):
         self.__train_examples = train_examples
         self.__config = config
         self.__device = device
-        self.__target_model = target_model
+        self.__target_action_value_network = target_action_value_network
 
     def __len__(self):
         return len(self.__train_examples)
@@ -198,7 +198,7 @@ class MyDataset(Dataset):
             self.__config.batch_size,
             self.__config.discount,
             self.__device,
-            self.__target_model,
+            self.__target_action_value_network,
             verbose,
         )
         action_value_bin = bin_action_value(
@@ -219,10 +219,10 @@ def trim_list(lst, k):
 def train(
         criterion: nn.NLLLoss,
         optimizer: AdamW,
-        dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, model: DecoderOnlyTransformerModel,
+        dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, action_value_network: DecoderOnlyTransformerModel,
         max_grad_norm: float, device: torch.device,
 ):
-    model.train()
+    action_value_network.train()
 
     train_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=shuffle_train_examples)
@@ -237,13 +237,14 @@ def train(
 
     # outputs has shape [batch_size, num_actions, num_classes].
     # We need a shape of [batch_size, num_classes] to use the criterion.
-    outputs = model(inputs)
+    outputs = action_value_network(inputs)
     outputs = outputs[torch.arange(batch_size), action_indices]
 
     loss = criterion(outputs, targets)
 
     loss.backward()
-    torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+    torch.nn.utils.clip_grad_norm_(
+        action_value_network.parameters(), max_grad_norm)
     optimizer.step()
     loss = loss.cpu().item()
 
@@ -270,7 +271,7 @@ def print_train_examples(train_action_examples):
         print(example_target)
 
 
-def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, model: DecoderOnlyTransformerModel, device: torch.device,):
+def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, action_value_network: DecoderOnlyTransformerModel, device: torch.device,):
     print("[after training] print_model_outputs_for_train_examples")
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True)
@@ -278,7 +279,7 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
         (inputs, targets, action_indices) = data
         inputs = [t.to(device) for t in inputs]
         targets = targets.to(device)
-        outputs = model(inputs)
+        outputs = action_value_network(inputs)
         outputs = outputs[torch.arange(batch_size), action_indices]
         for idx in range(len(inputs[0])):
             print("--------------------")
@@ -325,7 +326,7 @@ def get_grad_norm(model):
 def train_model_using_experience_replay(
     config: Configuration,
     context_size: int, batch_size: int, device: torch.device,
-    model: DecoderOnlyTransformerModel, total_train_examples: int,
+    action_value_network: DecoderOnlyTransformerModel, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool, lr: float, weight_decay: float,
@@ -333,33 +334,34 @@ def train_model_using_experience_replay(
     num_steps: int,
 ):
     criterion = nn.NLLLoss()
-    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = AdamW(action_value_network.parameters(),
+                      lr=lr, weight_decay=weight_decay)
 
-    emulator = Emulator(cell_value_size)
+    environment = Environment(cell_value_size)
     steps = []
     losses = []
 
-    target_model = None
+    target_action_value_network = None
 
     experience_replay_data_set = []
     for step in range(num_steps):
         if step % config.target_network_update_period == 0:
-            if target_model != None:
-                target_model.to('cpu')
-                del target_model
-                target_model = None
-            target_model = copy.deepcopy(model)
-            target_model.to(device)
+            if target_action_value_network != None:
+                target_action_value_network.to('cpu')
+                del target_action_value_network
+                target_action_value_network = None
+            target_action_value_network = copy.deepcopy(action_value_network)
+            target_action_value_network.to(device)
 
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             config,
-            emulator,
+            environment,
             criterion,
             optimizer,
             experience_replay_data_set,
             context_size, batch_size, device,
-            model,
-            target_model,
+            action_value_network,
+            target_action_value_network,
             total_train_examples,
             puzzle_train_examples, cell_value_size,
             discount, padding_char, num_classes, shuffle_train_examples,
@@ -383,7 +385,7 @@ def train_model_using_experience_replay(
     # Plot total rewards per episode
     total_rewards_csv_path = f"/workspace/reports/{dynamic_time_marker}-total_rewards.csv"
     total_rewards_png_path = f"/workspace/reports/{dynamic_time_marker}-total_rewards.png"
-    total_rewards = emulator.get_total_rewards_per_episode()
+    total_rewards = environment.get_total_rewards_per_episode()
     episodes = range(len(total_rewards))
     df = pd.DataFrame(data={'episodes': episodes,
                       'total_rewards': total_rewards})
@@ -394,13 +396,13 @@ def train_model_using_experience_replay(
 
 def train_model_with_experience_replay_data_set(
     config: Configuration,
-    emulator: Emulator,
+    environment: Environment,
     criterion: nn.NLLLoss,
     optimizer: AdamW,
     experience_replay_data_set: List[Experience],
     context_size: int, batch_size: int, device: torch.device,
-    model: DecoderOnlyTransformerModel,
-    target_model: DecoderOnlyTransformerModel,
+    action_value_network: DecoderOnlyTransformerModel,
+    target_action_value_network: DecoderOnlyTransformerModel,
     total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
@@ -414,13 +416,13 @@ def train_model_with_experience_replay_data_set(
     """
 
     new_train_examples = play_game_using_model(
-        emulator,
+        environment,
         config.max_taken_actions_per_step,
         padding_char,
         context_size,
         batch_size,
         device,
-        model,
+        action_value_network,
         puzzle_train_examples, cell_value_size)
 
     experience_replay_data_set_size = 4096
@@ -435,16 +437,16 @@ def train_model_with_experience_replay_data_set(
 
     if len(experience_replay_data_set) >= min_experience_replay_data_set_size:
         dataset = MyDataset(
-            experience_replay_data_set, config, device, target_model,)
+            experience_replay_data_set, config, device, target_action_value_network,)
 
         loss = train(
             criterion,
             optimizer,
-            dataset, batch_size, shuffle_train_examples, model,
+            dataset, batch_size, shuffle_train_examples, action_value_network,
             max_grad_norm, device,)
 
         if print_model_outputs:
             print_model_outputs_for_train_examples(
-                dataset, batch_size, model, device,)
+                dataset, batch_size, action_value_network, device,)
 
     return experience_replay_data_set, loss

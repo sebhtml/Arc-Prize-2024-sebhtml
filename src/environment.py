@@ -5,9 +5,9 @@ from q_learning import Cell, reward, QLearningAction
 from vision import VACANT_CELL_VALUE
 
 
-class Emulator:
+class Environment:
     """
-    A game emulator for playing the game of ARC prize.
+    A game environment for playing the game of ARC prize.
 
     See https://arcprize.org/play?task=3aa6fb7a
     See https://arcprize.org/
@@ -56,7 +56,7 @@ class Emulator:
     def is_in_terminal_state(self) -> bool:
         return len(self.__available_actions) == 0
 
-    def game_state(self) -> Tuple[List[List[Cell]], List[List[Cell]]]:
+    def get_observations(self) -> Tuple[List[List[Cell]], List[List[Cell]]]:
         return (self.__example_input, self.__current_state)
 
     def take_action(self, action: QLearningAction) -> float:
