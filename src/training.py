@@ -11,7 +11,7 @@ from agent import make_example_tensor, select_action_with_deep_q_network, play_g
 from context import tokens_to_text, tokenize_example_input
 from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import DecoderOnlyTransformerModel
-from emulator import Emulator, generate_cell_actions
+from environment import Environment, generate_cell_actions
 from vision import do_visual_fixation
 from configuration import Configuration
 from q_learning import Experience
@@ -335,7 +335,7 @@ def train_model_using_experience_replay(
     criterion = nn.NLLLoss()
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-    emulator = Emulator(cell_value_size)
+    environment = Environment(cell_value_size)
     steps = []
     losses = []
 
@@ -353,7 +353,7 @@ def train_model_using_experience_replay(
 
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             config,
-            emulator,
+            environment,
             criterion,
             optimizer,
             experience_replay_data_set,
@@ -383,7 +383,7 @@ def train_model_using_experience_replay(
     # Plot total rewards per episode
     total_rewards_csv_path = f"/workspace/reports/{dynamic_time_marker}-total_rewards.csv"
     total_rewards_png_path = f"/workspace/reports/{dynamic_time_marker}-total_rewards.png"
-    total_rewards = emulator.get_total_rewards_per_episode()
+    total_rewards = environment.get_total_rewards_per_episode()
     episodes = range(len(total_rewards))
     df = pd.DataFrame(data={'episodes': episodes,
                       'total_rewards': total_rewards})
@@ -394,7 +394,7 @@ def train_model_using_experience_replay(
 
 def train_model_with_experience_replay_data_set(
     config: Configuration,
-    emulator: Emulator,
+    environment: Environment,
     criterion: nn.NLLLoss,
     optimizer: AdamW,
     experience_replay_data_set: List[Experience],
@@ -414,7 +414,7 @@ def train_model_with_experience_replay_data_set(
     """
 
     new_train_examples = play_game_using_model(
-        emulator,
+        environment,
         config.max_taken_actions_per_step,
         padding_char,
         context_size,

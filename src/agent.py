@@ -8,23 +8,23 @@ from context import state_to_text
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, Experience, GameState
 from model import DecoderOnlyTransformerModel
-from emulator import Emulator
+from environment import Environment
 
 
 def apply_puzzle_action_value_policy(puzzle_examples, model,
                                      padding_char: str, cell_value_size: int,
                                      context_size: int, batch_size: int,
                                      device,):
-    emulator = Emulator(cell_value_size)
+    environment = Environment(cell_value_size)
     for example_input, example_target in puzzle_examples:
         print("example")
         solve_puzzle_example_auto_regressive(
-            emulator,
+            environment,
             example_input, model,
             padding_char, context_size, batch_size,
             device,)
 
-        example_input, current_state = emulator.game_state()
+        example_input, current_state = environment.game_state()
 
         print("final output_state")
         print_current_state(example_input, current_state, padding_char)
@@ -35,25 +35,25 @@ def apply_puzzle_action_value_policy(puzzle_examples, model,
         # example_input, example_target, padding_char)
 
 
-def solve_puzzle_example_auto_regressive(emulator: Emulator,
+def solve_puzzle_example_auto_regressive(environment: Environment,
                                          example_input: List[List[int]], model: DecoderOnlyTransformerModel, padding_char: str,
                                          context_size: int, batch_size: int,
                                          device: torch.device):
     model.eval()
 
-    emulator.set_puzzle_example(example_input, None)
+    environment.set_puzzle_example(example_input, None)
 
-    example_input, current_state = emulator.game_state()
+    example_input, current_state = environment.game_state()
 
     print("AUTO-REGRESSIVE wannabe AGI megabot current state")
     print_current_state(example_input, current_state, padding_char)
 
     verbose = True
 
-    while not emulator.is_in_terminal_state():
-        candidate_actions = emulator.list_actions()
+    while not environment.is_in_terminal_state():
+        candidate_actions = environment.list_actions()
 
-        example_input, current_state = emulator.game_state()
+        example_input, current_state = environment.game_state()
 
         best_action, best_action_value = select_action_with_deep_q_network(
             example_input,
@@ -71,9 +71,9 @@ def solve_puzzle_example_auto_regressive(emulator: Emulator,
             print_current_state(example_input, current_state, padding_char)
             raise Exception("Failed to select action")
 
-        immediate_reward = emulator.take_action(best_action)
+        immediate_reward = environment.take_action(best_action)
 
-        example_input, current_state = emulator.game_state()
+        example_input, current_state = environment.game_state()
 
         print(f"best_next_state with {best_action_value}")
         print("AUTO-REGRESSIVE wannabe AGI megabot current state")
@@ -183,7 +183,7 @@ def select_action_with_deep_q_network(
 
 
 def play_game_using_model(
-        emulator: Emulator,
+        environment: Environment,
         max_taken_actions_per_step: int,
         padding_char: str,
         context_size: int,
@@ -209,20 +209,20 @@ def play_game_using_model(
     model.eval()
     replay_buffer = []
 
-    if emulator.is_in_terminal_state():
+    if environment.is_in_terminal_state():
         i = random.randrange(0, len(puzzle_train_examples))
         puzzle_example = puzzle_train_examples[i]
 
         (raw_example_input, raw_example_output) = puzzle_example
-        emulator.set_puzzle_example(raw_example_input, raw_example_output)
+        environment.set_puzzle_example(raw_example_input, raw_example_output)
 
     verbose = False
 
-    while not emulator.is_in_terminal_state() and \
+    while not environment.is_in_terminal_state() and \
             len(replay_buffer) < max_taken_actions_per_step:
-        candidate_actions = emulator.list_actions()
+        candidate_actions = environment.list_actions()
 
-        example_input, current_state = emulator.game_state()
+        example_input, current_state = environment.game_state()
         current_state = copy.deepcopy(current_state)
 
         best_action, best_action_value = select_action_with_deep_q_network(
@@ -237,9 +237,9 @@ def play_game_using_model(
             verbose,
         )
 
-        immediate_reward = emulator.take_action(best_action)
+        immediate_reward = environment.take_action(best_action)
 
-        example_input, next_state = emulator.game_state()
+        example_input, next_state = environment.game_state()
         next_state = copy.deepcopy(next_state)
 
         experience = Experience(
