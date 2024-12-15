@@ -95,6 +95,7 @@ class Configuration:
 
     num_steps = 300  # prod: 32000, dev: 300,
     target_network_update_period = 100  # prod: 1000, dev: 100,
+
     verbose_target_network = False
     max_taken_actions_per_step = 1
     shuffle_train_examples = True

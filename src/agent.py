@@ -8,7 +8,7 @@ from context import state_to_text
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, Experience, GameState
 from model import ActionValueNetworkModel
-from environment import Environment
+from environment import Environment, generate_cell_actions
 from configuration import Configuration
 
 
@@ -18,6 +18,7 @@ class Agent:
         self.__action_value_network.to(device)
         self.__target_action_value_network = None
         self.__device = device
+        self.__config = config
 
     def action_value_network(self) -> ActionValueNetworkModel:
         return self.__action_value_network
@@ -34,6 +35,68 @@ class Agent:
             self.action_value_network())
         self.__target_action_value_network.to(
             self.__device)
+
+    def advantage(self, experience: Experience, discount: float,) -> float:
+        """
+        A(s, a) = Q(s, a) - V(s)
+
+        A(s, a) = r + discount * V(s') - V(s)
+
+        See
+        https://en.wikipedia.org/wiki/Temporal_difference_learning
+
+        See
+        Sutton, R. S., & Barto, A. G. (2018). Reinforcement Learning: An Introduction.
+
+        See
+        Learning to Predict by the Methods of Temporal Differences.
+        https://link.springer.com/article/10.1007/BF00115009
+        """
+
+        r = experience.reward()
+        s_prime = experience.next_state()
+        v_s_prime = self.value(s_prime)
+        s = experience.state()
+        v_s = self.value(s)
+
+        return r + discount * v_s_prime - v_s
+
+    def value(self, state: GameState) -> float:
+        example_input = state.example_input()
+        current_state = state.current_state()
+        padding_char = self.__config.padding_char
+        context_size = self.__config.context_size
+        batch_size = self.__config.batch_size
+        device = self.__device
+        candidate_actions = generate_cell_actions(
+            current_state, self.__config.cell_value_size)
+        verbose = False
+
+        is_terminal = len(candidate_actions) == 0
+
+        if is_terminal:
+            return 0.0
+
+        best_action, best_action_value = select_action_with_deep_q_network(
+            example_input,
+            current_state,
+            candidate_actions,
+            padding_char,
+            context_size,
+            batch_size,
+            device,
+            self.action_value_network(),
+            verbose,
+        )
+
+        minimum_action_value = self.__config.minimum_action_value
+        maximum_action_value = self.__config.maximum_action_value
+        num_classes = self.__config.num_classes
+
+        best_action_value = unbin_action_value(
+            best_action_value, minimum_action_value, maximum_action_value, num_classes)
+
+        return best_action_value
 
 
 def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
