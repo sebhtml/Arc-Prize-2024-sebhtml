@@ -24,7 +24,7 @@ def apply_puzzle_action_value_policy(puzzle_examples, model,
             padding_char, context_size, batch_size,
             device,)
 
-        example_input, current_state = environment.game_state()
+        example_input, current_state = environment.get_observations()
 
         print("final output_state")
         print_current_state(example_input, current_state, padding_char)
@@ -43,7 +43,7 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
 
     environment.set_puzzle_example(example_input, None)
 
-    example_input, current_state = environment.game_state()
+    example_input, current_state = environment.get_observations()
 
     print("AUTO-REGRESSIVE wannabe AGI megabot current state")
     print_current_state(example_input, current_state, padding_char)
@@ -53,7 +53,7 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
     while not environment.is_in_terminal_state():
         candidate_actions = environment.list_actions()
 
-        example_input, current_state = environment.game_state()
+        example_input, current_state = environment.get_observations()
 
         best_action, best_action_value = select_action_with_deep_q_network(
             example_input,
@@ -73,7 +73,7 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
 
         immediate_reward = environment.take_action(best_action)
 
-        example_input, current_state = environment.game_state()
+        example_input, current_state = environment.get_observations()
 
         print(f"best_next_state with {best_action_value}")
         print("AUTO-REGRESSIVE wannabe AGI megabot current state")
@@ -222,7 +222,7 @@ def play_game_using_model(
             len(replay_buffer) < max_taken_actions_per_step:
         candidate_actions = environment.list_actions()
 
-        example_input, current_state = environment.game_state()
+        example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)
 
         best_action, best_action_value = select_action_with_deep_q_network(
@@ -239,7 +239,7 @@ def play_game_using_model(
 
         immediate_reward = environment.take_action(best_action)
 
-        example_input, next_state = environment.game_state()
+        example_input, next_state = environment.get_observations()
         next_state = copy.deepcopy(next_state)
 
         experience = Experience(

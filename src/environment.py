@@ -56,7 +56,7 @@ class Environment:
     def is_in_terminal_state(self) -> bool:
         return len(self.__available_actions) == 0
 
-    def game_state(self) -> Tuple[List[List[Cell]], List[List[Cell]]]:
+    def get_observations(self) -> Tuple[List[List[Cell]], List[List[Cell]]]:
         return (self.__example_input, self.__current_state)
 
     def take_action(self, action: QLearningAction) -> float:
