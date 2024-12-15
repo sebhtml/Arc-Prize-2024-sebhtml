@@ -29,7 +29,7 @@ import subprocess
 import time
 import torch
 import json
-from model import DecoderOnlyTransformerModel
+from model import ActionValueNetworkModel
 from infrastructure import terminate_pod
 from agent import apply_puzzle_action_value_policy
 from training import train_model_using_experience_replay
@@ -79,10 +79,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type) -> List[Tuple[List[List
 
 def main():
     device = torch.device("cuda")
-    action_value_network = DecoderOnlyTransformerModel(
-        config.vocab_size, config.d_model, config.d_ff,
-        config.input_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
-        config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
+    action_value_network = ActionValueNetworkModel(config, device)
     # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
     # torch.compile does not work on the NVIDIA P100
     # torch.compile works on runpod.io with a NVIDIA A40

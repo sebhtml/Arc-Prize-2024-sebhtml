@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from xformers.components import MultiHeadDispatch, build_attention
-
-from torch import nn
-import torch
+from typing import Tuple
 import math
+from configuration import Configuration
 
 
 class SwiGLU(nn.Module):
@@ -22,7 +21,7 @@ class SwiGLU(nn.Module):
         self.swish = nn.SiLU()
         self.linear = nn.Linear(dim, 2 * dim, bias=False)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         input, gate_input = self.linear(x).chunk(2, dim=-1)
         gate = self.swish(gate_input)
         return input * gate
@@ -41,7 +40,7 @@ class FeedForward(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, dim)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.fc1(x)
         x = self.swiglu(x)
         x = self.fc2(x)
@@ -75,7 +74,7 @@ class CustomAttention(nn.Module):
             use_rotary_embeddings=True,
         ).to(device)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Self-attention
         return self.attn(query=x, key=x, value=x)
 
@@ -95,7 +94,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
         self.attention_norm = nn.RMSNorm(d_model)
         self.ffn_norm = nn.RMSNorm(d_model)
 
-    def forward(self, src):
+    def forward(self, src: torch.Tensor) -> torch.Tensor:
         src_ln = self.attention_norm(src)
         attn_output = self.attn(src_ln)
         src_and_attn = self.ffn_norm(src + attn_output)
@@ -125,13 +124,7 @@ class DecoderOnlyTransformerModel(nn.Module):
         self.blocks = nn.Sequential(*modules)
         self.norm = nn.RMSNorm(d_model)
 
-        self.classifier = nn.Linear(
-            in_features=d_model, out_features=num_actions * num_classes)
-
-        self.num_actions = num_actions
-        self.num_classes = num_classes
-
-    def forward(self, x):
+    def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
         current_state, attended_example_input, attended_current_state = x
         x_current_state = self.current_state_embed(
             current_state)
@@ -150,8 +143,29 @@ class DecoderOnlyTransformerModel(nn.Module):
         transformed = self.blocks(embed_drop)
         transformed_ln = self.norm(transformed)
 
+        return transformed_ln
+
+
+class ActionValueNetworkModel(nn.Module):
+    def __init__(self, config: Configuration, device: torch.device):
+        super(ActionValueNetworkModel, self).__init__()
+        self.__base_model = DecoderOnlyTransformerModel(
+            config.vocab_size, config.d_model, config.d_ff,
+            config.input_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
+            config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
+        d_model = config.d_model
+        num_actions = config.num_actions
+        num_classes = config.num_classes
+        self.classifier = nn.Linear(
+            in_features=d_model, out_features=num_actions * num_classes)
+        self.num_actions = num_actions
+        self.num_classes = num_classes
+
+    def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
+        transformed_ln = self.__base_model(x)
+        # [batch_size, context_size, d_model] -> [batch_size, context_size, num_actions*num_classes]
         logits = self.classifier(transformed_ln)
-        # [batch_size, seq_len, num_actions*num_classes] -> [batch_size, num_actions*num_classes]
+        # [batch_size, context_size, num_actions*num_classes] -> [batch_size, num_actions*num_classes]
         mean_logits = logits.mean(dim=1)
         batch_size = mean_logits.shape[0]
         # [batch_size, num_actions*num_classes] -> [batch_size, num_actions, num_classes]
