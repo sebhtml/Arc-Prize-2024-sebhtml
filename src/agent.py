@@ -126,14 +126,36 @@ def select_action_with_deep_q_network(
                       make_example_tensor(input_tokens, context_size)))
 
     inputs = [t.to(device) for t in inputs]
-    outputs = model(inputs)
+    log_softmax_outputs = model(inputs)
 
     action_values = []
 
     # outputs.shape is [batch_size, num_actions, num_classes]
+
+    # Use a distributional mean action value.
+    #
+    # See
+    # Rainbow: Combining Improvements in Deep Reinforcement Learning
+    # https://arxiv.org/pdf/1710.02298
+    #
+    # See
+    # A Distributional Perspective on Reinforcement Learning
+    # https://arxiv.org/abs/1707.06887
+    #
+    # Evaluates the Einstein summation convention on the operands.
+    num_classes = log_softmax_outputs.shape[-1]
+    atoms = torch.arange(
+        num_classes, device=log_softmax_outputs.device).float()
+
+    probability_outputs = torch.exp(log_softmax_outputs)
+    outputs = torch.einsum('n,ban->ba', atoms, probability_outputs)
+
     for action_index in range(outputs.shape[1]):
-        action_value = outputs[0, action_index, :].argmax(dim=-1).item()
-        action_values.append([action_index, action_value])
+        # argmax_action_value = log_softmax_outputs[0, action_index, :].argmax(dim=-1).item()
+        mean_action_value = outputs[0, action_index].item()
+        # print(f"argmax_action_value {argmax_action_value}")
+        # print(f"mean_action_value {mean_action_value}")
+        action_values.append([action_index, mean_action_value])
 
     np.random.shuffle(action_values)
 
