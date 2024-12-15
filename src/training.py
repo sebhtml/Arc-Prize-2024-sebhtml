@@ -7,7 +7,7 @@ import math
 import copy
 from datetime import datetime, timezone
 from typing import List, Tuple
-from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model
+from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model, Agent
 from context import tokens_to_text, tokenize_example_input
 from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import DecoderOnlyTransformerModel
@@ -219,9 +219,10 @@ def trim_list(lst, k):
 def train(
         criterion: nn.NLLLoss,
         optimizer: AdamW,
-        dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, action_value_network: DecoderOnlyTransformerModel,
+        dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, agent: Agent,
         max_grad_norm: float, device: torch.device,
 ):
+    action_value_network = agent.action_value_network()
     action_value_network.train()
 
     train_loader = DataLoader(
@@ -271,8 +272,9 @@ def print_train_examples(train_action_examples):
         print(example_target)
 
 
-def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, action_value_network: DecoderOnlyTransformerModel, device: torch.device,):
+def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, agent: Agent, device: torch.device,):
     print("[after training] print_model_outputs_for_train_examples")
+    action_value_network = agent.action_value_network()
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True)
     for data in inference_loader:
@@ -326,7 +328,7 @@ def get_grad_norm(model):
 def train_model_using_experience_replay(
     config: Configuration,
     context_size: int, batch_size: int, device: torch.device,
-    action_value_network: DecoderOnlyTransformerModel, total_train_examples: int,
+    agent: Agent, total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool, lr: float, weight_decay: float,
@@ -334,7 +336,7 @@ def train_model_using_experience_replay(
     num_steps: int,
 ):
     criterion = nn.NLLLoss()
-    optimizer = AdamW(action_value_network.parameters(),
+    optimizer = AdamW(agent.action_value_network().parameters(),
                       lr=lr, weight_decay=weight_decay)
 
     environment = Environment(cell_value_size)
@@ -350,7 +352,8 @@ def train_model_using_experience_replay(
                 target_action_value_network.to('cpu')
                 del target_action_value_network
                 target_action_value_network = None
-            target_action_value_network = copy.deepcopy(action_value_network)
+            target_action_value_network = copy.deepcopy(
+                agent.action_value_network())
             target_action_value_network.to(device)
 
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
@@ -360,7 +363,7 @@ def train_model_using_experience_replay(
             optimizer,
             experience_replay_data_set,
             context_size, batch_size, device,
-            action_value_network,
+            agent,
             target_action_value_network,
             total_train_examples,
             puzzle_train_examples, cell_value_size,
@@ -401,7 +404,7 @@ def train_model_with_experience_replay_data_set(
     optimizer: AdamW,
     experience_replay_data_set: List[Experience],
     context_size: int, batch_size: int, device: torch.device,
-    action_value_network: DecoderOnlyTransformerModel,
+    agent: Agent,
     target_action_value_network: DecoderOnlyTransformerModel,
     total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
@@ -422,7 +425,7 @@ def train_model_with_experience_replay_data_set(
         context_size,
         batch_size,
         device,
-        action_value_network,
+        agent,
         puzzle_train_examples, cell_value_size)
 
     experience_replay_data_set_size = 4096
@@ -442,11 +445,11 @@ def train_model_with_experience_replay_data_set(
         loss = train(
             criterion,
             optimizer,
-            dataset, batch_size, shuffle_train_examples, action_value_network,
+            dataset, batch_size, shuffle_train_examples, agent,
             max_grad_norm, device,)
 
         if print_model_outputs:
             print_model_outputs_for_train_examples(
-                dataset, batch_size, action_value_network, device,)
+                dataset, batch_size, agent, device,)
 
     return experience_replay_data_set, loss

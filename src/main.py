@@ -106,8 +106,8 @@ def main():
     if config.train_model:
         train_model_using_experience_replay(
             config,
-            config.context_size, config.batch_size, device, agent.action_value_network(
-            ), config.total_train_examples,
+            config.context_size, config.batch_size, device, agent,
+            config.total_train_examples,
             puzzle_train_examples, config.cell_value_size,
             config.discount, config.padding_char, config.num_classes, config.shuffle_train_examples, config.lr,
             config.weight_decay, config.max_grad_norm, config.print_model_outputs, config.save_step_losses,
@@ -121,12 +121,12 @@ def main():
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.
     if config.run_autoregressive_inference_on_train_examples:
         apply_puzzle_action_value_policy(
-            puzzle_train_examples, agent.action_value_network(), config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
+            puzzle_train_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
 
     # Check if the auto-regressive inference AI is able to predict the output for the test example.
     if config.run_autoregressive_inference_on_test_examples:
         apply_puzzle_action_value_policy(
-            puzzle_test_examples, agent.action_value_network(), config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
+            puzzle_test_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
 
     if config.terminate_pod_at_the_end:
         terminate_pod(config.api_key_file)

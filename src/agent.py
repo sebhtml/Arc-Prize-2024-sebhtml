@@ -21,16 +21,17 @@ class Agent:
         return self.__action_value_network
 
 
-def apply_puzzle_action_value_policy(puzzle_examples, action_value_network: ActionValueNetworkModel,
+def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
                                      padding_char: str, cell_value_size: int,
                                      context_size: int, batch_size: int,
                                      device,):
+
     environment = Environment(cell_value_size)
     for example_input, example_target in puzzle_examples:
         print("example")
         solve_puzzle_example_auto_regressive(
             environment,
-            example_input, action_value_network,
+            example_input, agent,
             padding_char, context_size, batch_size,
             device,)
 
@@ -46,10 +47,10 @@ def apply_puzzle_action_value_policy(puzzle_examples, action_value_network: Acti
 
 
 def solve_puzzle_example_auto_regressive(environment: Environment,
-                                         example_input: List[List[int]], action_value_network: ActionValueNetworkModel, padding_char: str,
+                                         example_input: List[List[int]], agent: Agent, padding_char: str,
                                          context_size: int, batch_size: int,
                                          device: torch.device):
-    action_value_network.eval()
+    agent.action_value_network().eval()
 
     environment.set_puzzle_example(example_input, None)
 
@@ -73,7 +74,7 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
             context_size,
             batch_size,
             device,
-            action_value_network,
+            agent.action_value_network(),
             verbose,
         )
 
@@ -199,7 +200,7 @@ def play_game_using_model(
         context_size: int,
         batch_size: int,
         device: torch.device,
-        action_value_network: ActionValueNetworkModel,
+        agent: Agent,
         puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]], cell_value_size: int) -> List[Experience]:
     """
     Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by a random player.
@@ -216,7 +217,7 @@ def play_game_using_model(
     See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
     """
 
-    action_value_network.eval()
+    agent.action_value_network().eval()
     replay_buffer = []
 
     if environment.is_in_terminal_state():
@@ -243,7 +244,7 @@ def play_game_using_model(
             context_size,
             batch_size,
             device,
-            action_value_network,
+            agent.action_value_network(),
             verbose,
         )
 
