@@ -1,6 +1,6 @@
 # Research and Development
 
-- move target action value network to Agent
+- add method in agent to calculate the advantage
 - add a policy network that uses a off-policy value network to compute the advantage (basically actor critic)
     see Off-Policy Actor-Critic https://icml.cc/2012/papers/268.pdf
     see Actor-Critic Algorithms https://proceedings.neurips.cc/paper/1999/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf

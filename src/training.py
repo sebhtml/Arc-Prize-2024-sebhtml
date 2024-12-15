@@ -10,7 +10,7 @@ from typing import List, Tuple
 from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model, Agent
 from context import tokens_to_text, tokenize_example_input
 from report import plot_train_loss_graph, plot_total_rewards_graph
-from model import DecoderOnlyTransformerModel
+from model import ActionValueNetworkModel
 from environment import Environment, generate_cell_actions
 from vision import do_visual_fixation
 from configuration import Configuration
@@ -57,7 +57,7 @@ def get_target_action_value(
         batch_size: int,
         discount: float,
         device: torch.device,
-        target_action_value_network: DecoderOnlyTransformerModel,
+        target_action_value_network: ActionValueNetworkModel,
         verbose: bool,
 ) -> float:
     """
@@ -157,7 +157,7 @@ class MyDataset(Dataset):
                  train_examples: List[Experience],
                  config: Configuration,
                  device: torch.device,
-                 target_action_value_network: DecoderOnlyTransformerModel,
+                 target_action_value_network: ActionValueNetworkModel,
                  ):
         self.__train_examples = train_examples
         self.__config = config
@@ -343,18 +343,10 @@ def train_model_using_experience_replay(
     steps = []
     losses = []
 
-    target_action_value_network = None
-
     experience_replay_data_set = []
     for step in range(num_steps):
         if step % config.target_network_update_period == 0:
-            if target_action_value_network != None:
-                target_action_value_network.to('cpu')
-                del target_action_value_network
-                target_action_value_network = None
-            target_action_value_network = copy.deepcopy(
-                agent.action_value_network())
-            target_action_value_network.to(device)
+            agent.update_target_action_value_network()
 
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             config,
@@ -364,7 +356,6 @@ def train_model_using_experience_replay(
             experience_replay_data_set,
             context_size, batch_size, device,
             agent,
-            target_action_value_network,
             total_train_examples,
             puzzle_train_examples, cell_value_size,
             discount, padding_char, num_classes, shuffle_train_examples,
@@ -405,7 +396,6 @@ def train_model_with_experience_replay_data_set(
     experience_replay_data_set: List[Experience],
     context_size: int, batch_size: int, device: torch.device,
     agent: Agent,
-    target_action_value_network: DecoderOnlyTransformerModel,
     total_train_examples: int,
     puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
@@ -440,7 +430,7 @@ def train_model_with_experience_replay_data_set(
 
     if len(experience_replay_data_set) >= min_experience_replay_data_set_size:
         dataset = MyDataset(
-            experience_replay_data_set, config, device, target_action_value_network,)
+            experience_replay_data_set, config, device, agent.target_action_value_network())
 
         loss = train(
             criterion,

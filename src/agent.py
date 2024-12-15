@@ -16,9 +16,24 @@ class Agent:
     def __init__(self, config: Configuration, device: torch.device):
         self.__action_value_network = ActionValueNetworkModel(config, device)
         self.__action_value_network.to(device)
+        self.__target_action_value_network = None
+        self.__device = device
 
     def action_value_network(self) -> ActionValueNetworkModel:
         return self.__action_value_network
+
+    def target_action_value_network(self) -> ActionValueNetworkModel:
+        return self.__target_action_value_network
+
+    def update_target_action_value_network(self):
+        if self.__target_action_value_network != None:
+            self.__target_action_value_network.to('cpu')
+            del self.__target_action_value_network
+            self.__target_action_value_network = None
+        self.__target_action_value_network = copy.deepcopy(
+            self.action_value_network())
+        self.__target_action_value_network.to(
+            self.__device)
 
 
 def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
