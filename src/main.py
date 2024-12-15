@@ -79,7 +79,7 @@ def load_puzzle_examples(venue, puzzle_id, example_type) -> List[Tuple[List[List
 
 def main():
     device = torch.device("cuda")
-    model = DecoderOnlyTransformerModel(
+    action_value_network = DecoderOnlyTransformerModel(
         config.vocab_size, config.d_model, config.d_ff,
         config.input_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
         config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
@@ -87,7 +87,7 @@ def main():
     # torch.compile does not work on the NVIDIA P100
     # torch.compile works on runpod.io with a NVIDIA A40
     # model = torch.compile(model)
-    model.to(device)
+    action_value_network.to(device)
 
     puzzle_train_examples = load_puzzle_examples(
         "training", config.selected_puzzle_id, "train")
@@ -98,18 +98,19 @@ def main():
     puzzle_test_examples = load_puzzle_examples(
         "training", config.selected_puzzle_id, "test")
 
-    model_total_params = sum(p.numel() for p in model.parameters())
+    model_total_params = sum(p.numel()
+                             for p in action_value_network.parameters())
     print(f"parameters: {model_total_params}")
 
     if config.load_model:
         print("Loading model")
         state_dict = torch.load(config.model_file_path, weights_only=True)
-        model.load_state_dict(state_dict)
+        action_value_network.load_state_dict(state_dict)
 
     if config.train_model:
         train_model_using_experience_replay(
             config,
-            config.context_size, config.batch_size, device, model, config.total_train_examples,
+            config.context_size, config.batch_size, device, action_value_network, config.total_train_examples,
             puzzle_train_examples, config.cell_value_size,
             config.discount, config.padding_char, config.num_classes, config.shuffle_train_examples, config.lr,
             config.weight_decay, config.max_grad_norm, config.print_model_outputs, config.save_step_losses,
@@ -117,18 +118,18 @@ def main():
         )
 
     if config.save_neural_net_model:
-        torch.save(model.state_dict(),
+        torch.save(action_value_network.state_dict(),
                    config.model_file_path)
 
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.
     if config.run_autoregressive_inference_on_train_examples:
         apply_puzzle_action_value_policy(
-            puzzle_train_examples, model, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
+            puzzle_train_examples, action_value_network, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
 
     # Check if the auto-regressive inference AI is able to predict the output for the test example.
     if config.run_autoregressive_inference_on_test_examples:
         apply_puzzle_action_value_policy(
-            puzzle_test_examples, model, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
+            puzzle_test_examples, action_value_network, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
 
     if config.terminate_pod_at_the_end:
         terminate_pod(config.api_key_file)
