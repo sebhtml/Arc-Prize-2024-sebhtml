@@ -1,6 +1,9 @@
 # Research and Development
 
-- use mean action value from distributional action values, see https://arxiv.org/pdf/1710.02298 and https://arxiv.org/abs/1707.06887
+- rename emulator to environment
+- use argmax in select_action_with_deep_q_network
+- remove function mask_cells
+
 - add a policy network that uses a off-policy value network to compute the advantage (basically actor critic)
     see Off-Policy Actor-Critic https://icml.cc/2012/papers/268.pdf
     see Actor-Critic Algorithms https://proceedings.neurips.cc/paper/1999/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf
