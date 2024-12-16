@@ -3,11 +3,9 @@ from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
-import math
-import copy
 from datetime import datetime, timezone
 from typing import List, Tuple
-from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model, Agent
+from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model, Agent, unbin_action_value, bin_action_value
 from context import tokens_to_text, tokenize_example_input
 from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
@@ -15,35 +13,6 @@ from environment import Environment, generate_cell_actions
 from vision import do_visual_fixation
 from configuration import Configuration
 from q_learning import Experience
-
-
-def unbin_action_value(action_value_bin: int, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
-    """
-    Convert a bin between 0 and num_classes-1 to a float between minimum_action_value and maximum_action_value
-    """
-    minimum_action_value_bin = 0
-    maximum_action_value_bin = num_classes - 1
-
-    action_value = minimum_action_value + (
-        ((action_value_bin - minimum_action_value_bin) / (maximum_action_value_bin - minimum_action_value_bin)) * (maximum_action_value - minimum_action_value))
-    return max(min(action_value, maximum_action_value), minimum_action_value)
-
-
-def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> int:
-    """
-    convert action_value to { 0, 1, ..., num_classes - 1 }
-    Example:
-    action_value: 3.0
-    _minimum_action_value: -4.0
-    _maximum_action_value: 7.0
-    action_value_bin = (3.0 - -4.0) / (7.0 - -4.0)
-    """
-    minimum_action_value_bin = 0
-    maximum_action_value_bin = num_classes - 1
-
-    action_value_bin = minimum_action_value_bin + math.floor(
-        ((action_value - minimum_action_value) / (maximum_action_value - minimum_action_value)) * (maximum_action_value_bin - minimum_action_value_bin))
-    return max(min(action_value_bin, maximum_action_value_bin), minimum_action_value_bin)
 
 
 def get_target_action_value(

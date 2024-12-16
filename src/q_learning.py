@@ -1,5 +1,5 @@
 from typing import List
-
+import math
 
 VACANT_CELL_VALUE = -1
 MASKED_CELL_VALUE = -2
@@ -7,6 +7,35 @@ OUTSIDE_CELL_VALUE = -3
 
 cell_match_reward = 1.0
 cell_mismatch_reward = -1.0
+
+
+def unbin_action_value(action_value_bin: int, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:
+    """
+    Convert a bin between 0 and num_classes-1 to a float between minimum_action_value and maximum_action_value
+    """
+    minimum_action_value_bin = 0
+    maximum_action_value_bin = num_classes - 1
+
+    action_value = minimum_action_value + (
+        ((action_value_bin - minimum_action_value_bin) / (maximum_action_value_bin - minimum_action_value_bin)) * (maximum_action_value - minimum_action_value))
+    return max(min(action_value, maximum_action_value), minimum_action_value)
+
+
+def bin_action_value(action_value: float, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> int:
+    """
+    convert action_value to { 0, 1, ..., num_classes - 1 }
+    Example:
+    action_value: 3.0
+    _minimum_action_value: -4.0
+    _maximum_action_value: 7.0
+    action_value_bin = (3.0 - -4.0) / (7.0 - -4.0)
+    """
+    minimum_action_value_bin = 0
+    maximum_action_value_bin = num_classes - 1
+
+    action_value_bin = minimum_action_value_bin + math.floor(
+        ((action_value - minimum_action_value) / (maximum_action_value - minimum_action_value)) * (maximum_action_value_bin - minimum_action_value_bin))
+    return max(min(action_value_bin, maximum_action_value_bin), minimum_action_value_bin)
 
 
 class QLearningAction:
