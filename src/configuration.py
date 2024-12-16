@@ -97,7 +97,7 @@ class Configuration:
     target_network_update_period = 100  # prod: 1000, dev: 100,
 
     verbose_advantage = False
-    verbose_target_network = False
+    verbose_target_action_value_network = False
     max_taken_actions_per_step = 1
     shuffle_train_examples = True
     # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0

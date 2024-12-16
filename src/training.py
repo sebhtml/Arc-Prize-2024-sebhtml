@@ -155,7 +155,7 @@ class MyDataset(Dataset):
 
         action_index = torch.tensor(experience.action().cell_value())
 
-        verbose = self.__config.verbose_target_network
+        verbose = self.__config.verbose_target_action_value_network
         action_value = get_target_action_value(
             experience,
             self.__config.padding_char,
