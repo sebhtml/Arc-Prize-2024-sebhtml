@@ -36,11 +36,11 @@ class Agent:
         self.__target_action_value_network.to(
             self.__device)
 
-    def advantage(self, experience: Experience, discount: float,) -> float:
+    def advantage(self, experience: Experience) -> float:
         """
         A(s, a) = Q(s, a) - V(s)
 
-        A(s, a) = r + discount * V(s') - V(s)
+        V(s) = max_a' { Q(s, a') }
 
         See
         https://en.wikipedia.org/wiki/Temporal_difference_learning
@@ -53,31 +53,29 @@ class Agent:
         https://link.springer.com/article/10.1007/BF00115009
         """
 
-        r = experience.reward()
-        s_prime = experience.next_state()
-        v_s_prime = self.value(s_prime)
+        action = experience.action()
+        action_index = experience.action().cell_value()
         s = experience.state()
-        v_s = self.value(s)
+        example_input = s.example_input()
+        current_state = s.current_state()
 
-        return r + discount * v_s_prime - v_s
+        tmp_candidate_actions = generate_cell_actions(
+            current_state, self.__config.cell_value_size)
 
-    def value(self, state: GameState) -> float:
-        example_input = state.example_input()
-        current_state = state.current_state()
+        candidate_actions = []
+        for tmp_candidate_action in tmp_candidate_actions:
+            row = action.row()
+            col = action.col()
+            cell_value = tmp_candidate_action.cell_value()
+            candidate_actions.append(QLearningAction(row, col, cell_value))
+
         padding_char = self.__config.padding_char
         context_size = self.__config.context_size
         batch_size = self.__config.batch_size
         device = self.__device
-        candidate_actions = generate_cell_actions(
-            current_state, self.__config.cell_value_size)
-        verbose = False
+        verbose = self.__config.verbose_advantage
 
-        is_terminal = len(candidate_actions) == 0
-
-        if is_terminal:
-            return 0.0
-
-        best_action, best_action_value = select_action_with_deep_q_network(
+        best_action, best_action_value, action_values = select_action_with_deep_q_network(
             example_input,
             current_state,
             candidate_actions,
@@ -89,14 +87,9 @@ class Agent:
             verbose,
         )
 
-        minimum_action_value = self.__config.minimum_action_value
-        maximum_action_value = self.__config.maximum_action_value
-        num_classes = self.__config.num_classes
+        action_value = action_values[action_index]
 
-        best_action_value = unbin_action_value(
-            best_action_value, minimum_action_value, maximum_action_value, num_classes)
-
-        return best_action_value
+        return action_value - best_action_value
 
 
 def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
@@ -144,7 +137,7 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
 
         example_input, current_state = environment.get_observations()
 
-        best_action, best_action_value = select_action_with_deep_q_network(
+        best_action, best_action_value, action_values = select_action_with_deep_q_network(
             example_input,
             current_state,
             candidate_actions,
@@ -194,7 +187,7 @@ def select_action_with_deep_q_network(
         device: torch.device,
         action_value_network: ActionValueNetworkModel,
         verbose: bool,
-) -> Tuple[QLearningAction, int]:
+) -> Tuple[QLearningAction, int, List[Tuple[int, float]]]:
 
     # Note that all candidate actions act on the same cell.
     candidate_action = candidate_actions[0]
@@ -268,7 +261,7 @@ def select_action_with_deep_q_network(
         del t
     del outputs
 
-    return best_action, best_action_value
+    return best_action, best_action_value, action_values
 
 
 def play_game_using_model(
@@ -314,7 +307,7 @@ def play_game_using_model(
         example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)
 
-        best_action, best_action_value = select_action_with_deep_q_network(
+        best_action, best_action_value, action_values = select_action_with_deep_q_network(
             example_input,
             current_state,
             candidate_actions,

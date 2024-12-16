@@ -58,7 +58,7 @@ def get_target_action_value(
     if is_terminal:
         return reward
 
-    best_action, best_action_value = select_action_with_deep_q_network(
+    best_action, best_action_value, action_values = select_action_with_deep_q_network(
         example_input,
         current_state,
         candidate_actions,
