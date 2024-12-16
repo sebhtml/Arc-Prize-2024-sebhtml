@@ -87,7 +87,8 @@ class Agent:
             verbose,
         )
 
-        action_value = action_values[action_index]
+        action_value = list(filter(
+            lambda entry: entry[0] == action_index, action_values))[0][1]
 
         return action_value - best_action_value
 

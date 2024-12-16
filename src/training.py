@@ -126,12 +126,12 @@ class MyDataset(Dataset):
                  train_examples: List[Experience],
                  config: Configuration,
                  device: torch.device,
-                 target_action_value_network: ActionValueNetworkModel,
+                 agent: Agent,
                  ):
         self.__train_examples = train_examples
         self.__config = config
         self.__device = device
-        self.__target_action_value_network = target_action_value_network
+        self.__agent = agent
 
     def __len__(self):
         return len(self.__train_examples)
@@ -167,14 +167,18 @@ class MyDataset(Dataset):
             self.__config.batch_size,
             self.__config.discount,
             self.__device,
-            self.__target_action_value_network,
+            self.__agent.target_action_value_network(),
             verbose,
         )
         action_value_bin = bin_action_value(
             action_value, self.__config.minimum_action_value, self.__config.maximum_action_value, self.__config.num_classes)
         action_value_bin = torch.tensor(action_value_bin)
 
-        item = (item_input, action_value_bin, action_index)
+        advantage = self.__agent.advantage(experience)
+
+        print(f"advantage is {advantage}")
+
+        item = (item_input, action_value_bin, action_index, advantage)
         return item
 
 
@@ -200,7 +204,7 @@ def train(
     data = next(iter(train_loader))
 
     optimizer.zero_grad()
-    (inputs, targets, action_indices) = data
+    (inputs, targets, action_indices, advantages) = data
 
     inputs = [t.to(device) for t in inputs]
     targets = targets.to(device)
@@ -399,7 +403,7 @@ def train_model_with_experience_replay_data_set(
 
     if len(experience_replay_data_set) >= min_experience_replay_data_set_size:
         dataset = MyDataset(
-            experience_replay_data_set, config, device, agent.target_action_value_network())
+            experience_replay_data_set, config, device, agent,)
 
         loss = train(
             criterion,
