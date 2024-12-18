@@ -147,6 +147,10 @@ class DecoderOnlyTransformerModel(nn.Module):
 
 
 class ActionValueNetworkModel(nn.Module):
+    """
+    Predict action values given a state.
+    """
+
     def __init__(self, config: Configuration, device: torch.device):
         super(ActionValueNetworkModel, self).__init__()
         self.__base_model = DecoderOnlyTransformerModel(
@@ -162,14 +166,40 @@ class ActionValueNetworkModel(nn.Module):
         self.num_classes = num_classes
 
     def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
-        transformed_ln = self.__base_model(x)
+        hidden = self.__base_model(x)
         # [batch_size, context_size, d_model] -> [batch_size, context_size, num_actions*num_classes]
-        logits = self.classifier(transformed_ln)
+        logits = self.classifier(hidden)
         # [batch_size, context_size, num_actions*num_classes] -> [batch_size, num_actions*num_classes]
         mean_logits = logits.mean(dim=1)
         batch_size = mean_logits.shape[0]
         # [batch_size, num_actions*num_classes] -> [batch_size, num_actions, num_classes]
         action_mean_logits = mean_logits.view(
             batch_size, self.num_actions, self.num_classes)
-        softmax_output = F.log_softmax(action_mean_logits, dim=-1)
-        return softmax_output
+        log_softmax_output = F.log_softmax(action_mean_logits, dim=-1)
+        return log_softmax_output
+
+
+class PolicyNetworkModel(nn.Module):
+    """
+    Predict action probabilities given a state.
+    """
+
+    def __init__(self, config: Configuration, device: torch.device):
+        super(PolicyNetworkModel, self).__init__()
+        self.__base_model = DecoderOnlyTransformerModel(
+            config.vocab_size, config.d_model, config.d_ff,
+            config.input_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
+            config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
+        d_model = config.d_model
+        num_actions = config.num_actions
+        self.classifier = nn.Linear(
+            in_features=d_model, out_features=num_actions)
+
+    def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
+        hidden = self.__base_model(x)
+        # [batch_size, context_size, d_model] -> [batch_size, context_size, num_actions]
+        logits = self.classifier(hidden)
+        # [batch_size, context_size, num_actions*num_classes] -> [batch_size, num_actions]
+        mean_logits = logits.mean(dim=1)
+        log_softmax_output = F.log_softmax(mean_logits, dim=-1)
+        return log_softmax_output

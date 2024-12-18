@@ -174,11 +174,7 @@ class MyDataset(Dataset):
             action_value, self.__config.minimum_action_value, self.__config.maximum_action_value, self.__config.num_classes)
         action_value_bin = torch.tensor(action_value_bin)
 
-        advantage = self.__agent.advantage(experience)
-
-        print(f"advantage is {advantage}")
-
-        item = (item_input, action_value_bin, action_index, advantage)
+        item = (item_input, action_value_bin, action_index)
         return item
 
 
@@ -204,15 +200,17 @@ def train(
     data = next(iter(train_loader))
 
     optimizer.zero_grad()
-    (inputs, targets, action_indices, advantages) = data
+    (inputs, targets, action_indices) = data
 
     inputs = [t.to(device) for t in inputs]
     targets = targets.to(device)
 
     # outputs has shape [batch_size, num_actions, num_classes].
     # We need a shape of [batch_size, num_classes] to use the criterion.
-    outputs = action_value_network(inputs)
-    outputs = outputs[torch.arange(batch_size), action_indices]
+    all_predicted_action_values = action_value_network(inputs)
+
+    outputs = all_predicted_action_values[torch.arange(
+        batch_size), action_indices]
 
     loss = criterion(outputs, targets)
 
@@ -226,6 +224,9 @@ def train(
         del t
     del targets
     del outputs
+
+    agent.step_policy_network(
+        inputs, all_predicted_action_values, action_indices)
 
     return loss
 

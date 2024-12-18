@@ -1,9 +1,6 @@
 # Research and Development
 
-- add a policy network that uses a off-policy value network to compute the advantage (basically actor critic)
-    see Off-Policy Actor-Critic https://icml.cc/2012/papers/268.pdf
-    see Actor-Critic Algorithms https://proceedings.neurips.cc/paper/1999/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf
-    minimize -log policy(a|s) * A(s,a)
+- add agent.select_action_with_policy
 - use argmax in select_action_with_deep_q_network
 - add old policy network to use PPO (proximal policy optimization)
     see Off-Policy Proximal Policy Optimization

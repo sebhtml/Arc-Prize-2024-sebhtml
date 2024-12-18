@@ -2,21 +2,35 @@ import torch
 import numpy as np
 import random
 import copy
+from math import exp
+from torch.optim import AdamW
 from typing import List, Tuple
 from context import tokenize_example_input, tokens_to_text, make_example_tensor
 from context import state_to_text
 from vision import do_visual_fixation
 from q_learning import QLearningAction, Cell, Experience, GameState, unbin_action_value, bin_action_value
-from model import ActionValueNetworkModel
+from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment, generate_cell_actions
 from configuration import Configuration
 
 
 class Agent:
     def __init__(self, config: Configuration, device: torch.device):
+        # Action value network for DQN
         self.__action_value_network = ActionValueNetworkModel(config, device)
         self.__action_value_network.to(device)
+
+        # Target action value network for DQN
         self.__target_action_value_network = None
+
+        # Policy network for policy gradient method
+        self.__policy_network = PolicyNetworkModel(config, device)
+        self.__policy_network.to(device)
+
+        self.__policy_network_optimizer = AdamW(self.__policy_network.parameters(),
+                                                lr=config.lr, weight_decay=config.weight_decay)
+
+        # Device and config
         self.__device = device
         self.__config = config
 
@@ -25,6 +39,9 @@ class Agent:
 
     def target_action_value_network(self) -> ActionValueNetworkModel:
         return self.__target_action_value_network
+
+    def policy_network(self) -> PolicyNetworkModel:
+        return self.__policy_network
 
     def update_target_action_value_network(self):
         if self.__target_action_value_network != None:
@@ -36,8 +53,15 @@ class Agent:
         self.__target_action_value_network.to(
             self.__device)
 
-    def advantage(self, experience: Experience) -> float:
+    def step_policy_network(
+        self,
+        inputs: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+        all_predicted_action_values: torch.Tensor,
+        action_indices: torch.Tensor,
+    ):
         """
+        L_actor = - log π(a|s) * A(s, a)
+
         A(s, a) = Q(s, a) - V(s)
 
         V(s) = max_a' { Q(s, a') }
@@ -51,46 +75,55 @@ class Agent:
         See
         Learning to Predict by the Methods of Temporal Differences.
         https://link.springer.com/article/10.1007/BF00115009
+
+        See 
+        Off-Policy Actor-Critic
+        https://icml.cc/2012/papers/268.pdf
+
+        See Actor-Critic Algorithms
+        https://proceedings.neurips.cc/paper/1999/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf
         """
 
-        action = experience.action()
-        action_index = experience.action().cell_value()
-        s = experience.state()
-        example_input = s.example_input()
-        current_state = s.current_state()
+        policy_network = self.policy_network()
 
-        tmp_candidate_actions = generate_cell_actions(
-            current_state, self.__config.cell_value_size)
+        # Get this quantity:     log π(a|s)
+        all_predicted_action_probabilities = policy_network(inputs)
 
-        candidate_actions = []
-        for tmp_candidate_action in tmp_candidate_actions:
-            row = action.row()
-            col = action.col()
-            cell_value = tmp_candidate_action.cell_value()
-            candidate_actions.append(QLearningAction(row, col, cell_value))
+        batch_size = all_predicted_action_probabilities.shape[0]
+        action_probabilities = all_predicted_action_probabilities[torch.arange(
+            batch_size), action_indices]
 
-        padding_char = self.__config.padding_char
-        context_size = self.__config.context_size
-        batch_size = self.__config.batch_size
-        device = self.__device
-        verbose = self.__config.verbose_advantage
+        # Q(s, a)
+        action_values = all_predicted_action_values[torch.arange(
+            batch_size), action_indices].argmax(dim=-1).float()
+        print(f"action_values {action_values}")
 
-        best_action, best_action_value, action_values = select_action_with_deep_q_network(
-            example_input,
-            current_state,
-            candidate_actions,
-            padding_char,
-            context_size,
-            batch_size,
-            device,
-            self.action_value_network(),
-            verbose,
-        )
+        # V(s) = max_a' { Q(s, a') }
+        max_action_values, _ = all_predicted_action_values.argmax(
+            dim=-1).max(dim=-1)
+        print(f"max_action_values {max_action_values}")
 
-        action_value = list(filter(
-            lambda entry: entry[0] == action_index, action_values))[0][1]
+        # A(s, a) = Q(s, a) - V(s)
+        advantages = action_values - max_action_values
 
-        return action_value - best_action_value
+        probabilities = torch.exp(action_probabilities)
+        probabilities = probabilities / \
+            torch.sum(probabilities, dim=-1, keepdim=True)
+
+        print(f"action_probabilities {probabilities}")
+        print(f"advantages {advantages}")
+
+        # loss
+        # L_actor = - log π(a|s) * A(s, a)
+        loss = - (action_probabilities * advantages).mean()
+
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(
+            policy_network.parameters(), self.__config.max_grad_norm)
+        self.__policy_network_optimizer.step()
+        loss = loss.cpu().item()
+
+        print(f"policy network loss {loss}")
 
 
 def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
