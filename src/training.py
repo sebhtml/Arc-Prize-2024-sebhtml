@@ -226,7 +226,7 @@ def train(
     del outputs
 
     agent.step_policy_network(
-        inputs, all_predicted_action_values, action_indices)
+        inputs, all_predicted_action_values.detach(), action_indices)
 
     return loss
 

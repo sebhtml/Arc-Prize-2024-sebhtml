@@ -259,12 +259,20 @@ def select_action_with_deep_q_network(
     # https://arxiv.org/abs/1707.06887
     #
     # Evaluates the Einstein summation convention on the operands.
-    num_classes = log_softmax_outputs.shape[-1]
-    atoms = torch.arange(
-        num_classes, device=log_softmax_outputs.device).float()
+    
+    
+    outputs = None
+    use_mean_action_value = False
+    
+    if use_mean_action_value:
+        num_classes = log_softmax_outputs.shape[-1]
+        atoms = torch.arange(
+            num_classes, device=log_softmax_outputs.device).float()
 
-    probability_outputs = torch.exp(log_softmax_outputs)
-    outputs = torch.einsum('n,ban->ba', atoms, probability_outputs)
+        probability_outputs = torch.exp(log_softmax_outputs)
+        outputs = torch.einsum('n,ban->ba', atoms, probability_outputs)
+    else:
+        outputs = log_softmax_outputs.argmax(-1).float()
 
     for action_index in range(outputs.shape[1]):
         # argmax_action_value = log_softmax_outputs[0, action_index, :].argmax(dim=-1).item()
