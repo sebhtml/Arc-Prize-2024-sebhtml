@@ -23,16 +23,20 @@ class Agent:
         # Target action value network for DQN
         self.__target_action_value_network = None
 
-        # Policy network for policy gradient method
-        self.__policy_network = PolicyNetworkModel(config, device)
-        self.__policy_network.to(device)
-
-        self.__policy_network_optimizer = AdamW(self.__policy_network.parameters(),
-                                                lr=config.lr, weight_decay=config.weight_decay)
-
         # Device and config
         self.__device = device
         self.__config = config
+
+        # Policy network for policy gradient method
+        if self.__config.use_policy_network:
+            self.__policy_network = PolicyNetworkModel(config, device)
+            self.__policy_network.to(device)
+            self.__policy_network_optimizer = AdamW(self.__policy_network.parameters(),
+                                                    lr=config.lr, weight_decay=config.weight_decay)
+
+        else:
+            self.__policy_network = None
+            self.__policy_network_optimizer = None
 
     def action_value_network(self) -> ActionValueNetworkModel:
         return self.__action_value_network
@@ -84,7 +88,11 @@ class Agent:
         https://proceedings.neurips.cc/paper/1999/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf
         """
 
+        if not self.__config.use_policy_network:
+            return
+
         policy_network = self.policy_network()
+        optimizer = self.__policy_network_optimizer
 
         # Get this quantity:     log π(a|s)
         all_predicted_action_probabilities = policy_network(inputs)
@@ -115,12 +123,14 @@ class Agent:
 
         # loss
         # L_actor = - log π(a|s) * A(s, a)
-        loss = - (action_probabilities * advantages).mean()
+        loss = - action_probabilities * advantages
+        loss = loss.mean()
 
+        optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(
             policy_network.parameters(), self.__config.max_grad_norm)
-        self.__policy_network_optimizer.step()
+        optimizer.step()
         loss = loss.cpu().item()
 
         print(f"policy network loss {loss}")
@@ -191,7 +201,6 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
 
         example_input, current_state = environment.get_observations()
 
-        print(f"best_next_state with {best_action_value}")
         print("AUTO-REGRESSIVE wannabe AGI megabot current state")
         print_current_state(example_input, current_state, padding_char)
 
@@ -259,11 +268,10 @@ def select_action_with_deep_q_network(
     # https://arxiv.org/abs/1707.06887
     #
     # Evaluates the Einstein summation convention on the operands.
-    
-    
+
     outputs = None
     use_mean_action_value = False
-    
+
     if use_mean_action_value:
         num_classes = log_softmax_outputs.shape[-1]
         atoms = torch.arange(
@@ -304,6 +312,55 @@ def select_action_with_deep_q_network(
     del outputs
 
     return best_action, best_action_value, action_values
+
+
+def select_action_with_policy_network(
+        example_input: List[List[Cell]],
+        current_state: List[List[Cell]],
+        candidate_actions: list[QLearningAction],
+        padding_char: str,
+        context_size: int,
+        batch_size: int,
+        device: torch.device,
+        policy_network: PolicyNetworkModel,
+        verbose: bool,
+) -> int:
+    """
+    The policy network outputs a probability distribution over actions.
+    Sample an action index using the policy network.
+    """
+    # Note that all candidate actions act on the same cell.
+    candidate_action = candidate_actions[0]
+
+    (attented_example_input, attented_current_state, attented_candidate_action,
+     translation_x, translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
+
+    input_tokens = tokenize_example_input(
+        current_state,
+        attented_example_input, attented_current_state, padding_char)
+
+    if verbose:
+        print("input_text")
+        print(tokens_to_text(input_tokens))
+
+    # Add a dimension for the batch_size
+    inputs = list(map(lambda tensor: tensor.unsqueeze(0),
+                      make_example_tensor(input_tokens, context_size)))
+
+    inputs = [t.to(device) for t in inputs]
+    log_probs = policy_network(inputs)
+    temperature = 1.0
+    probs = torch.exp(log_probs / temperature)
+    print(f"probs {probs}")
+    dist = torch.distributions.Categorical(probs)
+
+    # Sampling fom the probability distribution does the exploration.
+    samples = dist.sample()
+    # print("sample shape")
+    # print(samples.shape)
+    best_action_index = samples[0].item()
+    print(f"action index {best_action_index}")
+    return best_action_index
 
 
 def play_game_using_model(

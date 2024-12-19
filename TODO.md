@@ -1,7 +1,7 @@
 # Research and Development
 
-- add agent.select_action_with_policy
-- use argmax in select_action_with_deep_q_network
+- move training of action value network to agent.py
+- return only max_action_value in select_action_with_target_action_value_network
 - add old policy network to use PPO (proximal policy optimization)
     see Off-Policy Proximal Policy Optimization
         https://ojs.aaai.org/index.php/AAAI/article/view/26099
@@ -21,3 +21,4 @@
 
 - reduce number of train steps
 - use half precision float16
+- use select_action_with_policy
