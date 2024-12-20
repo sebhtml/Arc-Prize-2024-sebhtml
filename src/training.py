@@ -272,6 +272,8 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
             print(target)
             print("output: ")
             print(output)
+            # Only check first example from batch for now.
+            break
         for t in inputs:
             del t
         del targets
