@@ -153,24 +153,6 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
     attented_candidate_action = QLearningAction(
         center_y, center_x, new_value)
 
-    rotations = random.randrange(0, 4)
-
-    for _ in range(rotations):
-        attented_example_input = rotate_90_clockwise(attented_example_input)
-        attented_current_state = rotate_90_clockwise(attented_current_state)
-
-    if random.randrange(0, 2) == 0:
-        attented_example_input = flip_board(
-            attented_example_input, 'horizontal')
-        attented_current_state = flip_board(
-            attented_current_state, 'horizontal')
-
-    if random.randrange(0, 2) == 0:
-        attented_example_input = flip_board(
-            attented_example_input, 'vertical')
-        attented_current_state = flip_board(
-            attented_current_state, 'vertical')
-
     return [
         attented_example_input,
         attented_current_state,

@@ -12,6 +12,7 @@ from q_learning import QLearningAction, Cell, Experience, GameState, unbin_actio
 from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment, generate_cell_actions
 from configuration import Configuration
+from vision import flip_board, rotate_90_clockwise
 
 
 class Agent:
@@ -395,6 +396,25 @@ def play_game_using_model(
         puzzle_example = puzzle_train_examples[i]
 
         (raw_example_input, raw_example_output) = puzzle_example
+
+        rotations = random.randrange(0, 4)
+
+        for _ in range(rotations):
+            raw_example_input = rotate_90_clockwise(raw_example_input)
+            raw_example_output = rotate_90_clockwise(raw_example_output)
+
+        if random.randrange(0, 2) == 0:
+            raw_example_input = flip_board(
+                raw_example_input, 'horizontal')
+            raw_example_output = flip_board(
+                raw_example_output, 'horizontal')
+
+        if random.randrange(0, 2) == 0:
+            raw_example_input = flip_board(
+                raw_example_input, 'vertical')
+            raw_example_output = flip_board(
+                raw_example_output, 'vertical')
+
         environment.set_puzzle_example(raw_example_input, raw_example_output)
 
     verbose = False
