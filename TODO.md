@@ -1,6 +1,7 @@
 # Research and Development
 
-- add unattented input and current state in do_visual_fixation
+- add actions left (10), up (11), right (12), down (13)
+
 - move training of action value network to agent.py
 - return only max_action_value in select_action_with_target_action_value_network
 - add old policy network to use PPO (proximal policy optimization)

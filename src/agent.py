@@ -236,8 +236,8 @@ def select_action_with_deep_q_network(
     # Note that all candidate actions act on the same cell.
     candidate_action = candidate_actions[0]
 
-    (attented_example_input, attented_current_state, attented_candidate_action,
-     translation_x, translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
+    (attented_example_input, attented_current_state,
+     ) = do_visual_fixation(example_input, current_state, candidate_action)
 
     input_tokens = tokenize_example_input(
         current_state,
@@ -333,8 +333,8 @@ def select_action_with_policy_network(
     # Note that all candidate actions act on the same cell.
     candidate_action = candidate_actions[0]
 
-    (attented_example_input, attented_current_state, attented_candidate_action,
-     translation_x, translation_y) = do_visual_fixation(example_input, current_state, candidate_action)
+    (attented_example_input, attented_current_state,
+     ) = do_visual_fixation(example_input, current_state, candidate_action)
 
     input_tokens = tokenize_example_input(
         current_state,

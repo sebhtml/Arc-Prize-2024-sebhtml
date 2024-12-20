@@ -156,7 +156,4 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
     return [
         attented_example_input,
         attented_current_state,
-        attented_candidate_action,
-        translation_x,
-        translation_y,
     ]
