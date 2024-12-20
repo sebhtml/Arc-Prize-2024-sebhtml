@@ -240,7 +240,7 @@ def select_action_with_deep_q_network(
      ) = do_visual_fixation(example_input, current_state, candidate_action)
 
     input_tokens = tokenize_example_input(
-        current_state,
+        example_input, current_state,
         attented_example_input, attented_current_state, padding_char)
 
     if verbose:
@@ -337,7 +337,7 @@ def select_action_with_policy_network(
      ) = do_visual_fixation(example_input, current_state, candidate_action)
 
     input_tokens = tokenize_example_input(
-        current_state,
+        example_input, current_state,
         attented_example_input, attented_current_state, padding_char)
 
     if verbose:

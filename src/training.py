@@ -148,7 +148,7 @@ class MyDataset(Dataset):
             example_input, current_state, candidate_action)
 
         input_tokens = tokenize_example_input(
-            current_state,
+            example_input, current_state,
             attented_example_input, attented_current_state, self.__config.padding_char)
 
         if not self.__printed:

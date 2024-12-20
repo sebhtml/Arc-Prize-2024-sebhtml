@@ -12,13 +12,18 @@ OUTSIDE_CELL_CHAR = '.'
 
 class ExampleInputTokens:
     def __init__(self,
+                 example_input: List[int],
                  current_state: List[int],
                  attended_example_input: List[int],
                  attended_current_state: List[int],
                  ):
+        self.__example_input = example_input
         self.__current_state = current_state
         self.__attended_example_input = attended_example_input
         self.__attended_current_state = attended_current_state
+
+    def example_input(self) -> List[int]:
+        return self.__example_input
 
     def current_state(self) -> List[int]:
         return self.__current_state
@@ -42,6 +47,7 @@ def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
 
 
 def tokenize_example_input(
+        example_input: List[List[Cell]],
         current_state: List[List[Cell]],
         attended_example_input: List[List[Cell]],
         attended_current_state: List[List[Cell]],
@@ -52,6 +58,10 @@ def tokenize_example_input(
     - s contains the state which is (example_input, current_state)
     - a contains the action which is (next_state)
     """
+
+    example_input_text = ""
+    example_input_text += "exampleInput" + "\n"
+    example_input_text += state_to_text(example_input)
 
     current_state_text = ""
     current_state_text += "currentState" + "\n"
@@ -66,6 +76,7 @@ def tokenize_example_input(
     attended_current_state_text += state_to_text(attended_current_state)
 
     return ExampleInputTokens(
+        text_to_tokens(example_input_text),
         text_to_tokens(current_state_text),
         text_to_tokens(attended_example_input_text),
         text_to_tokens(attended_current_state_text),
@@ -77,7 +88,8 @@ def text_to_tokens(s: str) -> List[int]:
 
 
 def tokens_to_text(example_input_tokens: ExampleInputTokens) -> str:
-    tokens: List[int] = example_input_tokens.current_state() + example_input_tokens.attended_example_input() + \
+    tokens: List[int] = example_input_tokens.example_input() + \
+        example_input_tokens.current_state() + example_input_tokens.attended_example_input() + \
         example_input_tokens.attended_current_state(
     )
     return "".join(map(chr, tokens))
@@ -102,6 +114,8 @@ def state_to_text(state: List[List[Cell]]) -> str:
 
 
 def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: int):
+    example_input = filter_tokens(
+        example_input_tokens.example_input())
     current_state = filter_tokens(
         example_input_tokens.current_state())
     attended_example_input = filter_tokens(
@@ -109,12 +123,13 @@ def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: 
     attended_current_state = filter_tokens(
         example_input_tokens.attended_current_state())
 
-    input_tokens: List[int] = current_state + \
+    input_tokens: List[int] = example_input + current_state + \
         attended_example_input + attended_current_state
     if len(input_tokens) > context_size:
         raise Exception(
             f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
     item_input = [
+        torch.tensor(example_input),
         torch.tensor(current_state),
         torch.tensor(attended_example_input),
         torch.tensor(attended_current_state),

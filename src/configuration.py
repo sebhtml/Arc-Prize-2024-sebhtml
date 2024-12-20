@@ -60,7 +60,7 @@ class Configuration:
     model_file_path = f"{models_path}/{time_marker}-{total_train_examples}-q-network.pth"
     # Multiple of 4 for NVIDIA cublas WMMA
     # See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
-    context_size = 148
+    context_size = 196
     # Hidden size
     d_model = 384
     # Feed-forward size in transformer block
