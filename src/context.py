@@ -3,14 +3,13 @@ import copy
 from typing import List
 from vision import Cell
 from vision import VACANT_CELL_VALUE,  MASKED_CELL_VALUE,  OUTSIDE_CELL_VALUE
-from q_learning import Experience
 
 VACANT_CELL_CHAR = '_'
 MASKED_CELL_CHAR = 'X'
 OUTSIDE_CELL_CHAR = '.'
 
 
-class ExampleInputTokens:
+class Context:
     def __init__(self,
                  example_input: List[int],
                  current_state: List[int],
@@ -51,7 +50,7 @@ def tokenize_example_input(
         current_state: List[List[Cell]],
         attended_example_input: List[List[Cell]],
         attended_current_state: List[List[Cell]],
-        padding_char: str) -> ExampleInputTokens:
+        padding_char: str) -> Context:
     """
     Tokenize a example input for the Q-network Q(s, a).
     Note that:
@@ -75,7 +74,7 @@ def tokenize_example_input(
     attended_current_state_text += "attendedCurrentState" + "\n"
     attended_current_state_text += state_to_text(attended_current_state)
 
-    return ExampleInputTokens(
+    return Context(
         text_to_tokens(example_input_text),
         text_to_tokens(current_state_text),
         text_to_tokens(attended_example_input_text),
@@ -87,7 +86,7 @@ def text_to_tokens(s: str) -> List[int]:
     return list(map(ord, list(s)))
 
 
-def tokens_to_text(example_input_tokens: ExampleInputTokens) -> str:
+def tokens_to_text(example_input_tokens: Context) -> str:
     tokens: List[int] = example_input_tokens.example_input() + \
         example_input_tokens.current_state() + example_input_tokens.attended_example_input() + \
         example_input_tokens.attended_current_state(
@@ -113,7 +112,7 @@ def state_to_text(state: List[List[Cell]]) -> str:
     return output
 
 
-def make_example_tensor(example_input_tokens: ExampleInputTokens, context_size: int):
+def make_example_tensor(example_input_tokens: Context, context_size: int):
     example_input = filter_tokens(
         example_input_tokens.example_input())
     current_state = filter_tokens(

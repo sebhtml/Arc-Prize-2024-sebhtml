@@ -2,9 +2,9 @@
 
 - mask past cells to reduce combinatorics
 
-- move make_example_tensor to ExampleInputTokens
-- move tokenize_example_input to ExampleInputTokens
-- move tokens_to_text to ExampleInputTokens
+- move make_example_tensor to Context
+- move tokenize_example_input to Context
+- move tokens_to_text to Context
 
 - add actions left (10), up (11), right (12), down (13)
 
