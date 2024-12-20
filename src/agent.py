@@ -2,15 +2,13 @@ import torch
 import numpy as np
 import random
 import copy
-from math import exp
 from torch.optim import AdamW
 from typing import List, Tuple
-from context import tokenize_example_input, tokens_to_text, make_example_tensor
+from context import tokens_to_text, make_example_tensor, prepare_context
 from context import state_to_text
-from vision import do_visual_fixation
-from q_learning import QLearningAction, Cell, Experience, GameState, unbin_action_value, bin_action_value
+from q_learning import QLearningAction, Cell, Experience, GameState
 from model import ActionValueNetworkModel, PolicyNetworkModel
-from environment import Environment, generate_cell_actions
+from environment import Environment
 from configuration import Configuration
 from vision import flip_board, rotate_90_clockwise
 
@@ -236,12 +234,8 @@ def select_action_with_deep_q_network(
     # Note that all candidate actions act on the same cell.
     candidate_action = candidate_actions[0]
 
-    (attented_example_input, attented_current_state,
-     ) = do_visual_fixation(example_input, current_state, candidate_action)
-
-    input_tokens = tokenize_example_input(
-        example_input, current_state,
-        attented_example_input, attented_current_state, padding_char)
+    input_tokens = prepare_context(
+        example_input, current_state, candidate_action, padding_char)
 
     if verbose:
         print("input_text")
@@ -333,12 +327,8 @@ def select_action_with_policy_network(
     # Note that all candidate actions act on the same cell.
     candidate_action = candidate_actions[0]
 
-    (attented_example_input, attented_current_state,
-     ) = do_visual_fixation(example_input, current_state, candidate_action)
-
-    input_tokens = tokenize_example_input(
-        example_input, current_state,
-        attented_example_input, attented_current_state, padding_char)
+    input_tokens = prepare_context(
+        example_input, current_state, candidate_action, padding_char)
 
     if verbose:
         print("input_text")

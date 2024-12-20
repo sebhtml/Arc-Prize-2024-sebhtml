@@ -2,24 +2,30 @@
 
 - mask past cells to reduce combinatorics
 
-- move make_example_tensor to Context
-- move tokenize_example_input to Context
-- move tokens_to_text to Context
-
 - add actions left (10), up (11), right (12), down (13)
 
 - move training of action value network to agent.py
 
-# Backlog
+# Refactoring
+
+
+- move make_example_tensor to Context
+- move tokenize_example_input to Context
+- move tokens_to_text to Context
 
 - remove unused arguments in all modules
 - move print_current_state in GameState
 - use GameState in Environment
 - use GameState instead of List[List[Cell]] everywhere
 
+- move functions that load json files to puzzle_data.py
+
+# Value network
+
 - implement epsilon-greedy policy for random exploration
 
-- move functions that load json files to puzzle_data.py
+# Model
+
 - move norm and dropout at same scope in transformer block
 - increase dropout
 

@@ -5,14 +5,13 @@ from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 from datetime import datetime, timezone
 from typing import List, Tuple
-from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model, Agent, unbin_action_value, bin_action_value
-from context import tokens_to_text, tokenize_example_input
+from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model, Agent
+from context import tokens_to_text, prepare_context
 from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
 from environment import Environment, generate_cell_actions
-from vision import do_visual_fixation
 from configuration import Configuration
-from q_learning import Experience
+from q_learning import Experience, unbin_action_value, bin_action_value
 
 
 def get_target_action_value(
@@ -142,14 +141,10 @@ class MyDataset(Dataset):
         example_input = experience.state().example_input()
         current_state = experience.state().current_state()
         candidate_action = experience.action()
+        padding_char = self.__config.padding_char
 
-        (attented_example_input, attented_current_state,
-         ) = do_visual_fixation(
-            example_input, current_state, candidate_action)
-
-        input_tokens = tokenize_example_input(
-            example_input, current_state,
-            attented_example_input, attented_current_state, self.__config.padding_char)
+        input_tokens = prepare_context(
+            example_input, current_state, candidate_action, padding_char)
 
         if not self.__printed:
             print("input_text")
