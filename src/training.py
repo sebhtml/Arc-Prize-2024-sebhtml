@@ -132,6 +132,7 @@ class MyDataset(Dataset):
         self.__config = config
         self.__device = device
         self.__agent = agent
+        self.__printed = False
 
     def __len__(self):
         return len(self.__train_examples)
@@ -149,6 +150,11 @@ class MyDataset(Dataset):
         input_tokens = tokenize_example_input(
             current_state,
             attented_example_input, attented_current_state, self.__config.padding_char)
+
+        if not self.__printed:
+            print("input_text")
+            print(tokens_to_text(input_tokens))
+            self.__printed = True
 
         item_input = make_example_tensor(
             input_tokens, self.__config.context_size)

@@ -77,7 +77,7 @@ def text_to_tokens(s: str) -> List[int]:
 
 
 def tokens_to_text(example_input_tokens: ExampleInputTokens) -> str:
-    tokens: List[int] = example_input_tokens.attended_example_input() + \
+    tokens: List[int] = example_input_tokens.current_state() + example_input_tokens.attended_example_input() + \
         example_input_tokens.attended_current_state(
     )
     return "".join(map(chr, tokens))
