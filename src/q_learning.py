@@ -5,8 +5,8 @@ VACANT_CELL_VALUE = -1
 MASKED_CELL_VALUE = -2
 OUTSIDE_CELL_VALUE = -3
 
-cell_match_reward = 1.0
-cell_mismatch_reward = -1.0
+cell_match_reward = +1.0
+cell_mismatch_reward = 0.0
 
 
 def unbin_action_value(action_value_bin: int, minimum_action_value: float, maximum_action_value: float, num_classes: int) -> float:

@@ -32,7 +32,7 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = False  # prod: True, dev: False
+    terminate_pod_at_the_end = True  # prod: True, dev: False
 
     #
     # Puzzle configuration
@@ -93,8 +93,8 @@ class Configuration:
     # See: A Recipe for Training Neural Networks
     # http://karpathy.github.io/2019/04/25/recipe/
 
-    num_steps = 300  # prod: 32000, dev: 300
-    target_network_update_period = 100  # prod: 1000, dev: 100
+    num_steps = 32000  # prod: 32000, dev: 300
+    target_network_update_period = 1000  # prod: 1000, dev: 100
 
     verbose_advantage = False
     verbose_target_action_value_network = False
@@ -117,8 +117,8 @@ class Configuration:
     lr = 0.0001
     # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
     weight_decay = 0.1
-    minimum_action_value = -50.0
-    maximum_action_value = +50.0
+    minimum_action_value = 0
+    maximum_action_value = 49 * 1
 
     #
     # Options for loading AI neural net model
