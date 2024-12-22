@@ -1,13 +1,13 @@
 # Research and Development
 
-- mask past cells to reduce combinatorics
-
+- remove total_train_examples
+- move cell_match_reward to config
+- move cell_mismatch_reward to config
 - add actions left (10), up (11), right (12), down (13)
 
 - move training of action value network to agent.py
 
 # Refactoring
-
 
 - move make_example_tensor to Context
 - move tokenize_example_input to Context

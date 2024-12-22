@@ -53,10 +53,7 @@ def tokenize_example_input(
         attended_current_state: List[List[Cell]],
         padding_char: str) -> Context:
     """
-    Tokenize a example input for the Q-network Q(s, a).
-    Note that:
-    - s contains the state which is (example_input, current_state)
-    - a contains the action which is (next_state)
+    Tokenize a example input.
     """
 
     example_input_text = ""
@@ -153,11 +150,28 @@ def filter_token(token: int) -> bool:
 
 def prepare_context(example_input: List[List[Cell]], current_state: List[List[Cell]], candidate_action: QLearningAction,
                     padding_char: str) -> Context:
+
+    masked_current_state = mask_current_state(current_state)
+
     (attented_example_input, attented_current_state,
-     ) = do_visual_fixation(example_input, current_state, candidate_action)
+     ) = do_visual_fixation(example_input, masked_current_state, candidate_action)
 
     input_tokens = tokenize_example_input(
-        example_input, current_state,
+        example_input, masked_current_state,
         attented_example_input, attented_current_state, padding_char)
 
     return input_tokens
+
+
+def mask_current_state(current_state: List[List[Cell]]) -> List[List[Cell]]:
+    """
+    Mask non-vacant cells that were assigned by past actions to reduce combinatorics
+    """
+    masked_current_state = copy.deepcopy(current_state)
+    width = len(masked_current_state[0])
+    height = len(masked_current_state)
+    for x in range(width):
+        for y in range(height):
+            if masked_current_state[y][x].value() != VACANT_CELL_VALUE:
+                masked_current_state[y][x].set_value(MASKED_CELL_VALUE)
+    return masked_current_state
