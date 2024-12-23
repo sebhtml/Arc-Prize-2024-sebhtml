@@ -78,11 +78,13 @@ class GameState:
 
 
 class Experience:
-    def __init__(self, state: GameState, action: QLearningAction, reward: float, next_state: GameState):
+    def __init__(self, state: GameState, action: QLearningAction, reward: float, next_state: GameState,
+                 correct_action_index: int):
         self.__state = state
         self.__action = action
         self.__reward = reward
         self.__next_state = next_state
+        self.__correct_action_index = correct_action_index
 
     def state(self) -> GameState:
         return self.__state
@@ -95,6 +97,9 @@ class Experience:
 
     def next_state(self) -> GameState:
         return self.__next_state
+
+    def correct_action_index(self) -> int:
+        return self.__correct_action_index
 
 
 def reward(expected_state: List[List[int]], candidate_action: QLearningAction) -> float:

@@ -65,7 +65,7 @@ class Environment:
         """
 
         if not action in self.__available_actions:
-            raise Exception("Illegal action provided.")
+            raise Exception(f"Illegal action provided: {action}.")
 
         row = action.row()
         col = action.col()
@@ -85,6 +85,16 @@ class Environment:
             self.__terminate_episode()
 
         return immediate_reward
+
+    def get_correct_action(self, row: int, col: int) -> int:
+        """
+        Get the correct action.
+        """
+
+        expected_state = self.__puzzle_output
+        expected_cell_value = expected_state[row][col]
+
+        return expected_cell_value
 
     def list_actions(self) -> List[QLearningAction]:
         return self.__available_actions

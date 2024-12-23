@@ -32,7 +32,7 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = True  # prod: True, dev: False
+    terminate_pod_at_the_end = True  # prod: True, dev: False xx
 
     #
     # Puzzle configuration
@@ -93,12 +93,13 @@ class Configuration:
     # See: A Recipe for Training Neural Networks
     # http://karpathy.github.io/2019/04/25/recipe/
 
-    num_steps = 32000  # prod: 32000, dev: 300
+    num_steps = 5000  # 5000  # prod: 32000, dev: 300 xx
     target_network_update_period = 1000  # prod: 1000, dev: 100
 
     verbose_advantage = False
     verbose_target_action_value_network = False
-    use_policy_network = False
+    use_action_value_network = False
+    use_policy_network = True
     max_taken_actions_per_step = 1
     shuffle_train_examples = True
     # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0

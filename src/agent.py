@@ -1,4 +1,6 @@
 import torch
+from torch import nn
+from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import random
 import copy
@@ -15,16 +17,20 @@ from vision import flip_board, rotate_90_clockwise
 
 class Agent:
     def __init__(self, config: Configuration, device: torch.device):
-        # Action value network for DQN
-        self.__action_value_network = ActionValueNetworkModel(config, device)
-        self.__action_value_network.to(device)
-
-        # Target action value network for DQN
-        self.__target_action_value_network = None
-
         # Device and config
         self.__device = device
         self.__config = config
+
+        # Action value network for DQN
+        self.__action_value_network = None
+
+        if self.__config.use_action_value_network:
+            self.__action_value_network = ActionValueNetworkModel(
+                config, device)
+            self.__action_value_network.to(device)
+
+        # Target action value network for DQN
+        self.__target_action_value_network = None
 
         # Policy network for policy gradient method
         if self.__config.use_policy_network:
@@ -32,6 +38,7 @@ class Agent:
             self.__policy_network.to(device)
             self.__policy_network_optimizer = AdamW(self.__policy_network.parameters(),
                                                     lr=config.lr, weight_decay=config.weight_decay)
+            self.__policy_network_criterion = nn.NLLLoss()
 
         else:
             self.__policy_network = None
@@ -47,6 +54,8 @@ class Agent:
         return self.__policy_network
 
     def update_target_action_value_network(self):
+        if self.action_value_network() == None:
+            return
         if self.__target_action_value_network != None:
             self.__target_action_value_network.to('cpu')
             del self.__target_action_value_network
@@ -134,6 +143,47 @@ class Agent:
 
         print(f"policy network loss {loss}")
 
+    def step_policy_network_with_supervision(
+        self,
+        dataset,
+    ):
+        """
+        L_actor = - log π(a|s)
+        """
+
+        device = self.__device
+
+        train_loader = DataLoader(
+            dataset, batch_size=self.__config.batch_size, shuffle=True)
+
+        data = next(iter(train_loader))
+
+        policy_network = self.__policy_network
+        optimizer = self.__policy_network_optimizer
+        criterion = self.__policy_network_criterion
+
+        (inputs, action_indices) = data
+
+        inputs = [t.to(device) for t in inputs]
+        action_indices = action_indices.to(device)
+
+        # Get this quantity:     log π(a|s)
+        all_predicted_action_probabilities = policy_network(inputs)
+
+        batch_size = all_predicted_action_probabilities.shape[0]
+
+        # L = - log π(a|s)
+        loss = criterion(all_predicted_action_probabilities, action_indices)
+
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(
+            policy_network.parameters(), self.__config.max_grad_norm)
+        optimizer.step()
+        loss = loss.cpu().item()
+
+        return loss
+
 
 def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
                                      padding_char: str, cell_value_size: int,
@@ -164,7 +214,7 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
                                          example_input: List[List[int]], agent: Agent, padding_char: str,
                                          context_size: int, batch_size: int,
                                          device: torch.device):
-    agent.action_value_network().eval()
+    agent.policy_network().eval()
 
     environment.set_puzzle_example(example_input, None)
 
@@ -180,7 +230,19 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
 
         example_input, current_state = environment.get_observations()
 
-        best_action, best_action_value, action_values = select_action_with_deep_q_network(
+        # best_action, best_action_value, action_values = select_action_with_deep_q_network(
+        #    example_input,
+        #    current_state,
+        #    candidate_actions,
+        #    padding_char,
+        #    context_size,
+        #    batch_size,
+        #    device,
+        #    agent.action_value_network(),
+        #    verbose,
+        # )
+
+        best_action_index = select_action_with_policy_network(
             example_input,
             current_state,
             candidate_actions,
@@ -188,9 +250,11 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
             context_size,
             batch_size,
             device,
-            agent.action_value_network(),
+            agent.policy_network(),
             verbose,
         )
+
+        best_action = candidate_actions[best_action_index]
 
         if best_action == None:
             print_current_state(example_input, current_state, padding_char)
@@ -342,7 +406,7 @@ def select_action_with_policy_network(
     log_probs = policy_network(inputs)
     temperature = 1.0
     probs = torch.exp(log_probs / temperature)
-    print(f"probs {probs}")
+    # print(f"probs {probs}")
     dist = torch.distributions.Categorical(probs)
 
     # Sampling fom the probability distribution does the exploration.
@@ -350,7 +414,7 @@ def select_action_with_policy_network(
     # print("sample shape")
     # print(samples.shape)
     best_action_index = samples[0].item()
-    print(f"action index {best_action_index}")
+    # print(f"action index {best_action_index}")
     return best_action_index
 
 
@@ -378,7 +442,7 @@ def play_game_using_model(
     See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
     """
 
-    agent.action_value_network().eval()
+    agent.policy_network().eval()
     replay_buffer = []
 
     if environment.is_in_terminal_state():
@@ -416,7 +480,19 @@ def play_game_using_model(
         example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)
 
-        best_action, best_action_value, action_values = select_action_with_deep_q_network(
+        # best_action, best_action_value, action_values = select_action_with_deep_q_network(
+        #    example_input,
+        #    current_state,
+        #    candidate_actions,
+        #    padding_char,
+        #    context_size,
+        #    batch_size,
+        #    device,
+        #    agent.action_value_network(),
+        #    verbose,
+        # )
+
+        best_action_index = select_action_with_policy_network(
             example_input,
             current_state,
             candidate_actions,
@@ -424,11 +500,15 @@ def play_game_using_model(
             context_size,
             batch_size,
             device,
-            agent.action_value_network(),
+            agent.policy_network(),
             verbose,
         )
 
+        best_action = candidate_actions[best_action_index]
+
         immediate_reward = environment.take_action(best_action)
+        expected_cell_value = environment.get_correct_action(
+            best_action.row(), best_action.col())
 
         example_input, next_state = environment.get_observations()
         next_state = copy.deepcopy(next_state)
@@ -438,6 +518,7 @@ def play_game_using_model(
             best_action,
             immediate_reward,
             GameState(example_input, next_state),
+            expected_cell_value,
         )
         replay_buffer.append(experience)
 

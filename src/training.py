@@ -142,6 +142,7 @@ class MyDataset(Dataset):
         current_state = experience.state().current_state()
         candidate_action = experience.action()
         padding_char = self.__config.padding_char
+        action_index = experience.correct_action_index()
 
         input_tokens = prepare_context(
             example_input, current_state, candidate_action, padding_char)
@@ -154,28 +155,31 @@ class MyDataset(Dataset):
         item_input = make_example_tensor(
             input_tokens, self.__config.context_size)
 
-        action_index = torch.tensor(experience.action().cell_value())
+        # action_index = torch.tensor(experience.action().cell_value())
 
-        verbose = self.__config.verbose_target_action_value_network
-        action_value = get_target_action_value(
-            experience,
-            self.__config.padding_char,
-            self.__config.context_size,
-            self.__config.cell_value_size,
-            self.__config.minimum_action_value,
-            self.__config.maximum_action_value,
-            self.__config.num_classes,
-            self.__config.batch_size,
-            self.__config.discount,
-            self.__device,
-            self.__agent.target_action_value_network(),
-            verbose,
-        )
-        action_value_bin = bin_action_value(
-            action_value, self.__config.minimum_action_value, self.__config.maximum_action_value, self.__config.num_classes)
-        action_value_bin = torch.tensor(action_value_bin)
+        # verbose = self.__config.verbose_target_action_value_network
+        # action_value = get_target_action_value(
+        #    experience,
+        #    self.__config.padding_char,
+        #    self.__config.context_size,
+        #    self.__config.cell_value_size,
+        #    self.__config.minimum_action_value,
+        #    self.__config.maximum_action_value,
+        #    self.__config.num_classes,
+        #    self.__config.batch_size,
+        #    self.__config.discount,
+        #    self.__device,
+        #    self.__agent.target_action_value_network(),
+        #    verbose,
+        # )
+        # action_value_bin = bin_action_value(
+        #    action_value, self.__config.minimum_action_value, self.__config.maximum_action_value, self.__config.num_classes)
+        # action_value_bin = torch.tensor(action_value_bin)
 
-        item = (item_input, action_value_bin, action_index)
+        # item = (item_input, action_value_bin, action_index)
+
+        item = (item_input, action_index)
+
         return item
 
 
@@ -249,26 +253,26 @@ def print_train_examples(train_action_examples):
 
 def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, agent: Agent, device: torch.device,):
     print("[after training] print_model_outputs_for_train_examples")
-    action_value_network = agent.action_value_network()
+    policy_network = agent.policy_network()
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True)
     for data in inference_loader:
-        (inputs, targets, action_indices) = data
+        (inputs, action_indices) = data
         inputs = [t.to(device) for t in inputs]
-        targets = targets.to(device)
-        outputs = action_value_network(inputs)
-        outputs = outputs[torch.arange(batch_size), action_indices]
+        outputs = policy_network(inputs)
+
         for idx in range(len(inputs[0])):
             print("--------------------")
             print(f"idx: {idx} ")
             input = [inputs[0][idx], inputs[1][idx],
-                     inputs[2][idx]]
-            target = targets[idx].item()
+                     inputs[2][idx], inputs[3][idx]]
+            target = action_indices[idx].item()
+
             output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")
             print("".join(
-                list(map(chr, input[0].tolist() + input[1].tolist() + input[2].tolist()))))
+                list(map(chr, input[0].tolist() + input[1].tolist() + input[2].tolist() + input[3].tolist()))))
             print("target: ")
             print(target)
             print("output: ")
@@ -277,7 +281,6 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
             break
         for t in inputs:
             del t
-        del targets
         del outputs
         # Only check first batch for now.
         break
@@ -312,9 +315,9 @@ def train_model_using_experience_replay(
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
     num_steps: int,
 ):
-    criterion = nn.NLLLoss()
-    optimizer = AdamW(agent.action_value_network().parameters(),
-                      lr=lr, weight_decay=weight_decay)
+    criterion = None  # nn.NLLLoss()
+    optimizer = None  # AdamW(agent.action_value_network().parameters(),
+    # lr=lr, weight_decay=weight_decay)
 
     environment = Environment(cell_value_size)
     steps = []
@@ -409,11 +412,13 @@ def train_model_with_experience_replay_data_set(
         dataset = MyDataset(
             experience_replay_data_set, config, device, agent,)
 
-        loss = train(
-            criterion,
-            optimizer,
-            dataset, batch_size, shuffle_train_examples, agent,
-            max_grad_norm, device,)
+        loss = agent.step_policy_network_with_supervision(dataset)
+
+        # loss = train(
+        #    criterion,
+        #    optimizer,
+        #    dataset, batch_size, shuffle_train_examples, agent,
+        #    max_grad_norm, device,)
 
         if print_model_outputs:
             print_model_outputs_for_train_examples(

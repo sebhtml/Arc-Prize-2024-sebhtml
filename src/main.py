@@ -95,13 +95,13 @@ def main():
         "training", config.selected_puzzle_id, "test")
 
     model_total_params = sum(p.numel()
-                             for p in agent.action_value_network().parameters())
+                             for p in agent.policy_network().parameters())
     print(f"parameters: {model_total_params}")
 
     if config.load_model:
         print("Loading model")
         state_dict = torch.load(config.model_file_path, weights_only=True)
-        agent.action_value_network().load_state_dict(state_dict)
+        agent.policy_network().load_state_dict(state_dict)
 
     if config.train_model:
         train_model_using_experience_replay(
@@ -115,7 +115,7 @@ def main():
         )
 
     if config.save_neural_net_model:
-        torch.save(agent.action_value_network().state_dict(),
+        torch.save(agent.policy_network().state_dict(),
                    config.model_file_path)
 
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.

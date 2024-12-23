@@ -1,5 +1,8 @@
 # Research and Development
 
+- don't mask cells
+- move log_softmax outside of model
+- move training of action value network in a step method in Agent
 - remove total_train_examples
 - move cell_match_reward to config
 - move cell_mismatch_reward to config
@@ -22,6 +25,7 @@
 
 # Value network
 
+- use load_dict for target net
 - implement epsilon-greedy policy for random exploration
 
 # Model
