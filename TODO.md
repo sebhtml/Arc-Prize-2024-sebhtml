@@ -1,7 +1,5 @@
 # Research and Development
 
-- don't mask cells
-- move log_softmax outside of model
 - move training of action value network in a step method in Agent
 - remove total_train_examples
 - move cell_match_reward to config
@@ -9,6 +7,7 @@
 - add actions left (10), up (11), right (12), down (13)
 
 - move training of action value network to agent.py
+- don't mask cells
 
 # Refactoring
 

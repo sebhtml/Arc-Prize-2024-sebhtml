@@ -1,10 +1,12 @@
 import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
+import torch.nn.functional as F
+from torch.optim import AdamW
+
 import numpy as np
 import random
 import copy
-from torch.optim import AdamW
 from typing import List, Tuple
 from context import tokens_to_text, make_example_tensor, prepare_context
 from context import state_to_text
@@ -38,8 +40,6 @@ class Agent:
             self.__policy_network.to(device)
             self.__policy_network_optimizer = AdamW(self.__policy_network.parameters(),
                                                     lr=config.lr, weight_decay=config.weight_decay)
-            self.__policy_network_criterion = nn.NLLLoss()
-
         else:
             self.__policy_network = None
             self.__policy_network_optimizer = None
@@ -160,7 +160,6 @@ class Agent:
 
         policy_network = self.__policy_network
         optimizer = self.__policy_network_optimizer
-        criterion = self.__policy_network_criterion
 
         (inputs, action_indices) = data
 
@@ -168,12 +167,16 @@ class Agent:
         action_indices = action_indices.to(device)
 
         # Get this quantity:     log π(a|s)
-        all_predicted_action_probabilities = policy_network(inputs)
+        action_mean_logits = policy_network(inputs)
 
-        batch_size = all_predicted_action_probabilities.shape[0]
+        batch_size = action_mean_logits.shape[0]
 
         # L = - log π(a|s)
-        loss = criterion(all_predicted_action_probabilities, action_indices)
+        log_softmax_output = F.log_softmax(action_mean_logits, dim=-1)
+
+        criterion = nn.NLLLoss()
+
+        loss = criterion(log_softmax_output, action_indices)
 
         optimizer.zero_grad()
         loss.backward()

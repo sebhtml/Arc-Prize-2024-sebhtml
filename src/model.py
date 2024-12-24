@@ -180,8 +180,7 @@ class ActionValueNetworkModel(nn.Module):
         # [batch_size, num_actions*num_classes] -> [batch_size, num_actions, num_classes]
         action_mean_logits = mean_logits.view(
             batch_size, self.num_actions, self.num_classes)
-        log_softmax_output = F.log_softmax(action_mean_logits, dim=-1)
-        return log_softmax_output
+        return action_mean_logits
 
 
 class PolicyNetworkModel(nn.Module):
@@ -206,5 +205,4 @@ class PolicyNetworkModel(nn.Module):
         logits = self.classifier(hidden)
         # [batch_size, context_size, num_actions*num_classes] -> [batch_size, num_actions]
         mean_logits = logits.mean(dim=1)
-        log_softmax_output = F.log_softmax(mean_logits, dim=-1)
-        return log_softmax_output
+        return mean_logits
