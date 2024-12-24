@@ -107,7 +107,6 @@ def main():
         train_model_using_experience_replay(
             config,
             config.context_size, config.batch_size, device, agent,
-            config.total_train_examples,
             puzzle_train_examples, config.cell_value_size,
             config.discount, config.padding_char, config.num_classes, config.shuffle_train_examples, config.lr,
             config.weight_decay, config.max_grad_norm, config.print_model_outputs, config.save_step_losses,

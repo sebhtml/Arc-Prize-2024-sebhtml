@@ -47,17 +47,12 @@ class Configuration:
     #
     # Game simulation configuration
     #
-
-    total_train_examples = 49 * 2
     discount = 0.99
     padding_char = ' '
 
     #
     # Neural network model configuration
     #
-
-    models_path = "/workspace/models"
-    model_file_path = f"{models_path}/{time_marker}-{total_train_examples}-q-network.pth"
     # Multiple of 4 for NVIDIA cublas WMMA
     # See https://docs.nvidia.com/cuda/cublas/#cublasltmatmul-regular-imma-conditions
     context_size = 196
@@ -137,6 +132,10 @@ class Configuration:
     print_model_outputs = True
     run_autoregressive_inference_on_train_examples = True
     run_autoregressive_inference_on_test_examples = True
+
+    # File paths
+    models_path = "/workspace/models"
+    model_file_path = f"{models_path}/{time_marker}-{num_steps}-q-network.pth"
 
     def __init__(self):
         for key, value in dict(Configuration.__dict__).items():

@@ -1,7 +1,6 @@
 # Research and Development
 
 - move training of action value network in a step method in Agent
-- remove total_train_examples
 - move cell_match_reward to config
 - move cell_mismatch_reward to config
 - add actions left (10), up (11), right (12), down (13)
