@@ -188,6 +188,25 @@ class Agent:
         return loss
 
 
+def flatten(xss):
+    return [x for xs in xss for x in xs]
+
+
+def evaluate_solution(actual: List[List[Cell]], expected: List[List[Cell]]) -> Tuple[int, int]:
+    """
+    Return the number of correct cells and total cells
+    """
+    actual = flatten(actual)
+    expected = flatten(expected)
+
+    if len(actual) != len(expected):
+        raise Exception("Invalid comparison")
+
+    correct = len(
+        list(filter(lambda x: x[1] == expected[x[0]], enumerate(actual))))
+    return correct, len(expected)
+
+
 def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
                                      padding_char: str, cell_value_size: int,
                                      context_size: int, batch_size: int,
@@ -214,8 +233,12 @@ def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
         print_current_state(
             example_input, example_output, padding_char)
 
-        result = "PASS" if current_state == example_output else "FAIL"
-        print(f"Result: {result}")
+        correct_cells, total_cells = evaluate_solution(
+            current_state, example_output)
+        score = correct_cells / total_cells
+        result = "PASS" if correct_cells == total_cells else "FAIL"
+        print(
+            f"Result:  correct_cells: {correct_cells}  total_cells: {total_cells}  score: {score}  result: {result}")
 
 
 def solve_puzzle_example_auto_regressive(environment: Environment,
