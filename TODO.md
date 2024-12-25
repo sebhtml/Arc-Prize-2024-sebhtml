@@ -1,5 +1,6 @@
 # Research and Development
 
+- chore: clean-up inputs
 - move training of action value network in a step method in Agent
 - move cell_match_reward to config
 - move cell_mismatch_reward to config
