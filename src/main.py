@@ -22,8 +22,6 @@
 # os.system("pip install xformers")  # nopep8
 
 
-# import torch_xla
-# import torch_xla.core.xla_model as xm
 from typing import List, Tuple
 import subprocess
 import time
@@ -36,9 +34,6 @@ from training import train_model_using_experience_replay
 from configuration import Configuration
 
 config = Configuration()
-
-# device = xm.xla_device()
-# device = torch.device("cpu")
 
 
 def get_puzzle_solution(venue, puzzle_id):

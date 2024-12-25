@@ -233,18 +233,6 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
 
         example_input, current_state = environment.get_observations()
 
-        # best_action, best_action_value, action_values = select_action_with_deep_q_network(
-        #    example_input,
-        #    current_state,
-        #    candidate_actions,
-        #    padding_char,
-        #    context_size,
-        #    batch_size,
-        #    device,
-        #    agent.action_value_network(),
-        #    verbose,
-        # )
-
         best_action_index = select_action_with_policy_network(
             example_input,
             current_state,
@@ -258,10 +246,6 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
         )
 
         best_action = candidate_actions[best_action_index]
-
-        if best_action == None:
-            print_current_state(example_input, current_state, padding_char)
-            raise Exception("Failed to select action")
 
         immediate_reward = environment.take_action(best_action)
 
@@ -345,10 +329,7 @@ def select_action_with_deep_q_network(
         outputs = log_softmax_outputs.argmax(-1).float()
 
     for action_index in range(outputs.shape[1]):
-        # argmax_action_value = log_softmax_outputs[0, action_index, :].argmax(dim=-1).item()
         mean_action_value = outputs[0, action_index].item()
-        # print(f"argmax_action_value {argmax_action_value}")
-        # print(f"mean_action_value {mean_action_value}")
         action_values.append([action_index, mean_action_value])
 
     np.random.shuffle(action_values)
@@ -409,15 +390,12 @@ def select_action_with_policy_network(
     log_probs = policy_network(inputs)
     temperature = 1.0
     probs = torch.exp(log_probs / temperature)
-    # print(f"probs {probs}")
     dist = torch.distributions.Categorical(probs)
 
     # Sampling fom the probability distribution does the exploration.
     samples = dist.sample()
-    # print("sample shape")
-    # print(samples.shape)
     best_action_index = samples[0].item()
-    # print(f"action index {best_action_index}")
+
     return best_action_index
 
 
@@ -482,18 +460,6 @@ def play_game_using_model(
 
         example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)
-
-        # best_action, best_action_value, action_values = select_action_with_deep_q_network(
-        #    example_input,
-        #    current_state,
-        #    candidate_actions,
-        #    padding_char,
-        #    context_size,
-        #    batch_size,
-        #    device,
-        #    agent.action_value_network(),
-        #    verbose,
-        # )
 
         best_action_index = select_action_with_policy_network(
             example_input,

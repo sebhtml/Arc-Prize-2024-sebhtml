@@ -1,5 +1,6 @@
 # Research and Development
 
+- rename apply_puzzle_action_value_policy to apply_policy_network
 - chore: clean-up inputs
 - move training of action value network in a step method in Agent
 - move cell_match_reward to config

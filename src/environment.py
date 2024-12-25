@@ -91,7 +91,11 @@ class Environment:
         Get the correct action.
         """
 
+        if self.__puzzle_output == None:
+            return None
+
         expected_state = self.__puzzle_output
+
         expected_cell_value = expected_state[row][col]
 
         return expected_cell_value
