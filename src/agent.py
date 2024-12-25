@@ -9,7 +9,7 @@ import random
 import copy
 from typing import List, Tuple
 from context import tokens_to_text, make_example_tensor, prepare_context
-from context import state_to_text
+from context import state_to_text, get_puzzle_starting_state
 from q_learning import QLearningAction, Cell, Experience, GameState
 from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment
@@ -194,7 +194,7 @@ def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
                                      device,):
 
     environment = Environment(cell_value_size)
-    for example_input, example_target in puzzle_examples:
+    for example_input, example_output in puzzle_examples:
         print("example")
         solve_puzzle_example_auto_regressive(
             environment,
@@ -207,10 +207,15 @@ def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
         print("final output_state")
         print_current_state(example_input, current_state, padding_char)
 
-        # TODO make the code work to print the example_target.
-        # print("Expected output")
-        # print_current_state(
-        # example_input, example_target, padding_char)
+        # Print the example_target.
+        example_output = get_puzzle_starting_state(
+            example_output, "example_input")
+        print("Expected output")
+        print_current_state(
+            example_input, example_output, padding_char)
+
+        result = "PASS" if current_state == example_output else "FAIL"
+        print(f"Result: {result}")
 
 
 def solve_puzzle_example_auto_regressive(environment: Environment,
