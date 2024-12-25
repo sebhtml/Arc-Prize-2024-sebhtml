@@ -264,15 +264,20 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
         for idx in range(len(inputs[0])):
             print("--------------------")
             print(f"idx: {idx} ")
-            input = [inputs[0][idx], inputs[1][idx],
-                     inputs[2][idx], inputs[3][idx]]
+            input = [inputs[0][idx],
+                     # inputs[1][idx],
+                     # inputs[2][idx],
+                     # inputs[3][idx],
+                     ]
             target = action_indices[idx].item()
 
             output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
             print("input")
             print("".join(
-                list(map(chr, input[0].tolist() + input[1].tolist() + input[2].tolist() + input[3].tolist()))))
+                list(map(chr, 
+                         input[0].tolist() #+ input[1].tolist() + input[2].tolist() + input[3].tolist()
+                         ))))
             print("target: ")
             print(target)
             print("output: ")

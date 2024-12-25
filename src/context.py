@@ -85,10 +85,11 @@ def text_to_tokens(s: str) -> List[int]:
 
 
 def tokens_to_text(example_input_tokens: Context) -> str:
-    tokens: List[int] = example_input_tokens.example_input() + \
-        example_input_tokens.current_state() + example_input_tokens.attended_example_input() + \
-        example_input_tokens.attended_current_state(
-    )
+    tokens: List[int] = example_input_tokens.attended_example_input()
+    # example_input_tokens.example_input() +
+    # example_input_tokens.current_state() +
+    # example_input_tokens.attended_example_input() # + \
+    # example_input_tokens.attended_current_state()
     return "".join(map(chr, tokens))
 
 
@@ -120,16 +121,20 @@ def make_example_tensor(example_input_tokens: Context, context_size: int):
     attended_current_state = filter_tokens(
         example_input_tokens.attended_current_state())
 
-    input_tokens: List[int] = example_input + current_state + \
-        attended_example_input + attended_current_state
+    input_tokens: List[int] = attended_example_input
+
+    # example_input +
+    # #current_state + \
+    # attended_example_input
+    # + attended_current_state
     if len(input_tokens) > context_size:
         raise Exception(
             f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
     item_input = [
-        torch.tensor(example_input),
-        torch.tensor(current_state),
+        # torch.tensor(example_input),
+        # torch.tensor(current_state),
         torch.tensor(attended_example_input),
-        torch.tensor(attended_current_state),
+        # torch.tensor(attended_current_state),
     ]
     return item_input
 
