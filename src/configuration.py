@@ -32,7 +32,7 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = False  # prod: True, dev: False xx
+    terminate_pod_at_the_end = True  # prod: True, dev: False xx
 
     #
     # Puzzle configuration
@@ -76,10 +76,10 @@ class Configuration:
     # See:
     # Dropout: A Simple Way to Prevent Neural Networks from Overfitting
     # https://www.cs.toronto.edu/~rsalakhu/papers/srivastava14a.pdf
-    input_dropout = 0.2
-    attention_head_dropout = 0.2
-    attention_sublayer_dropout = 0.2
-    ffn_sublayer_dropout = 0.1
+    input_dropout = 0.5
+    attention_head_dropout = 0.5
+    attention_sublayer_dropout = 0.5
+    ffn_sublayer_dropout = 0.5
 
     #
     # Training parameters
@@ -88,7 +88,7 @@ class Configuration:
     # See: A Recipe for Training Neural Networks
     # http://karpathy.github.io/2019/04/25/recipe/
 
-    num_steps = 300  # 5000  # prod: 32000, dev: 300 xx
+    num_steps = 5000  # 5000  # prod: 32000, dev: 300 xx
     target_network_update_period = 1000  # prod: 1000, dev: 100
 
     verbose_advantage = False

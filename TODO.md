@@ -1,14 +1,8 @@
 # Research and Development
 
+- make the PASS/FAIL thing pass
+- analyze why 2 out of 49 cells are incorrect
 - rename apply_puzzle_action_value_policy to apply_policy_network
-- chore: clean-up inputs
-- move training of action value network in a step method in Agent
-- move cell_match_reward to config
-- move cell_mismatch_reward to config
-- add actions left (10), up (11), right (12), down (13)
-
-- move training of action value network to agent.py
-- don't mask cells
 
 # Refactoring
 
@@ -28,12 +22,17 @@
 - use load_dict for target net
 - implement epsilon-greedy policy for random exploration
 
+- move training of action value network in a step method in Agent
+- move cell_match_reward to config
+- move cell_mismatch_reward to config
+- add actions left (10), up (11), right (12), down (13)
+
+- move training of action value network to agent.py
+- don't mask cells
+
 # Model
 
 - move norm and dropout at same scope in transformer block
-- increase dropout
-
-- reduce number of train steps
 - use half precision float16
 
 # Policy gradient methods
