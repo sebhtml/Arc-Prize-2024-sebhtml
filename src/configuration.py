@@ -32,7 +32,7 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = True  # prod: True, dev: False xx
+    terminate_pod_at_the_end = False  # prod: True, dev: False xx
 
     #
     # Puzzle configuration
@@ -119,11 +119,11 @@ class Configuration:
     #
     # Options for loading AI neural net model
     #
-    load_model = False
+    load_model = True
     #
     # Options for training AI neural net model
     #
-    train_model = True
+    train_model = False
     save_step_losses = True
     save_neural_net_model = True
     #

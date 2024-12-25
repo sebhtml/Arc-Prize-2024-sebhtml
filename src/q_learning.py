@@ -64,6 +64,9 @@ class Cell:
     def set_value(self, value):
         self.__value = value
 
+    def __eq__(self, other) -> bool:
+        return self.__value == other.__value
+
 
 class GameState:
     def __init__(self, example_input: List[List[Cell]], current_state: List[List[Cell]]):

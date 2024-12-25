@@ -1,8 +1,7 @@
 # Research and Development
 
-- make the PASS/FAIL thing pass
-- analyze why 2 out of 49 cells are incorrect
 - rename apply_puzzle_action_value_policy to apply_policy_network
+- analyze why 2 out of 49 cells are incorrect
 
 # Refactoring
 
