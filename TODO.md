@@ -1,6 +1,5 @@
 # Research and Development
 
-- rename apply_puzzle_action_value_policy to apply_policy_network
 - analyze why 2 out of 49 cells are incorrect
 
 # Refactoring

@@ -207,7 +207,7 @@ def evaluate_solution(actual: List[List[Cell]], expected: List[List[Cell]]) -> T
     return correct, len(expected)
 
 
-def apply_puzzle_action_value_policy(puzzle_examples, agent: Agent,
+def apply_policy_network(puzzle_examples, agent: Agent,
                                      padding_char: str, cell_value_size: int,
                                      context_size: int, batch_size: int,
                                      device,):
