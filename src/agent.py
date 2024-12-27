@@ -415,9 +415,9 @@ def select_action_with_policy_network(
                       make_example_tensor(input_tokens, context_size)))
 
     inputs = [t.to(device) for t in inputs]
-    log_probs = policy_network(inputs)
+    logits = policy_network(inputs)
     temperature = 1.0
-    probs = torch.exp(log_probs / temperature)
+    probs = F.softmax(logits / temperature, dim=-1)
     dist = torch.distributions.Categorical(probs)
 
     # Sampling fom the probability distribution does the exploration.

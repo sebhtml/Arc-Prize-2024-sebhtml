@@ -35,10 +35,23 @@ https://arcprize.org/play?task=3aa6fb7a
 | 3aa6fb7a      | Complete small rectangles  | 2024-12-27 |
 | 0ca9ddb6      | Add cell corners |  |
 | 41e4d17e      | Lines through squares |  |  
+| 009d5c81      | Color change | |
 | 10fcaaa3      | Expand pattern | |
 | 11852cab      | Add corners    | |
+| 03560426      | Assembly | |
+| 0b17323b      | Trajectory | |
+| 0becf7df      | Color mapping | |
+| 0d87d2a6      | Line tracing | |
 
-# Notes
+# 2024-12-26 Notes
 
 For 10fcaaa3, the input and output sizes will need to be harmonized.
+
+# 2024-12-27
+
+For https://arcprize.org/play?task=0607ce86 , the colors need to be normalized.
+
+# 
+
+For https://arcprize.org/play?task=0bb8deee, we need to learn where to look at.
 
