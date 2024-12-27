@@ -12,7 +12,10 @@ class SwiGLU(nn.Module):
     swiGLU = (x * U) * swish(x * V)
     Note that in PyTorch, the name of Swish is SILU
 
-    See https://arxiv.org/pdf/2002.05202
+    See 
+    GLU Variants Improve Transformer
+    https://arxiv.org/pdf/2002.05202
+
     See https://jcarlosroldan.com/post/348/what-is-swiglu
     """
 
