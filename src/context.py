@@ -4,16 +4,11 @@ from typing import List
 from vision import Cell, do_visual_fixation
 from vision import VACANT_CELL_VALUE,  MASKED_CELL_VALUE,  OUTSIDE_CELL_VALUE
 from q_learning import QLearningAction
+from model import CLS_TOKEN
 
 VACANT_CELL_CHAR = '_'
 MASKED_CELL_CHAR = 'X'
 OUTSIDE_CELL_CHAR = '.'
-# [CLS] token
-# See https://datascience.stackexchange.com/questions/66207/what-is-purpose-of-the-cls-token-and-why-is-its-encoding-output-important
-# See
-# BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding
-# https://arxiv.org/abs/1810.04805
-CLS_TOKEN_CHAR = '?'
 
 
 class Context:
@@ -72,7 +67,6 @@ def tokenize_example_input(
 
     attended_example_input_text = ""
     attended_example_input_text += "attendedExampleInput" + "\n"
-    attended_example_input_text += CLS_TOKEN_CHAR + "\n"
     attended_example_input_text += state_to_text(attended_example_input)
 
     attended_current_state_text = ""
@@ -144,8 +138,11 @@ def filter_token(token: int) -> bool:
     The ASCII codes of characters '0' to '9' and of character '_'
     are the only allowed tokens in the context.
     """
+    if token == CLS_TOKEN:
+        raise Exception(
+            "CLS token is forbidden before passing the tensor to the neural net")
     legal_tokens = list(map(lambda x: ord(str(x)), range(10))) + \
-        list(map(ord, [CLS_TOKEN_CHAR, VACANT_CELL_CHAR,
+        list(map(ord, [VACANT_CELL_CHAR,
              MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR]))
     return token in legal_tokens
 

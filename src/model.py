@@ -6,6 +6,14 @@ from typing import Tuple
 import math
 from configuration import Configuration
 
+# [CLS] token
+# See https://datascience.stackexchange.com/questions/66207/what-is-purpose-of-the-cls-token-and-why-is-its-encoding-output-important
+# See
+# BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding
+# https://arxiv.org/abs/1810.04805
+CLS_TOKEN_CHAR = '?'
+CLS_TOKEN = ord(CLS_TOKEN_CHAR)
+
 
 class SwiGLU(nn.Module):
     """
@@ -197,8 +205,17 @@ class PolicyNetworkModel(nn.Module):
         self.classifier = nn.Linear(
             in_features=d_model, out_features=num_actions)
 
-    def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
-        hidden = self.__base_model(x)
+    def forward(self, x: Tuple[torch.Tensor]) -> torch.Tensor:
+        # Prepend the CLS token
+        x = x[0]
+        cls_token = torch.tensor([CLS_TOKEN])
+        batch_size = x.shape[0]
+        cls_token = cls_token.expand(batch_size, -1)
+        cls_token = cls_token.to(x.device)
+        x = torch.cat(
+            [cls_token, x], dim=-1)
+
+        hidden = self.__base_model([x])
         # [batch_size, context_size, d_model] -> [batch_size, d_model]
         # Take the hidden representation of the [CLS] token.
         cls_hidden = hidden[:, 0, :]
