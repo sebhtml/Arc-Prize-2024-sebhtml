@@ -1,5 +1,9 @@
 # Research and Development
 
+- use new puzzle
+- remove masking functions
+- rename num_steps to max_episodes
+- add early stopping
 - use Dropout in classifier of policy network model
 - move norm and dropout at same scope in transformer block
 
