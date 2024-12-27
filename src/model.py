@@ -199,8 +199,9 @@ class PolicyNetworkModel(nn.Module):
 
     def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
         hidden = self.__base_model(x)
-        # [batch_size, context_size, d_model] -> [batch_size, context_size, num_actions]
-        logits = self.classifier(hidden)
-        # [batch_size, context_size, num_actions*num_classes] -> [batch_size, num_actions]
-        mean_logits = logits.mean(dim=1)
-        return mean_logits
+        # [batch_size, context_size, d_model] -> [batch_size, d_model]
+        # Take the hidden representation of the [CLS] token.
+        cls_hidden = hidden[:, 0, :]
+        # [batch_size, d_model] -> [batch_size, num_actions]
+        logits = self.classifier(cls_hidden)
+        return logits
