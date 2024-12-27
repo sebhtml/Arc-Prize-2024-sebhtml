@@ -105,11 +105,19 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
         return src_and_attn_and_ffwd
 
 
-class DecoderOnlyTransformerModel(nn.Module):
+class Encoder(nn.Module):
+    """
+    Generate a hidden state.
+
+    f(x) = h
+
+    r = g(h)
+    """
+
     def __init__(self, vocab_size, d_model, ffn_size,
                  input_dropout, attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
                  num_heads, context_size, num_layers, num_actions, num_classes, device):
-        super(DecoderOnlyTransformerModel, self).__init__()
+        super(Encoder, self).__init__()
         self.d_model = d_model
         self.attended_example_input_embed = nn.Embedding(num_embeddings=vocab_size,
                                                          embedding_dim=d_model)
@@ -148,7 +156,7 @@ class ActionValueNetworkModel(nn.Module):
 
     def __init__(self, config: Configuration, device: torch.device):
         super(ActionValueNetworkModel, self).__init__()
-        self.__base_model = DecoderOnlyTransformerModel(
+        self.__base_model = Encoder(
             config.vocab_size, config.d_model, config.d_ff,
             config.input_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
             config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
@@ -180,7 +188,7 @@ class PolicyNetworkModel(nn.Module):
 
     def __init__(self, config: Configuration, device: torch.device):
         super(PolicyNetworkModel, self).__init__()
-        self.__base_model = DecoderOnlyTransformerModel(
+        self.__base_model = Encoder(
             config.vocab_size, config.d_model, config.d_ff,
             config.input_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
             config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
