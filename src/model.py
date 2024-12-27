@@ -111,13 +111,7 @@ class DecoderOnlyTransformerModel(nn.Module):
                  num_heads, context_size, num_layers, num_actions, num_classes, device):
         super(DecoderOnlyTransformerModel, self).__init__()
         self.d_model = d_model
-        self.example_input_embed = nn.Embedding(num_embeddings=vocab_size,
-                                                embedding_dim=d_model)
-        self.current_state_embed = nn.Embedding(num_embeddings=vocab_size,
-                                                embedding_dim=d_model)
         self.attended_example_input_embed = nn.Embedding(num_embeddings=vocab_size,
-                                                         embedding_dim=d_model)
-        self.attended_current_state_embed = nn.Embedding(num_embeddings=vocab_size,
                                                          embedding_dim=d_model)
 
         self.dropout_1 = nn.Dropout(input_dropout)
