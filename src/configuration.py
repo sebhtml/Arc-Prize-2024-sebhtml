@@ -32,7 +32,7 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = False  # prod: True, dev: False xx
+    terminate_pod_at_the_end = False  # prod: True, dev: False
 
     #
     # Puzzle configuration
@@ -88,7 +88,7 @@ class Configuration:
     # See: A Recipe for Training Neural Networks
     # http://karpathy.github.io/2019/04/25/recipe/
 
-    num_steps = 5000  # 5000  # prod: 32000, dev: 300 xx
+    num_steps = 2000  # 5000  # prod: 32000, dev: 300 xx
     target_network_update_period = 1000  # prod: 1000, dev: 100
 
     verbose_advantage = False
@@ -119,11 +119,11 @@ class Configuration:
     #
     # Options for loading AI neural net model
     #
-    load_model = True
+    load_model = False
     #
     # Options for training AI neural net model
     #
-    train_model = False
+    train_model = True
     save_step_losses = True
     save_neural_net_model = True
     #
