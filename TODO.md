@@ -1,6 +1,7 @@
 # Research and Development
 
-- analyze why 2 out of 49 cells are incorrect
+- use Dropout in classifier of policy network model
+- move norm and dropout at same scope in transformer block
 
 # Refactoring
 
@@ -27,11 +28,6 @@
 
 - move training of action value network to agent.py
 - don't mask cells
-
-# Model
-
-- move norm and dropout at same scope in transformer block
-- use half precision float16
 
 # Policy gradient methods
 
