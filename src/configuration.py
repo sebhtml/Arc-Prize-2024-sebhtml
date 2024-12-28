@@ -76,10 +76,12 @@ class Configuration:
     # See:
     # Dropout: A Simple Way to Prevent Neural Networks from Overfitting
     # https://www.cs.toronto.edu/~rsalakhu/papers/srivastava14a.pdf
+    embedding_dropout = 0.5
     input_dropout = 0.5
     attention_head_dropout = 0.5
     attention_sublayer_dropout = 0.5
     ffn_sublayer_dropout = 0.5
+    output_dropout = 0.5
 
     #
     # Training parameters

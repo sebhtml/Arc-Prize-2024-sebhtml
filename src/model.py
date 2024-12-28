@@ -123,14 +123,14 @@ class Encoder(nn.Module):
     """
 
     def __init__(self, vocab_size, d_model, ffn_size,
-                 input_dropout, attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
+                 embedding_dropout, attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
                  num_heads, context_size, num_layers, num_actions, num_classes, device):
         super(Encoder, self).__init__()
         self.d_model = d_model
         self.attended_example_input_embed = nn.Embedding(num_embeddings=vocab_size,
                                                          embedding_dim=d_model)
 
-        self.dropout_1 = nn.Dropout(input_dropout)
+        self.dropout_1 = nn.Dropout(embedding_dropout)
         modules = [NonCausalSelfAttentionTransformerBlock(
             d_model, ffn_size, num_heads,
             attention_head_dropout,  attention_sublayer_dropout, ffn_sublayer_dropout,
@@ -198,16 +198,18 @@ class PolicyNetworkModel(nn.Module):
         super(PolicyNetworkModel, self).__init__()
         self.__encoder = Encoder(
             config.vocab_size, config.d_model, config.d_ff,
-            config.input_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
+            config.embedding_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
             config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
+        self.__input_dropout = nn.Dropout(config.input_dropout)
         d_model = config.d_model
         num_actions = config.num_actions
+        self.__cls_dropout = nn.Dropout(config.output_dropout)
         self.classifier = nn.Linear(
             in_features=d_model, out_features=num_actions)
 
     def forward(self, x: Tuple[torch.Tensor]) -> torch.Tensor:
+        x = self.__input_dropout(x[0])
         # Prepend the CLS token
-        x = x[0]
         cls_token = torch.tensor([CLS_TOKEN])
         batch_size = x.shape[0]
         cls_token = cls_token.expand(batch_size, -1)
@@ -220,5 +222,6 @@ class PolicyNetworkModel(nn.Module):
         # Take the hidden representation of the [CLS] token.
         cls_hidden = hidden[:, 0, :]
         # [batch_size, d_model] -> [batch_size, num_actions]
+        cls_hidden = self.__cls_dropout(cls_hidden)
         logits = self.classifier(cls_hidden)
         return logits
