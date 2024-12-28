@@ -285,6 +285,7 @@ def get_grad_norm(model):
 
 
 def train_model_using_experience_replay(
+    environment: Environment,
     config: Configuration,
     context_size: int, batch_size: int, device: torch.device,
     agent: Agent,
@@ -296,8 +297,7 @@ def train_model_using_experience_replay(
 ):
     criterion = None
     optimizer = None
-
-    environment = Environment(cell_value_size)
+using_ex
     steps = []
     losses = []
 

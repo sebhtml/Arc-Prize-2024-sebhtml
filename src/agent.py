@@ -210,9 +210,9 @@ def evaluate_solution(actual: List[List[Cell]], expected: List[List[Cell]]) -> T
 def apply_policy_network(puzzle_examples, agent: Agent,
                          padding_char: str, cell_value_size: int,
                          context_size: int, batch_size: int,
-                         device,):
+                         device: torch.device,
+                         environment: Environment,):
 
-    environment = Environment(cell_value_size)
     for example_input, example_output in puzzle_examples:
         print("example")
         solve_puzzle_example_auto_regressive(

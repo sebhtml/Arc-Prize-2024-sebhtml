@@ -30,6 +30,7 @@ import json
 from model import ActionValueNetworkModel
 from infrastructure import terminate_pod
 from agent import apply_policy_network, Agent
+from environment import Environment
 from training import train_model_using_experience_replay
 from configuration import Configuration
 
@@ -73,7 +74,9 @@ def load_puzzle_examples(venue, puzzle_id, example_type) -> List[Tuple[List[List
 
 
 def main():
+    cell_value_size = config.cell_value_size
     device = torch.device("cuda")
+    environment = Environment(cell_value_size)
     agent = Agent(config, device)
     # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0
     # torch.compile does not work on the NVIDIA P100
@@ -100,6 +103,7 @@ def main():
 
     if config.train_model:
         train_model_using_experience_replay(
+            environment,
             config,
             config.context_size, config.batch_size, device, agent,
             puzzle_train_examples, config.cell_value_size,
@@ -115,12 +119,12 @@ def main():
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.
     if config.run_autoregressive_inference_on_train_examples:
         apply_policy_network(
-            puzzle_train_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
+            puzzle_train_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
 
     # Check if the auto-regressive inference AI is able to predict the output for the test example.
     if config.run_autoregressive_inference_on_test_examples:
         apply_policy_network(
-            puzzle_test_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device)
+            puzzle_test_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
 
     if config.terminate_pod_at_the_end:
         terminate_pod(config.api_key_file)
