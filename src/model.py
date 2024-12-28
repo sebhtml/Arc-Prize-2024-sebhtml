@@ -196,7 +196,7 @@ class PolicyNetworkModel(nn.Module):
 
     def __init__(self, config: Configuration, device: torch.device):
         super(PolicyNetworkModel, self).__init__()
-        self.__base_model = Encoder(
+        self.__encoder = Encoder(
             config.vocab_size, config.d_model, config.d_ff,
             config.input_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
             config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
@@ -215,7 +215,7 @@ class PolicyNetworkModel(nn.Module):
         x = torch.cat(
             [cls_token, x], dim=-1)
 
-        hidden = self.__base_model([x])
+        hidden = self.__encoder([x])
         # [batch_size, context_size, d_model] -> [batch_size, d_model]
         # Take the hidden representation of the [CLS] token.
         cls_hidden = hidden[:, 0, :]
