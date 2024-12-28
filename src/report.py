@@ -46,4 +46,3 @@ def render_interactive_plot(csv_file_path: str):
     plt.grid()
     plt.legend()
     plt.show()
-
