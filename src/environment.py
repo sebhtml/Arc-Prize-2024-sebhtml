@@ -50,6 +50,8 @@ class Environment:
         self.__current_state = get_puzzle_starting_state(
             self.__puzzle_input, "current_state")
 
+        # Clear the current episode if the previous episode was truncated.
+        self.__current_episode = []
         self.__current_episode.append(
             GameState(
                 copy.deepcopy(self.__example_input),
