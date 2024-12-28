@@ -1,5 +1,7 @@
 # Research and Development
 
+- add colors in video renderer
+
 - implement rendering with asciimatics
 - use Dropout in classifier of policy network model
 - move norm and dropout at same scope in transformer block
