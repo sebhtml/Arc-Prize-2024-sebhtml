@@ -1,8 +1,6 @@
 
 from matplotlib.pylab import plt
-from typing import List
 import csv
-from q_learning import GameState
 
 
 def plot_train_loss_graph(steps, losses, file_path):
@@ -49,9 +47,3 @@ def render_interactive_plot(csv_file_path: str):
     plt.legend()
     plt.show()
 
-
-def render_episodes(puzzle_id: str, episodes: List[List[GameState]], video_dir_path: str,):
-    """
-    Render puzzle episodes as a video file.
-    """
-    pass
