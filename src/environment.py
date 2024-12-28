@@ -1,8 +1,9 @@
 import random
 from typing import List, Tuple, Union
 from context import get_puzzle_starting_state
-from q_learning import Cell, reward, QLearningAction
+from q_learning import Cell, reward, QLearningAction, GameState
 from vision import VACANT_CELL_VALUE
+import copy
 
 
 class Environment:
@@ -23,6 +24,8 @@ class Environment:
         # Metrics
         self.__total_rewards_per_episode = []
         self.__current_episode_total_rewards = 0.0
+        self.__recorded_episodes = []
+        self.__current_episode = []
 
     def set_puzzle_example(self, puzzle_input: List[List[int]], puzzle_output: Union[List[List[int]], None]):
         """
@@ -46,6 +49,12 @@ class Environment:
             self.__puzzle_input, "example_input")
         self.__current_state = get_puzzle_starting_state(
             self.__puzzle_input, "current_state")
+
+        self.__current_episode.append(
+            GameState(
+                copy.deepcopy(self.__example_input),
+                copy.deepcopy(self.__current_state),
+            ))
 
         self.__available_actions = generate_cell_actions(
             self.__current_state, self.__cell_value_size)
@@ -72,6 +81,12 @@ class Environment:
         new_value = action.cell_value()
 
         self.__current_state[row][col].set_value(new_value)
+
+        self.__current_episode.append(
+            GameState(
+                copy.deepcopy(self.__example_input),
+                copy.deepcopy(self.__current_state),
+            ))
 
         immediate_reward = None
         if self.__puzzle_output != None:
@@ -104,12 +119,17 @@ class Environment:
         return self.__available_actions
 
     def __terminate_episode(self):
+        self.__recorded_episodes.append(self.__current_episode)
+        self.__current_episode = []
         self.__total_rewards_per_episode.append(
             self.__current_episode_total_rewards)
         self.__current_episode_total_rewards = 0.0
 
     def get_total_rewards_per_episode(self):
         return self.__total_rewards_per_episode
+
+    def recorded_episodes(self) -> List[List[GameState]]:
+        return self.__recorded_episodes
 
 
 def generate_cell_actions(

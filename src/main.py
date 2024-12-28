@@ -33,6 +33,7 @@ from agent import apply_policy_network, Agent
 from environment import Environment
 from training import train_model_using_experience_replay
 from configuration import Configuration
+from report import render_episodes
 
 config = Configuration()
 
@@ -125,6 +126,11 @@ def main():
     if config.run_autoregressive_inference_on_test_examples:
         apply_policy_network(
             puzzle_test_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
+
+    # Render recorded episodes.
+    episodes = environment.recorded_episodes()
+    render_episodes(config.selected_puzzle_id,
+                    episodes, config.video_dir_path,)
 
     if config.terminate_pod_at_the_end:
         terminate_pod(config.api_key_file)

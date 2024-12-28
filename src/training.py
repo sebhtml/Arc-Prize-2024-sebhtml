@@ -297,7 +297,7 @@ def train_model_using_experience_replay(
 ):
     criterion = None
     optimizer = None
-using_ex
+
     steps = []
     losses = []
 

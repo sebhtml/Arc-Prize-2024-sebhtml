@@ -25,6 +25,7 @@ class Configuration:
 
     kaggle_input_path = "/workspace/kaggle-input"
     logs_path = "/workspace/logs"
+    video_dir_path = "/workspace/videos"
 
     time_marker = '2024-11-09T00:18:25.063611+00:00'
 
