@@ -147,9 +147,9 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
     translation_y = center_y - row
 
     attented_example_input = translate_board(
-        example_input, translation_x, translation_y, Cell(OUTSIDE_CELL_VALUE))
+        example_input, translation_x, translation_y, Cell(0))
     attented_current_state = translate_board(
-        current_state, translation_x, translation_y, Cell(OUTSIDE_CELL_VALUE))
+        current_state, translation_x, translation_y, Cell(0))
     attented_candidate_action = QLearningAction(
         center_y, center_x, new_value)
 
