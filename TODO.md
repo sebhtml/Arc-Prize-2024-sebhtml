@@ -1,11 +1,16 @@
 # Research and Development
 
-- use new puzzle
-- remove masking functions
-- rename num_steps to max_episodes
-- add early stopping
+- implement rendering with asciimatics
 - use Dropout in classifier of policy network model
 - move norm and dropout at same scope in transformer block
+
+- rename num_steps to max_episodes
+
+- use new puzzle
+- use BERT_large parameters L=12, H=768, A=12
+
+- remove masking functions
+- add early stopping
 
 # Refactoring
 
