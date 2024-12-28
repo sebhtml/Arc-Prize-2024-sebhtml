@@ -2,3 +2,4 @@ venv/
 step_loss.csv
 __pycache__
 nohup.out
+*.cast
