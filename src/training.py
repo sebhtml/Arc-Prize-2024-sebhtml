@@ -324,7 +324,8 @@ def train_model_using_experience_replay(
             losses.append(loss)
             print(f"Step: {step}/{num_steps}  loss: {loss:.8f}")
 
-    dynamic_time_marker = datetime.now(timezone.utc).isoformat()
+    dynamic_time_marker = datetime.now(
+        timezone.utc).isoformat().replace(':', '-')
     train_loss_csv_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.csv"
     train_loss_png_path = f"/workspace/reports/{dynamic_time_marker}-step_loss.png"
 
