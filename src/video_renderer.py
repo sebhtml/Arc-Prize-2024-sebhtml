@@ -44,7 +44,7 @@ def render_episodes(puzzle_id: str, episodes: List[List[GameState]], video_dir_p
     # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     # out = cv2.VideoWriter(video_file_path, fourcc,
     #  1.0, (screen.width, screen.height))
-    #out = open(video_file_path, "wb")
+    # out = open(video_file_path, "wb")
 
     for episode in episodes:
         for state in episode:
@@ -53,11 +53,11 @@ def render_episodes(puzzle_id: str, episodes: List[List[GameState]], video_dir_p
             # frame = screen.get_image()
             # out.write(frame)
             screen.refresh()
-            #frame = screen._buffer.plain_image
-            #out.write(bytes(frame))
-            #out.write("\n\n")
+            # frame = screen._buffer.plain_image
+            # out.write(bytes(frame))
+            # out.write("\n\n")
             time.sleep(0.1)
 
     # out.release()
-    #out.close()
+    # out.close()
     screen.close()
