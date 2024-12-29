@@ -1,4 +1,4 @@
 #!/bin/bash
 
-less $(ls -lhtr /workspace/logs/*|awk '{print $NF}'|tail -n 1)
+less -R $(ls -lhtr /workspace/logs/*|awk '{print $NF}'|tail -n 1)
 
