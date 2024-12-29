@@ -91,8 +91,9 @@ class Configuration:
     # See: A Recipe for Training Neural Networks
     # http://karpathy.github.io/2019/04/25/recipe/
 
-    num_steps = 2000  # 5000  # prod: 32000, dev: 300 xx
+    num_steps = 2000  # 2000
     target_network_update_period = 1000  # prod: 1000, dev: 100
+    render_recorded_episodes = False
 
     verbose_advantage = False
     verbose_target_action_value_network = False

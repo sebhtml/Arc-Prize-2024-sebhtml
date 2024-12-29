@@ -128,9 +128,10 @@ def main():
             puzzle_test_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
 
     # Render recorded episodes.
-    episodes = environment.recorded_episodes()
-    render_episodes(config.selected_puzzle_id,
-                    episodes, config.video_dir_path,)
+    if config.render_recorded_episodes:
+        episodes = environment.recorded_episodes()
+        render_episodes(config.selected_puzzle_id,
+                        episodes, config.video_dir_path,)
 
     if config.terminate_pod_at_the_end:
         terminate_pod(config.api_key_file)
