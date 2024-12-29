@@ -1,5 +1,6 @@
 # Research and Development
 
+- fix early stopping bug
 - test with 009d5c81
 
 - add venue, train / test, and id of example in videos

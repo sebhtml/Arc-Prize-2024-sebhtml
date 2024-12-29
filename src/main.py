@@ -33,7 +33,7 @@ from agent import apply_policy_network, Agent
 from environment import Environment
 from training import train_model_using_experience_replay
 from configuration import Configuration
-from video_renderer import render_episodes
+from episode_renderer import render_episodes
 
 config = Configuration()
 

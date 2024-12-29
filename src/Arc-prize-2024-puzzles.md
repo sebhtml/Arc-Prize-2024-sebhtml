@@ -26,7 +26,7 @@
 
 # Example of link
 
-https://arcprize.org/play?task=3aa6fb7a
+https://arcprize.org/play?task=3aa6fb7a009d5c81
 
 # Progress
 

@@ -16,7 +16,7 @@ from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment
 from configuration import Configuration
 from vision import flip_board, rotate_90_clockwise
-from report import print_with_colors
+from episode_renderer import print_with_colors
 
 
 class Agent:
