@@ -40,7 +40,7 @@ class Configuration:
     #
 
     # See https://arcprize.org/play?task=3aa6fb7a
-    selected_puzzle_id = "0ca9ddb6"
+    selected_puzzle_id = "3aa6fb7a"  # "0ca9ddb6"
 
     # Each cell has one color and there are 10 colors.
     cell_value_size = 10
@@ -91,7 +91,7 @@ class Configuration:
     # See: A Recipe for Training Neural Networks
     # http://karpathy.github.io/2019/04/25/recipe/
 
-    num_steps = 2000  # 2000
+    max_episodes = 40
     target_network_update_period = 1000  # prod: 1000, dev: 100
     render_recorded_episodes = False
 
@@ -139,7 +139,7 @@ class Configuration:
 
     # File paths
     models_path = "/workspace/models"
-    model_file_path = f"{models_path}/{time_marker}-{num_steps}-q-network.pth"
+    model_file_path = f"{models_path}/{time_marker}-{max_episodes}-q-network.pth"
 
     def __init__(self):
         for key, value in dict(Configuration.__dict__).items():

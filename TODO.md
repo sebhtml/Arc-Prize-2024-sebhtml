@@ -1,18 +1,19 @@
 # Research and Development
 
-- render GameState directly
-- rename num_steps to max_episodes
+- add early stopping
 - add puzzle id in png file names
+- render GameState directly
+- render recorded episodes
 
 - use Dropout in classifier of policy network model
 - move norm and dropout at same scope in transformer block
 
 - remove masking functions
 - remove vacant variables
-- add early stopping
 - use new puzzle
 
 - for data augmentation, maybe remove random cols or rows
+- remove QDN usage
 - use BERT_large parameters L=12, H=768, A=12
 
 

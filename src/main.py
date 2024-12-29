@@ -110,7 +110,7 @@ def main():
             puzzle_train_examples, config.cell_value_size,
             config.discount, config.padding_char, config.num_classes, config.shuffle_train_examples, config.lr,
             config.weight_decay, config.max_grad_norm, config.print_model_outputs, config.save_step_losses,
-            config.num_steps,
+            config.max_episodes,
         )
 
     if config.save_neural_net_model:

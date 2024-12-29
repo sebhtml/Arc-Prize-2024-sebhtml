@@ -293,7 +293,7 @@ def train_model_using_experience_replay(
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool, lr: float, weight_decay: float,
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
-    num_steps: int,
+    max_episodes: int,
 ):
     criterion = None
     optimizer = None
@@ -302,7 +302,10 @@ def train_model_using_experience_replay(
     losses = []
 
     experience_replay_data_set = []
-    for step in range(num_steps):
+
+    step = 0
+
+    while len(environment.recorded_episodes()) < max_episodes:
         if step % config.target_network_update_period == 0:
             agent.update_target_action_value_network()
 
@@ -320,9 +323,12 @@ def train_model_using_experience_replay(
         )
 
         if loss != None:
+            episode = len(environment.recorded_episodes())
             steps.append(step)
             losses.append(loss)
-            print(f"Step: {step}/{num_steps}  loss: {loss:.8f}")
+            print(f"Step: {step}  Episode: {episode}  loss: {loss:.8f}")
+
+        step += 1
 
     dynamic_time_marker = datetime.now(
         timezone.utc).isoformat().replace(':', '-')
