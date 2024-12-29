@@ -1,8 +1,8 @@
 # Research and Development
 
-- render recorded episodes
 - test with 009d5c81
 
+- add venue, train / test, and id of example in videos
 - add puzzle id in png file names
 
 - use Dropout in classifier of policy network model

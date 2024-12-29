@@ -25,7 +25,7 @@ class Configuration:
 
     kaggle_input_path = "/workspace/kaggle-input"
     logs_path = "/workspace/logs"
-    video_dir_path = "/workspace/videos"
+    episodes_dir_path = "/workspace/episodes"
 
     time_marker = '2024-11-09T00:18:25.063611+00:00'
 
@@ -40,7 +40,7 @@ class Configuration:
     #
 
     # See https://arcprize.org/play?task=3aa6fb7a
-    selected_puzzle_id = "3aa6fb7a"
+    selected_puzzle_id = "0ca9ddb6"
 
     # Each cell has one color and there are 10 colors.
     cell_value_size = 10
@@ -96,7 +96,7 @@ class Configuration:
     max_loss = 0.0001
     max_winning_streak_length = 10
     target_network_update_period = 1000  # prod: 1000, dev: 100
-    render_recorded_episodes = False
+    render_recorded_episodes = True
 
     verbose_advantage = False
     verbose_target_action_value_network = False
