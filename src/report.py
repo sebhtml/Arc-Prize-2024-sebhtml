@@ -1,6 +1,7 @@
 
 from matplotlib.pylab import plt
 import csv
+from typing import IO
 
 
 def plot_train_loss_graph(steps, losses, file_path):
@@ -46,3 +47,18 @@ def render_interactive_plot(csv_file_path: str):
     plt.grid()
     plt.legend()
     plt.show()
+
+
+def print_with_colors(text: str, io: IO[str]):
+    for char in text:
+        if False:
+            pass
+        elif char == '0':
+            io.write(f"\033[40m{char}\033[0m")
+        elif char == '1':
+            io.write(f"\033[44m{char}\033[0m")
+        elif char == '8':
+            io.write(f"\033[46m{char}\033[0m")
+        else:
+            io.write(char)
+    io.flush()

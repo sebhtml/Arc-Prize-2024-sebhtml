@@ -6,6 +6,7 @@ from torch.optim import AdamW
 
 import numpy as np
 import random
+import sys
 import copy
 from typing import List, Tuple
 from context import tokens_to_text, make_example_tensor, prepare_context
@@ -15,6 +16,7 @@ from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment
 from configuration import Configuration
 from vision import flip_board, rotate_90_clockwise
+from report import print_with_colors
 
 
 class Agent:
@@ -294,8 +296,8 @@ def print_current_state(example_input, current_state, padding_char):
     current_state_text += "currentState" + "\n"
     current_state_text += state_to_text(current_state)
 
-    print(example_input_text)
-    print(current_state_text)
+    output = example_input_text + "\n" + current_state_text + "\n"
+    print_with_colors(output, sys.stdout)
 
 
 def select_action_with_deep_q_network(
