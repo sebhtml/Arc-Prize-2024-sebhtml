@@ -40,7 +40,7 @@ class Configuration:
     #
 
     # See https://arcprize.org/play?task=3aa6fb7a
-    selected_puzzle_id = "3aa6fb7a"  # "0ca9ddb6"
+    selected_puzzle_id = "0ca9ddb6"
 
     # Each cell has one color and there are 10 colors.
     cell_value_size = 10
@@ -92,6 +92,9 @@ class Configuration:
     # http://karpathy.github.io/2019/04/25/recipe/
 
     max_episodes = 40
+    min_relative_rewards = 1.0
+    max_loss = 0.0001
+    max_winning_streak_length = 10
     target_network_update_period = 1000  # prod: 1000, dev: 100
     render_recorded_episodes = False
 

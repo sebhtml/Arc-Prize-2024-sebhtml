@@ -1,9 +1,9 @@
 # Research and Development
 
-- add early stopping
-- add puzzle id in png file names
 - render GameState directly
 - render recorded episodes
+
+- add puzzle id in png file names
 
 - use Dropout in classifier of policy network model
 - move norm and dropout at same scope in transformer block

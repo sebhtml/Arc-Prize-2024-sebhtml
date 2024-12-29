@@ -34,10 +34,10 @@ https://arcprize.org/play?task=3aa6fb7a
 |---------------|-----------------|------------------------|
 | 3aa6fb7a      | Complete small rectangles  | 2024-12-27 |
 | 0ca9ddb6      | Add cell corners | 2024-12-29 |
+| 009d5c81      | Color change | |
 | 0b17323b      | Projectile trajectory |  |
 | 09c534e7      | Fill interiors | |
 | 41e4d17e      | Lines through squares |  |  
-| 009d5c81      | Color change | |
 | 10fcaaa3      | Expand pattern | |
 | 11852cab      | Add corners    | |
 | 03560426      | Assembly | |

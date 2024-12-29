@@ -305,6 +305,9 @@ def train_model_using_experience_replay(
 
     step = 0
 
+    relative_rewards = 0.0
+    winning_streak_length = 0
+
     while len(environment.recorded_episodes()) < max_episodes:
         if step % config.target_network_update_period == 0:
             agent.update_target_action_value_network()
@@ -322,11 +325,29 @@ def train_model_using_experience_replay(
             max_grad_norm, print_model_outputs,
         )
 
+        if len(environment.recorded_episodes()) > 0:
+            # TODO this will be buggy if 2 examples have difference output sizes.
+            episode_total_rewards = environment.get_total_rewards_per_episode(
+            )[-1]
+            max_total_rewards = environment.get_max_total_rewards()
+
+            relative_rewards = episode_total_rewards / max_total_rewards
+
+            if relative_rewards >= config.min_relative_rewards and loss <= config.max_loss:
+                winning_streak_length += 1
+            else:
+                winning_streak_length = 0
+
         if loss != None:
             episode = len(environment.recorded_episodes())
             steps.append(step)
             losses.append(loss)
-            print(f"Step: {step}  Episode: {episode}  loss: {loss:.8f}")
+            print(
+                f"Step: {step}  Episode: {episode}  Rewards: {relative_rewards}  winning_streak_length: {winning_streak_length}  loss: {loss:.8f}")
+
+        if winning_streak_length == config.max_winning_streak_length:
+            # Early stopping.
+            break
 
         step += 1
 

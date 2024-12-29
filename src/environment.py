@@ -133,6 +133,16 @@ class Environment:
     def recorded_episodes(self) -> List[List[GameState]]:
         return self.__recorded_episodes
 
+    def get_max_total_rewards(self) -> int:
+        """
+        Get the maximum number of rewards for the current puzzle example.
+        """
+        if self.__puzzle_output != None:
+            output_width = len(self.__puzzle_output[0])
+            output_height = len(self.__puzzle_output)
+            return output_height * output_width
+        return None
+
 
 def generate_cell_actions(
         current_state: List[List[Cell]],
