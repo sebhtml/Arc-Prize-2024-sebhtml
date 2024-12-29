@@ -288,16 +288,8 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
 
 
 def print_current_state(example_input, current_state, padding_char):
-    example_input_text = ""
-    example_input_text += "exampleInput" + "\n"
-    example_input_text += state_to_text(example_input)
-
-    current_state_text = ""
-    current_state_text += "currentState" + "\n"
-    current_state_text += state_to_text(current_state)
-
-    output = example_input_text + "\n" + current_state_text + "\n"
-    print_with_colors(output, sys.stdout)
+    game_state = GameState(example_input, current_state)
+    print_with_colors(game_state, sys.stdout)
 
 
 def select_action_with_deep_q_network(

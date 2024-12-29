@@ -1,6 +1,5 @@
 # Research and Development
 
-- render GameState directly
 - render recorded episodes
 
 - add puzzle id in png file names
