@@ -40,7 +40,7 @@ class Configuration:
     #
 
     # See https://arcprize.org/play?task=3aa6fb7a
-    selected_puzzle_id = "3aa6fb7a"
+    selected_puzzle_id = "0ca9ddb6"
 
     # Each cell has one color and there are 10 colors.
     cell_value_size = 10

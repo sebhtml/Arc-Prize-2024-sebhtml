@@ -1,15 +1,20 @@
 # Research and Development
 
-- use new puzzle
+- render GameState directly
+- rename num_steps to max_episodes
+- add puzzle id in png file names
+
 - use Dropout in classifier of policy network model
 - move norm and dropout at same scope in transformer block
 
-- rename num_steps to max_episodes
+- remove masking functions
+- remove vacant variables
+- add early stopping
+- use new puzzle
 
+- for data augmentation, maybe remove random cols or rows
 - use BERT_large parameters L=12, H=768, A=12
 
-- remove masking functions
-- add early stopping
 
 # Refactoring
 

@@ -50,15 +50,23 @@ def render_interactive_plot(csv_file_path: str):
 
 
 def print_with_colors(text: str, io: IO[str]):
+    colors = {
+        "0": "40m",  # black
+        "1": "44m",  # blue
+        "2": "41m",  # red
+        "4": "43m",  # yellow
+        "6": "45m",  # purple
+        "7": "48;5;208m",  # orange
+        "8": "46m",  # cyan
+    }
     for char in text:
-        if False:
+        before = ""
+        after = ""
+        try:
+            color = colors[char]
+            before = f"\033[{color}"
+            after = f"\033[0m"
+        except:
             pass
-        elif char == '0':
-            io.write(f"\033[40m{char}\033[0m")
-        elif char == '1':
-            io.write(f"\033[44m{char}\033[0m")
-        elif char == '8':
-            io.write(f"\033[46m{char}\033[0m")
-        else:
-            io.write(char)
+        io.write(f"{before} {char} {after}")
     io.flush()
