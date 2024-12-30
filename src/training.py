@@ -312,6 +312,9 @@ def train_model_using_experience_replay(
         if step % config.target_network_update_period == 0:
             agent.update_target_action_value_network()
 
+        old_number_of_episodes = len(environment.recorded_episodes())
+        max_total_rewards = environment.get_max_total_rewards()
+
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             config,
             environment,
@@ -325,11 +328,10 @@ def train_model_using_experience_replay(
             max_grad_norm, print_model_outputs,
         )
 
-        if len(environment.recorded_episodes()) > 0:
-            # TODO this will be buggy if 2 examples have difference output sizes.
+        if len(environment.recorded_episodes()) > old_number_of_episodes:
+            # A new episode has been recorded !
             episode_total_rewards = environment.get_total_rewards_per_episode(
             )[-1]
-            max_total_rewards = environment.get_max_total_rewards()
 
             relative_rewards = episode_total_rewards / max_total_rewards
 
