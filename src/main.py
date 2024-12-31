@@ -85,13 +85,13 @@ def main():
     # model = torch.compile(model)
 
     puzzle_train_examples = load_puzzle_examples(
-        "training", config.selected_puzzle_id, "train")
+        config.venue, config.selected_puzzle_id, "train")
 
     print("puzzle_train_examples")
     print(len(puzzle_train_examples))
 
     puzzle_test_examples = load_puzzle_examples(
-        "training", config.selected_puzzle_id, "test")
+        config.venue, config.selected_puzzle_id, "test")
 
     model_total_params = sum(p.numel()
                              for p in agent.policy_network().parameters())
