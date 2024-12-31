@@ -33,14 +33,14 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = True  # prod: True, dev: False
+    terminate_pod_at_the_end = False  # prod: True, dev: False
 
     #
     # Puzzle configuration
     #
 
     # See https://arcprize.org/play?task=3aa6fb7a
-    selected_puzzle_id = "009d5c81"
+    selected_puzzle_id = "3aa6fb7a"
 
     # Each cell has one color and there are 10 colors.
     cell_value_size = 10
@@ -91,7 +91,7 @@ class Configuration:
     # See: A Recipe for Training Neural Networks
     # http://karpathy.github.io/2019/04/25/recipe/
 
-    max_episodes = 40
+    max_episodes = 1000
     min_relative_rewards = 1.0
     max_loss = 0.0001
     max_winning_streak_length = 10
@@ -102,7 +102,6 @@ class Configuration:
     verbose_target_action_value_network = False
     use_action_value_network = False
     use_policy_network = True
-    max_taken_actions_per_step = 1
     shuffle_train_examples = True
     # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
     max_grad_norm = 1.0

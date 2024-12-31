@@ -313,7 +313,6 @@ def train_model_using_experience_replay(
             agent.update_target_action_value_network()
 
         old_number_of_episodes = len(environment.recorded_episodes())
-        max_total_rewards = environment.get_max_total_rewards()
 
         experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
             config,
@@ -331,6 +330,8 @@ def train_model_using_experience_replay(
         if len(environment.recorded_episodes()) > old_number_of_episodes:
             # A new episode has been recorded !
             episode_total_rewards = environment.get_total_rewards_per_episode(
+            )[-1]
+            max_total_rewards = environment.get_max_total_rewards_per_episode(
             )[-1]
 
             relative_rewards = episode_total_rewards / max_total_rewards
@@ -394,9 +395,11 @@ def train_model_with_experience_replay_data_set(
     https://www.nature.com/articles/nature14236
     """
 
+    # Basically use on-policy data.
+    experience_replay_data_set = []
+
     new_train_examples = play_game_using_model(
         environment,
-        config.max_taken_actions_per_step,
         padding_char,
         context_size,
         batch_size,
@@ -411,7 +414,7 @@ def train_model_with_experience_replay_data_set(
         experience_replay_data_set_size,
     )
 
-    min_experience_replay_data_set_size = 4 * batch_size
+    min_experience_replay_data_set_size = batch_size
     loss = None
 
     if len(experience_replay_data_set) >= min_experience_replay_data_set_size:

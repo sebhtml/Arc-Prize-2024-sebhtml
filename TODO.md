@@ -1,10 +1,9 @@
 # Research and Development
 
-- do a whole episode before training
+- TODO generate episode with batch to go faster
 - use sequences of fixations, 4 fixations following gaussian sampling on density of scene, 4 fixations following gaussian sampling around cell to assign
 - test with 009d5c81
 
-- add venue, train / test, and id of example in videos
 - add puzzle id in png file names
 
 - use Dropout in classifier of policy network model

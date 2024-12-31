@@ -23,6 +23,7 @@ class Environment:
         self.__available_actions = []
         # Metrics
         self.__total_rewards_per_episode = []
+        self.__max_total_rewards_per_episode = []
         self.__current_episode_total_rewards = 0.0
         self.__recorded_episodes = []
         self.__current_episode = []
@@ -125,10 +126,15 @@ class Environment:
         self.__current_episode = []
         self.__total_rewards_per_episode.append(
             self.__current_episode_total_rewards)
+        self.__max_total_rewards_per_episode.append(
+            self.get_max_total_rewards())
         self.__current_episode_total_rewards = 0.0
 
     def get_total_rewards_per_episode(self):
         return self.__total_rewards_per_episode
+
+    def get_max_total_rewards_per_episode(self):
+        return self.__max_total_rewards_per_episode
 
     def recorded_episodes(self) -> List[List[GameState]]:
         return self.__recorded_episodes

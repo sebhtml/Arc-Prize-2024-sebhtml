@@ -423,7 +423,6 @@ def select_action_with_policy_network(
 
 def play_game_using_model(
         environment: Environment,
-        max_taken_actions_per_step: int,
         padding_char: str,
         context_size: int,
         batch_size: int,
@@ -476,8 +475,9 @@ def play_game_using_model(
 
     verbose = False
 
-    while not environment.is_in_terminal_state() and \
-            len(replay_buffer) < max_taken_actions_per_step:
+    # Play a full episode.
+    while not environment.is_in_terminal_state():
+
         candidate_actions = environment.list_actions()
 
         example_input, current_state = environment.get_observations()
