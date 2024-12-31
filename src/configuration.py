@@ -23,7 +23,7 @@ class Configuration:
     # logs_path = "/workspace/logs"
     # On runpod
 
-    kaggle_input_path = "/workspace/kaggle-input"
+    kaggle_input_path = "/workspace/kaggle-input/arc-prize-2024"
     logs_path = "/workspace/logs"
     episodes_dir_path = "/workspace/episodes"
 
@@ -40,7 +40,6 @@ class Configuration:
     #
 
     # See https://arcprize.org/play?task=3aa6fb7a
-    venue = "evaluation"  # or "training"
     selected_puzzle_id = "009d5c81"
 
     # Each cell has one color and there are 10 colors.

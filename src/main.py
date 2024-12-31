@@ -46,16 +46,35 @@ def get_puzzle_solution(venue, puzzle_id):
     return solution
 
 
-def load_puzzle_examples(venue, puzzle_id, example_type) -> List[Tuple[List[List[int]], List[List[int]]]]:
+def load_puzzle_examples(puzzle_id, example_type) -> List[Tuple[List[List[int]], List[List[int]]]]:
     """
-    - venue is "training" or "evaluation" or "test"
     - example_type is "train" or "test"
     Note that for the "test" venue, no solutions are provided.
     """
-    challenges_file = f"{config.kaggle_input_path}/arc-agi_{venue}_challenges.json"
-    f = open(challenges_file)
-    challenges_data = json.load(f)
-    puzzle_challenges_data = challenges_data[puzzle_id]
+
+    venues = [
+        "training",
+        "evaluation",
+        "test",
+    ]
+
+    venue = None
+    puzzle_challenges_data = None
+
+    for tentative_venue in venues:
+        venue = tentative_venue
+        challenges_file = f"{config.kaggle_input_path}/arc-agi_{venue}_challenges.json"
+        f = open(challenges_file)
+        challenges_data = json.load(f)
+        try:
+            puzzle_challenges_data = challenges_data[puzzle_id]
+            break
+        except:
+            venue = None
+
+    if puzzle_challenges_data == None:
+        raise Exception(f"puzzle {puzzle_id} was not found.")
+
     puzzle_examples = puzzle_challenges_data[example_type]
 
     puzzle_venue_examples = []
@@ -85,13 +104,13 @@ def main():
     # model = torch.compile(model)
 
     puzzle_train_examples = load_puzzle_examples(
-        config.venue, config.selected_puzzle_id, "train")
+        config.selected_puzzle_id, "train")
 
     print("puzzle_train_examples")
     print(len(puzzle_train_examples))
 
     puzzle_test_examples = load_puzzle_examples(
-        config.venue, config.selected_puzzle_id, "test")
+        config.selected_puzzle_id, "test")
 
     model_total_params = sum(p.numel()
                              for p in agent.policy_network().parameters())
