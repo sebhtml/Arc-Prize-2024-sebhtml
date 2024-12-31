@@ -28,6 +28,7 @@ def print_cell(value: int, io: IO[str]):
         "0": "40m",  # black
         "1": "44m",  # blue
         "2": "41m",  # red
+        "3": "42m",  # green
         "4": "43m",  # yellow
         "6": "45m",  # purple
         "7": "48;5;208m",  # orange
