@@ -167,7 +167,7 @@ def trim_list(lst, k):
     return lst[-k:] if len(lst) > k else lst
 
 
-def train(
+def train_action_value_network(
         criterion: nn.NLLLoss,
         optimizer: AdamW,
         dataset: MyDataset, batch_size: int, shuffle_train_examples: bool, agent: Agent,
