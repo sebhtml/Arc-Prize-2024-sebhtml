@@ -34,7 +34,7 @@ https://arcprize.org/play?task=3aa6fb7a009d5c81
 |---------------|-----------------|------------------------|
 | 3aa6fb7a      | Complete small rectangles  | 2024-12-27 |
 | 0ca9ddb6      | Add cell corners | 2024-12-29 |
-| 009d5c81      | Color change | |
+| 009d5c81      | Color change of a big object according to the shape of a small object | |
 | 0b17323b      | Projectile trajectory |  |
 | 09c534e7      | Fill interiors | |
 | 41e4d17e      | Lines through squares |  |  
