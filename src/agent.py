@@ -345,7 +345,7 @@ def select_action_with_deep_q_network(
 def select_action_with_policy_network(
         example_input: List[List[Cell]],
         current_state: List[List[Cell]],
-        cell_address: CellAddress,
+        cell_addresses: List[CellAddress],
         padding_char: str,
         context_size: int,
         batch_size: int,
@@ -358,16 +358,20 @@ def select_action_with_policy_network(
     Sample an action index using the policy network.
     """
 
-    input_tokens = prepare_context(
-        example_input, current_state, cell_address, padding_char)
+    inputs = []
 
-    if verbose:
-        print("input_text")
-        print(tokens_to_text(input_tokens))
+    for cell_address in cell_addresses:
+        input_tokens = prepare_context(
+            example_input, current_state, cell_address, padding_char)
 
-    # Add a dimension for the batch_size
-    inputs = make_example_tensor(input_tokens, context_size)
-    inputs = inputs.unsqueeze(0)
+        if verbose:
+            print("input_text")
+            print(tokens_to_text(input_tokens))
+
+        # Add a dimension for the batch_size
+        inputs.append(make_example_tensor(input_tokens, context_size))
+
+    inputs = torch.stack(inputs)
 
     inputs = inputs.to(device)
     logits = policy_network(inputs)
@@ -377,9 +381,9 @@ def select_action_with_policy_network(
 
     # Sampling fom the probability distribution does the exploration.
     samples = dist.sample()
-    best_action_index = samples[0].item()
+    best_action_indexes = samples.tolist()
 
-    return best_action_index
+    return best_action_indexes
 
 
 def play_game_using_model(
@@ -415,17 +419,20 @@ def play_game_using_model(
     while not environment.is_in_terminal_state():
 
         candidate_actions = environment.list_actions()
+        np.random.shuffle(candidate_actions)
+
         candidate_action = candidate_actions[0]
         cell_address = CellAddress(
             candidate_action.row(), candidate_action.col(),)
 
+        cell_addresses = [cell_address]
         example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)
 
-        best_action_index = select_action_with_policy_network(
+        best_action_indexes = select_action_with_policy_network(
             example_input,
             current_state,
-            cell_address,
+            cell_addresses,
             padding_char,
             context_size,
             batch_size,
@@ -434,22 +441,28 @@ def play_game_using_model(
             verbose,
         )
 
-        best_action = candidate_actions[best_action_index]
+        for i in range(len(cell_addresses)):
+            cell_address = cell_addresses[i]
+            best_action_index = best_action_indexes[i]
+            row = cell_address.row()
+            col = cell_address.col()
+            cell_value = best_action_index
+            best_action = QLearningAction(row, col, cell_value,)
 
-        immediate_reward = environment.take_action(best_action)
-        expected_cell_value = environment.get_correct_action(
-            best_action.row(), best_action.col())
+            immediate_reward = environment.take_action(best_action)
+            expected_cell_value = environment.get_correct_action(
+                best_action.row(), best_action.col())
 
-        example_input, next_state = environment.get_observations()
-        next_state = copy.deepcopy(next_state)
+            example_input, next_state = environment.get_observations()
+            next_state = copy.deepcopy(next_state)
 
-        experience = Experience(
-            GameState(example_input, current_state),
-            best_action,
-            immediate_reward,
-            GameState(example_input, next_state),
-            expected_cell_value,
-        )
-        replay_buffer.append(experience)
+            experience = Experience(
+                GameState(example_input, current_state),
+                best_action,
+                immediate_reward,
+                GameState(example_input, next_state),
+                expected_cell_value,
+            )
+            replay_buffer.append(experience)
 
     return replay_buffer

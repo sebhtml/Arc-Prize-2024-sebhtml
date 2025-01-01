@@ -53,6 +53,9 @@ class QLearningAction:
     def cell_value(self) -> int:
         return self.__cell_value
 
+    def __eq__(self, other) -> bool:
+        return self.__row == other.__row and self.__col == other.__col and self.__cell_value == other.__cell_value
+
 
 class CellAddress:
     def __init__(self, row: int, col: int,):
