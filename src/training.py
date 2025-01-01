@@ -11,7 +11,7 @@ from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
 from environment import Environment, generate_cell_actions
 from configuration import Configuration
-from q_learning import Experience, unbin_action_value, bin_action_value
+from q_learning import Experience, unbin_action_value, CellAddress, bin_action_value
 
 
 def get_target_action_value(
@@ -141,11 +141,13 @@ class MyDataset(Dataset):
         example_input = experience.state().example_input()
         current_state = experience.state().current_state()
         candidate_action = experience.action()
+        cell_address = CellAddress(
+            candidate_action.row(), candidate_action.col(),)
         padding_char = self.__config.padding_char
         action_index = experience.correct_action_index()
 
         input_tokens = prepare_context(
-            example_input, current_state, candidate_action, padding_char)
+            example_input, current_state, cell_address, padding_char)
 
         if not self.__printed:
             print("input_text")

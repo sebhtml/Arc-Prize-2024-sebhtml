@@ -2,7 +2,7 @@ from typing import List, Tuple
 import numpy as np
 import copy
 import random
-from q_learning import QLearningAction, Cell
+from q_learning import QLearningAction, Cell, CellAddress
 from q_learning import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE, MASKED_CELL_VALUE
 
 
@@ -120,7 +120,7 @@ def flip_board(grid, direction):
             "Invalid direction. Must be 'horizontal' or 'vertical'.")
 
 
-def do_visual_fixation(example_input, current_state, candidate_action: QLearningAction):
+def do_visual_fixation(example_input, current_state, cell_address: CellAddress):
     """
     Attend to the cell that is changed by the action.
     To do so, make the vision system put that cell in the center
@@ -136,9 +136,8 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
     input_height = len(example_input)
     input_width = len(example_input[0])
 
-    row = candidate_action.row()
-    col = candidate_action.col()
-    new_value = candidate_action.cell_value()
+    row = cell_address.row()
+    col = cell_address.col()
 
     center_x = input_width // 2
     center_y = input_height // 2
@@ -150,8 +149,6 @@ def do_visual_fixation(example_input, current_state, candidate_action: QLearning
         example_input, translation_x, translation_y, Cell(0))
     attented_current_state = translate_board(
         current_state, translation_x, translation_y, Cell(0))
-    attented_candidate_action = QLearningAction(
-        center_y, center_x, new_value)
 
     return [
         attented_example_input,

@@ -11,7 +11,7 @@ import copy
 from typing import List, Tuple
 from context import tokens_to_text, make_example_tensor, prepare_context
 from context import state_to_text, get_puzzle_starting_state
-from q_learning import QLearningAction, Cell, Experience, GameState
+from q_learning import QLearningAction, Cell, CellAddress, Experience, GameState
 from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment
 from configuration import Configuration
@@ -260,13 +260,16 @@ def solve_puzzle_example_auto_regressive(environment: Environment,
 
     while not environment.is_in_terminal_state():
         candidate_actions = environment.list_actions()
+        candidate_action = candidate_actions[0]
+        cell_address = CellAddress(
+            candidate_action.row(), candidate_action.col(),)
 
         example_input, current_state = environment.get_observations()
 
         best_action_index = select_action_with_policy_network(
             example_input,
             current_state,
-            candidate_actions,
+            cell_address,
             padding_char,
             context_size,
             batch_size,
@@ -306,9 +309,10 @@ def select_action_with_deep_q_network(
 
     # Note that all candidate actions act on the same cell.
     candidate_action = candidate_actions[0]
+    cell_address = CellAddress(candidate_action.row(), candidate_action.col(),)
 
     input_tokens = prepare_context(
-        example_input, current_state, candidate_action, padding_char)
+        example_input, current_state, cell_address, padding_char)
 
     if verbose:
         print("input_text")
@@ -382,7 +386,7 @@ def select_action_with_deep_q_network(
 def select_action_with_policy_network(
         example_input: List[List[Cell]],
         current_state: List[List[Cell]],
-        candidate_actions: list[QLearningAction],
+        cell_address: CellAddress,
         padding_char: str,
         context_size: int,
         batch_size: int,
@@ -394,11 +398,9 @@ def select_action_with_policy_network(
     The policy network outputs a probability distribution over actions.
     Sample an action index using the policy network.
     """
-    # Note that all candidate actions act on the same cell.
-    candidate_action = candidate_actions[0]
 
     input_tokens = prepare_context(
-        example_input, current_state, candidate_action, padding_char)
+        example_input, current_state, cell_address, padding_char)
 
     if verbose:
         print("input_text")
@@ -479,6 +481,9 @@ def play_game_using_model(
     while not environment.is_in_terminal_state():
 
         candidate_actions = environment.list_actions()
+        candidate_action = candidate_actions[0]
+        cell_address = CellAddress(
+            candidate_action.row(), candidate_action.col(),)
 
         example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)
@@ -486,7 +491,7 @@ def play_game_using_model(
         best_action_index = select_action_with_policy_network(
             example_input,
             current_state,
-            candidate_actions,
+            cell_address,
             padding_char,
             context_size,
             batch_size,

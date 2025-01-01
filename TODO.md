@@ -16,6 +16,7 @@
 - for data augmentation, maybe remove random cols or rows
 - remove QDN usage
 - use BERT_large parameters L=12, H=768, A=12
+- don't mask cells
 
 
 # Refactoring
@@ -40,14 +41,12 @@
 - move cell_match_reward to config
 - move cell_mismatch_reward to config
 - add actions left (10), up (11), right (12), down (13)
+- return only max_action_value in select_action_with_target_action_value_network
 
 - move training of action value network to agent.py
-- don't mask cells
 
 # Policy gradient methods
 
-- use select_action_with_policy
-- return only max_action_value in select_action_with_target_action_value_network
 - add old policy network to use PPO (proximal policy optimization)
     see Off-Policy Proximal Policy Optimization
         https://ojs.aaai.org/index.php/AAAI/article/view/26099

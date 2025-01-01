@@ -54,6 +54,18 @@ class QLearningAction:
         return self.__cell_value
 
 
+class CellAddress:
+    def __init__(self, row: int, col: int,):
+        self.__row = row
+        self.__col = col
+
+    def row(self) -> int:
+        return self.__row
+
+    def col(self) -> int:
+        return self.__col
+
+
 class Cell:
     def __init__(self, value):
         self.__value = value
