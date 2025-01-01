@@ -419,13 +419,17 @@ def play_game_using_model(
     while not environment.is_in_terminal_state():
 
         candidate_actions = environment.list_actions()
-        np.random.shuffle(candidate_actions)
+        cell_addresses = []
+        for candidate_action in candidate_actions:
+            if candidate_action.cell_value() == 0:
+                cell_address = CellAddress(
+                    candidate_action.row(), candidate_action.col(),)
+                cell_addresses.append(cell_address)
+                if len(cell_addresses) == batch_size:
+                    break
 
-        candidate_action = candidate_actions[0]
-        cell_address = CellAddress(
-            candidate_action.row(), candidate_action.col(),)
+        np.random.shuffle(cell_addresses)
 
-        cell_addresses = [cell_address]
         example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)
 

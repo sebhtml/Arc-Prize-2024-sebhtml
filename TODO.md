@@ -1,6 +1,6 @@
 # Research and Development
 
-- generate episode with batch to go faster by passing many cell addresses in play_game_using_model
+- retry reinforce algorithm
 - use sequences of fixations, 4 fixations following gaussian sampling on density of scene, 4 fixations following gaussian sampling around cell to assign
 - test with 009d5c81
 
