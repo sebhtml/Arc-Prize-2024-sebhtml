@@ -215,16 +215,24 @@ def apply_policy_network(puzzle_examples, agent: Agent,
 
     for example_input, example_output in puzzle_examples:
         print("example")
-        solve_puzzle_example_auto_regressive(
+        play_game_using_model(
             environment,
-            example_input, agent,
-            padding_char, context_size, batch_size,
-            device,)
+            padding_char,
+            context_size,
+            batch_size,
+            device,
+            agent,
+            example_input,
+            None,
+        )
+
+        episode = environment.recorded_episodes()[-1]
+        for state in episode:
+            example_input = state.example_input()
+            current_state = state.current_state()
+            print_current_state(example_input, current_state, padding_char)
 
         example_input, current_state = environment.get_observations()
-
-        print("final output_state")
-        print_current_state(example_input, current_state, padding_char)
 
         # Print the example_target.
         example_output = get_puzzle_starting_state(
@@ -239,53 +247,6 @@ def apply_policy_network(puzzle_examples, agent: Agent,
         result = "PASS" if correct_cells == total_cells else "FAIL"
         print(
             f"Result:  correct_cells: {correct_cells}  total_cells: {total_cells}  score: {score}  result: {result}")
-
-
-def solve_puzzle_example_auto_regressive(environment: Environment,
-                                         example_input: List[List[int]], agent: Agent, padding_char: str,
-                                         context_size: int, batch_size: int,
-                                         device: torch.device):
-    agent.policy_network().eval()
-
-    environment.set_puzzle_example(example_input, None)
-
-    example_input, current_state = environment.get_observations()
-
-    print("AUTO-REGRESSIVE wannabe AGI megabot current state")
-    print_current_state(example_input, current_state, padding_char)
-
-    verbose = True
-
-    while not environment.is_in_terminal_state():
-        candidate_actions = environment.list_actions()
-        candidate_action = candidate_actions[0]
-        cell_address = CellAddress(
-            candidate_action.row(), candidate_action.col(),)
-
-        example_input, current_state = environment.get_observations()
-
-        best_action_index = select_action_with_policy_network(
-            example_input,
-            current_state,
-            cell_address,
-            padding_char,
-            context_size,
-            batch_size,
-            device,
-            agent.policy_network(),
-            verbose,
-        )
-
-        best_action = candidate_actions[best_action_index]
-
-        immediate_reward = environment.take_action(best_action)
-
-        example_input, current_state = environment.get_observations()
-
-        print("AUTO-REGRESSIVE wannabe AGI megabot current state")
-        print_current_state(example_input, current_state, padding_char)
-
-    return current_state
 
 
 def print_current_state(example_input, current_state, padding_char):
