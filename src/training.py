@@ -184,7 +184,7 @@ def train_action_value_network(
     optimizer.zero_grad()
     (inputs, targets, action_indices) = data
 
-    inputs = [t.to(device) for t in inputs]
+    inputs = inputs.to(device)
     targets = targets.to(device)
 
     # outputs has shape [batch_size, num_actions, num_classes].
@@ -235,14 +235,13 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
         dataset, batch_size=batch_size, shuffle=True)
     for data in inference_loader:
         (inputs, action_indices) = data
-        inputs = [t.to(device) for t in inputs]
+        inputs = inputs.to(device)
         outputs = policy_network(inputs)
 
-        for idx in range(len(inputs[0])):
+        for idx in range(len(inputs)):
             print("--------------------")
             print(f"idx: {idx} ")
-            input = [inputs[0][idx],
-                     ]
+            input = inputs[idx]
             target = action_indices[idx].item()
 
             output = outputs[idx].argmax(dim=-1).item()
@@ -250,7 +249,7 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
             print("input")
             print("".join(
                 list(map(chr,
-                         input[0].tolist()
+                         input.tolist()
                          ))))
             print("target: ")
             print(target)

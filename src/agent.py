@@ -165,7 +165,7 @@ class Agent:
 
         (inputs, action_indices) = data
 
-        inputs = [t.to(device) for t in inputs]
+        inputs = inputs.to(device)
         action_indices = action_indices.to(device)
 
         # Get this quantity:     log π(a|s)
@@ -405,10 +405,10 @@ def select_action_with_policy_network(
         print(tokens_to_text(input_tokens))
 
     # Add a dimension for the batch_size
-    inputs = list(map(lambda tensor: tensor.unsqueeze(0),
-                      make_example_tensor(input_tokens, context_size)))
+    inputs = make_example_tensor(input_tokens, context_size)
+    inputs = inputs.unsqueeze(0)
 
-    inputs = [t.to(device) for t in inputs]
+    inputs = inputs.to(device)
     logits = policy_network(inputs)
     temperature = 1.0
     probs = F.softmax(logits / temperature, dim=-1)

@@ -123,9 +123,7 @@ def make_example_tensor(example_input_tokens: Context, context_size: int):
     if len(input_tokens) > context_size:
         raise Exception(
             f"text ({len(input_tokens)} tokens) is too large to fit in context ! Increase context_size ({context_size})")
-    item_input = [
-        torch.tensor(attended_example_input),
-    ]
+    item_input = torch.tensor(attended_example_input)
     return item_input
 
 

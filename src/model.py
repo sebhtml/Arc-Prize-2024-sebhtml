@@ -139,8 +139,8 @@ class Encoder(nn.Module):
         self.blocks = nn.Sequential(*modules)
         self.norm = nn.RMSNorm(d_model)
 
-    def forward(self, x: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> torch.Tensor:
-        attended_example_input = x[0]
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        attended_example_input = x
         x_attended_example_input = self.attended_example_input_embed(
             attended_example_input)
         x = torch.cat([
@@ -208,7 +208,7 @@ class PolicyNetworkModel(nn.Module):
             in_features=d_model, out_features=num_actions)
 
     def forward(self, x: Tuple[torch.Tensor]) -> torch.Tensor:
-        x = self.__input_dropout(x[0])
+        x = self.__input_dropout(x)
         # Prepend the CLS token
         cls_token = torch.tensor([CLS_TOKEN])
         batch_size = x.shape[0]
@@ -217,7 +217,7 @@ class PolicyNetworkModel(nn.Module):
         x = torch.cat(
             [cls_token, x], dim=-1)
 
-        hidden = self.__encoder([x])
+        hidden = self.__encoder(x)
         # [batch_size, context_size, d_model] -> [batch_size, d_model]
         # Take the hidden representation of the [CLS] token.
         cls_hidden = hidden[:, 0, :]
