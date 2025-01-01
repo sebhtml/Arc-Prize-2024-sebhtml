@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 from datetime import datetime, timezone
 from typing import List, Tuple
+import random
 from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model, Agent
 from context import tokens_to_text, prepare_context
 from report import plot_train_loss_graph, plot_total_rewards_graph
@@ -12,6 +13,7 @@ from model import ActionValueNetworkModel
 from environment import Environment, generate_cell_actions
 from configuration import Configuration
 from q_learning import Experience, unbin_action_value, CellAddress, bin_action_value
+from vision import flip_board, rotate_90_clockwise
 
 
 def get_target_action_value(
@@ -377,6 +379,36 @@ def train_model_using_experience_replay(
                              total_rewards, total_rewards_png_path)
 
 
+def generate_training_puzzle_example(
+    puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
+) -> Tuple[List[List[int]], List[List[int]]]:
+
+    i = random.randrange(0, len(puzzle_train_examples))
+    puzzle_example = puzzle_train_examples[i]
+
+    (raw_example_input, raw_example_output) = puzzle_example
+
+    rotations = random.randrange(0, 4)
+
+    for _ in range(rotations):
+        raw_example_input = rotate_90_clockwise(raw_example_input)
+        raw_example_output = rotate_90_clockwise(raw_example_output)
+
+    if random.randrange(0, 2) == 0:
+        raw_example_input = flip_board(
+            raw_example_input, 'horizontal')
+        raw_example_output = flip_board(
+            raw_example_output, 'horizontal')
+
+    if random.randrange(0, 2) == 0:
+        raw_example_input = flip_board(
+            raw_example_input, 'vertical')
+        raw_example_output = flip_board(
+            raw_example_output, 'vertical')
+
+    return raw_example_input, raw_example_output
+
+
 def train_model_with_experience_replay_data_set(
     config: Configuration,
     environment: Environment,
@@ -396,6 +428,9 @@ def train_model_with_experience_replay_data_set(
     https://www.nature.com/articles/nature14236
     """
 
+    example_input, example_output = generate_training_puzzle_example(
+        puzzle_train_examples)
+
     # Basically use on-policy data.
     experience_replay_data_set = []
 
@@ -406,7 +441,9 @@ def train_model_with_experience_replay_data_set(
         batch_size,
         device,
         agent,
-        puzzle_train_examples, cell_value_size)
+        example_input,
+        example_output,
+    )
 
     experience_replay_data_set_size = 4096
     experience_replay_data_set += new_train_examples

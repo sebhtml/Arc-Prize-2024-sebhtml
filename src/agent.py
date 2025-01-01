@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 
 import numpy as np
-import random
 import sys
 import copy
 from typing import List, Tuple
@@ -15,7 +14,6 @@ from q_learning import QLearningAction, Cell, CellAddress, Experience, GameState
 from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment
 from configuration import Configuration
-from vision import flip_board, rotate_90_clockwise
 from episode_renderer import print_with_colors
 
 
@@ -430,14 +428,13 @@ def play_game_using_model(
         batch_size: int,
         device: torch.device,
         agent: Agent,
-        puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]], cell_value_size: int) -> List[Experience]:
+        example_input: List[List[int]],
+        example_output: List[List[int]],
+) -> List[Experience]:
     """
-    Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by a random player.
+    Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by the policy network.
 
     Each time that the player assigns a color to a cell, the assigned color is either correct or incorrect.
-
-    We start from an empty board, and generate legal actions, and choose the best action (argmax of action value),
-    until the end of the game is reached.
 
     See:
     Amortized Planning with Large-Scale Transformers: A Case Study on Chess
@@ -449,31 +446,7 @@ def play_game_using_model(
     agent.policy_network().eval()
     replay_buffer = []
 
-    if environment.is_in_terminal_state():
-        i = random.randrange(0, len(puzzle_train_examples))
-        puzzle_example = puzzle_train_examples[i]
-
-        (raw_example_input, raw_example_output) = puzzle_example
-
-        rotations = random.randrange(0, 4)
-
-        for _ in range(rotations):
-            raw_example_input = rotate_90_clockwise(raw_example_input)
-            raw_example_output = rotate_90_clockwise(raw_example_output)
-
-        if random.randrange(0, 2) == 0:
-            raw_example_input = flip_board(
-                raw_example_input, 'horizontal')
-            raw_example_output = flip_board(
-                raw_example_output, 'horizontal')
-
-        if random.randrange(0, 2) == 0:
-            raw_example_input = flip_board(
-                raw_example_input, 'vertical')
-            raw_example_output = flip_board(
-                raw_example_output, 'vertical')
-
-        environment.set_puzzle_example(raw_example_input, raw_example_output)
+    environment.set_puzzle_example(example_input, example_output)
 
     verbose = False
 
