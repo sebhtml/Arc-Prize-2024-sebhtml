@@ -143,9 +143,11 @@ class MyDataset(Dataset):
         example_input = experience.state().example_input()
         current_state = experience.state().current_state()
         candidate_action = experience.action()
+        reward = experience.reward()
         cell_address = CellAddress(
             candidate_action.row(), candidate_action.col(),)
         padding_char = self.__config.padding_char
+        # action_index = candidate_action.cell_value()
         action_index = experience.correct_action_index()
 
         input_tokens = prepare_context(
@@ -159,7 +161,7 @@ class MyDataset(Dataset):
         item_input = make_example_tensor(
             input_tokens, self.__config.context_size)
 
-        item = (item_input, action_index)
+        item = (item_input, action_index, reward)
 
         return item
 
@@ -238,7 +240,7 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True)
     for data in inference_loader:
-        (inputs, action_indices) = data
+        (inputs, action_indices, rewards) = data
         inputs = inputs.to(device)
         outputs = policy_network(inputs)
 
@@ -246,7 +248,7 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
             print("--------------------")
             print(f"idx: {idx} ")
             input = inputs[idx]
-            target = action_indices[idx].item()
+            target = "unknown due to policy gradient method"
 
             output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))

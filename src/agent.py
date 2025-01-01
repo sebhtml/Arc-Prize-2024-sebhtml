@@ -161,22 +161,30 @@ class Agent:
         policy_network = self.__policy_network
         optimizer = self.__policy_network_optimizer
 
-        (inputs, action_indices) = data
+        (inputs, action_indices, rewards) = data
 
         inputs = inputs.to(device)
         action_indices = action_indices.to(device)
+        rewards = rewards.to(device)
 
-        # Get this quantity:     log π(a|s)
-        action_mean_logits = policy_network(inputs)
+        # Get this quantity:    logits.
+        action_logits = policy_network(inputs)
 
-        batch_size = action_mean_logits.shape[0]
+        batch_size = action_logits.shape[0]
 
-        # L = - log π(a|s)
-        log_softmax_output = F.log_softmax(action_mean_logits, dim=-1)
+        # log π(a|s)
+        log_softmax_output = F.log_softmax(action_logits, dim=-1)
 
-        criterion = nn.NLLLoss()
+        log_probs = log_softmax_output[torch.arange(
+            batch_size), action_indices]
 
-        loss = criterion(log_softmax_output, action_indices)
+        # Reinforce
+        # L = -log P(a | s) * v
+        # loss = -torch.mean(log_probs * rewards)
+
+        # Negative log likelihood.
+        # L = -log P(a | s)
+        loss = -torch.mean(log_probs)
 
         optimizer.zero_grad()
         loss.backward()
