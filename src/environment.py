@@ -155,26 +155,13 @@ def generate_cell_actions(
         cell_value_size: int,
 ) -> List[QLearningAction]:
 
-    vacant_cells = []
+    candidate_actions = []
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
             # A cell can only be changed once.
             if current_state[row][col].value() == VACANT_CELL_VALUE:
-                vacant_cells.append([row, col])
-
-    if len(vacant_cells) == 0:
-        return []
-
-    # Select randomly a cell to be filled.
-    i = random.randrange(0, len(vacant_cells))
-
-    vacant_cell = vacant_cells[i]
-    row = vacant_cell[0]
-    col = vacant_cell[1]
-
-    candidate_actions = []
-    for new_value in range(cell_value_size):
-        action = QLearningAction(row, col, new_value)
-        candidate_actions.append(action)
+                for new_value in range(cell_value_size):
+                    action = QLearningAction(row, col, new_value)
+                    candidate_actions.append(action)
 
     return candidate_actions
