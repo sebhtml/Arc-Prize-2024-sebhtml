@@ -10,7 +10,7 @@ import copy
 from typing import List, Tuple
 from context import tokens_to_text, make_example_tensor, prepare_context
 from context import state_to_text, get_puzzle_starting_state
-from q_learning import QLearningAction, Cell, CellAddress, Experience, GameState
+from q_learning import QLearningAction, Cell, CellAddress, Experience, GameState, trim_list
 from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment
 from configuration import Configuration
@@ -433,10 +433,9 @@ def play_game_using_model(
                 cell_address = CellAddress(
                     candidate_action.row(), candidate_action.col(),)
                 cell_addresses.append(cell_address)
-                if len(cell_addresses) == batch_size:
-                    break
 
         np.random.shuffle(cell_addresses)
+        cell_addresses = trim_list(cell_addresses, batch_size)
 
         example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)

@@ -12,7 +12,7 @@ from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
 from environment import Environment, generate_cell_actions
 from configuration import Configuration
-from q_learning import Experience, unbin_action_value, CellAddress, bin_action_value
+from q_learning import Experience, unbin_action_value, CellAddress, bin_action_value, trim_list
 from vision import flip_board, rotate_90_clockwise
 
 
@@ -164,13 +164,6 @@ class MyDataset(Dataset):
         item = (item_input, action_index, reward)
 
         return item
-
-
-def trim_list(lst, k):
-    """
-    keep at most k elements from list lst
-    """
-    return lst[-k:] if len(lst) > k else lst
 
 
 def train_action_value_network(

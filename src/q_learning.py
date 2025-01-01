@@ -129,3 +129,10 @@ def reward(expected_state: List[List[int]], candidate_action: QLearningAction) -
         return cell_match_reward
     else:
         return cell_mismatch_reward
+
+
+def trim_list(lst, k):
+    """
+    keep at most k elements from list lst
+    """
+    return lst[-k:] if len(lst) > k else lst
