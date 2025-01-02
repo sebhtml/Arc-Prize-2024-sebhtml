@@ -1,4 +1,4 @@
-from vision import rotate_90_clockwise, translate_board, flip_board
+from vision import rotate_90_clockwise, translate_board, flip_board, crop_field_of_view
 
 
 def test_rotate_90_clockwise():
@@ -91,3 +91,23 @@ def test_vertical_flip():
     # Vertical flip
     flipped_vertical = flip_board(grid, 'vertical')
     assert flipped_vertical == [[5, 6, 7, 8], [1, 2, 3, 4]]
+
+def test_crop_field_of_view():
+    board = [
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 8, 0, 0, 0, 0, 0],
+        [0, 8, 8, 0, 0, 0, 0],
+        [0, 0, 0, 0, 8, 8, 0],
+        [0, 0, 0, 0, 0, 8, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0]
+    ]
+    new_board = crop_field_of_view(board, 5, 5)
+    expected = [
+        [8, 0, 0, 0, 0],
+        [8, 8, 0, 0, 0],
+        [0, 0, 0, 8, 8],
+        [0, 0, 0, 0, 8],
+        [0, 0, 0, 0, 0],
+    ]
+    assert new_board == expected

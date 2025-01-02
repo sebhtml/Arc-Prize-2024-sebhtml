@@ -1,7 +1,6 @@
 # Research and Development
 
-- crop the visual fixation to crop_width and crop_height
-- add argument in do_visual_fixation for fixation width and height (5x5)
+test crop with puzzle 2 and puzzle 3            
 - use sequences of fixations, 4 fixations following gaussian sampling on density of scene, 4 fixations following gaussian sampling around cell to assign
 - test with 009d5c81
 
