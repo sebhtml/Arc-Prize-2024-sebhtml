@@ -215,7 +215,7 @@ def evaluate_solution(actual: List[List[Cell]], expected: List[List[Cell]]) -> T
     return correct, len(expected)
 
 
-def apply_policy_network(puzzle_examples, agent: Agent,
+def test_policy(puzzle_examples, agent: Agent,
                          padding_char: str, cell_value_size: int,
                          context_size: int, batch_size: int,
                          device: torch.device,
@@ -223,7 +223,7 @@ def apply_policy_network(puzzle_examples, agent: Agent,
 
     for example_input, example_output in puzzle_examples:
         print("example")
-        play_game_using_model(
+        generate_episode_with_policy(
             environment,
             padding_char,
             context_size,
@@ -394,7 +394,7 @@ def select_action_with_policy_network(
     return best_action_indexes
 
 
-def play_game_using_model(
+def generate_episode_with_policy(
         environment: Environment,
         padding_char: str,
         context_size: int,

@@ -33,7 +33,7 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = False  # prod: True, dev: False
+    terminate_pod_at_the_end = True  # prod: True, dev: False
 
     #
     # Puzzle configuration

@@ -29,7 +29,7 @@ import torch
 import json
 from model import ActionValueNetworkModel
 from infrastructure import terminate_pod
-from agent import apply_policy_network, Agent
+from agent import test_policy, Agent
 from environment import Environment
 from training import train_model_using_experience_replay
 from configuration import Configuration
@@ -138,12 +138,12 @@ def main():
 
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.
     if config.run_autoregressive_inference_on_train_examples:
-        apply_policy_network(
+        test_policy(
             puzzle_train_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
 
     # Check if the auto-regressive inference AI is able to predict the output for the test example.
     if config.run_autoregressive_inference_on_test_examples:
-        apply_policy_network(
+        test_policy(
             puzzle_test_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
 
     # Render recorded episodes.

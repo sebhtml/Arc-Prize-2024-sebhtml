@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime, timezone
 from typing import List, Tuple
 import random
-from agent import make_example_tensor, select_action_with_deep_q_network, play_game_using_model, Agent
+from agent import make_example_tensor, select_action_with_deep_q_network, generate_episode_with_policy, Agent
 from context import tokens_to_text, prepare_context
 from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
@@ -429,7 +429,7 @@ def train_model_with_experience_replay_data_set(
     # Basically use on-policy data.
     experience_replay_data_set = []
 
-    new_train_examples = play_game_using_model(
+    new_train_examples = generate_episode_with_policy(
         environment,
         padding_char,
         context_size,
