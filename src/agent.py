@@ -279,7 +279,7 @@ def select_action_with_deep_q_network(
     cell_address = CellAddress(candidate_action.row(), candidate_action.col(),)
 
     input_tokens = prepare_context(
-        example_input, current_state, cell_address, padding_char)
+        example_input, cell_address, padding_char)
 
     if verbose:
         print("input_text")
@@ -370,7 +370,7 @@ def select_action_with_policy_network(
 
     for cell_address in cell_addresses:
         input_tokens = prepare_context(
-            example_input, current_state, cell_address, padding_char)
+            example_input, cell_address, padding_char)
 
         if verbose:
             print("input_text")

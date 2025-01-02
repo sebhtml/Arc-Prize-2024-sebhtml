@@ -120,9 +120,10 @@ def flip_board(grid, direction):
             "Invalid direction. Must be 'horizontal' or 'vertical'.")
 
 
-def do_visual_fixation(example_input, current_state, cell_address: CellAddress):
+def do_visual_fixation(example_input: List[List[Cell]], cell_address: CellAddress) -> List[List[Cell]]:
     """
-    Attend to the cell that is changed by the action.
+    Attend to a cell address.
+
     To do so, make the vision system put that cell in the center
     of the field of view.
 
@@ -131,6 +132,10 @@ def do_visual_fixation(example_input, current_state, cell_address: CellAddress):
     https://www.cs.toronto.edu/~hinton/absps/nips_eyebm.pdf
 
     See https://en.wikipedia.org/wiki/Fixation_(visual)
+
+    See
+    Predicting human gaze beyond pixels
+    https://jov.arvojournals.org/article.aspx?articleid=2193943
     """
 
     input_height = len(example_input)
@@ -147,10 +152,5 @@ def do_visual_fixation(example_input, current_state, cell_address: CellAddress):
 
     attented_example_input = translate_board(
         example_input, translation_x, translation_y, Cell(0))
-    attented_current_state = translate_board(
-        current_state, translation_x, translation_y, Cell(0))
 
-    return [
-        attented_example_input,
-        attented_current_state,
-    ]
+    return attented_example_input

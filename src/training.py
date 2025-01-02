@@ -151,7 +151,7 @@ class MyDataset(Dataset):
         action_index = experience.correct_action_index()
 
         input_tokens = prepare_context(
-            example_input, current_state, cell_address, padding_char)
+            example_input, cell_address, padding_char)
 
         if not self.__printed:
             print("input_text")
