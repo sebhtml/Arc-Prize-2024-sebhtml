@@ -33,14 +33,14 @@ class Configuration:
     # Infrastructure configuration
     #
     api_key_file = "/workspace/runpod_api_key.yml"
-    terminate_pod_at_the_end = True  # prod: True, dev: False
+    terminate_pod_at_the_end = False  # prod: True, dev: False
 
     #
     # Puzzle configuration
     #
 
     # See https://arcprize.org/play?task=3aa6fb7a
-    selected_puzzle_id = "009d5c81"
+    selected_puzzle_id = "3aa6fb7a"
 
     # Each cell has one color and there are 10 colors.
     cell_value_size = 10

@@ -11,14 +11,12 @@
 - use Dropout in classifier of policy network model
 - move norm and dropout at same scope in transformer block
 
-- remove masking functions
 - remove vacant variables
 - use new puzzle
 
 - for data augmentation, maybe remove random cols or rows
 - remove QDN usage
 - use BERT_large parameters L=12, H=768, A=12
-- don't mask cells
 
 
 # Refactoring

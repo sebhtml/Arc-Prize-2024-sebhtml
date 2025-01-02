@@ -216,10 +216,10 @@ def evaluate_solution(actual: List[List[Cell]], expected: List[List[Cell]]) -> T
 
 
 def test_policy(puzzle_examples, agent: Agent,
-                         padding_char: str, cell_value_size: int,
-                         context_size: int, batch_size: int,
-                         device: torch.device,
-                         environment: Environment,):
+                padding_char: str, cell_value_size: int,
+                context_size: int, batch_size: int,
+                device: torch.device,
+                environment: Environment,):
 
     for example_input, example_output in puzzle_examples:
         print("example")

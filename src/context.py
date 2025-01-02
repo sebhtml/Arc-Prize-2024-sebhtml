@@ -2,12 +2,11 @@ import torch
 import copy
 from typing import List
 from vision import Cell, CellAddress, do_visual_fixation
-from vision import VACANT_CELL_VALUE,  MASKED_CELL_VALUE,  OUTSIDE_CELL_VALUE
+from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
 from q_learning import QLearningAction
 from model import CLS_TOKEN
 
 VACANT_CELL_CHAR = '_'
-MASKED_CELL_CHAR = 'X'
 OUTSIDE_CELL_CHAR = '.'
 
 
@@ -97,8 +96,6 @@ def state_to_text(state: List[List[Cell]]) -> str:
             value = None
             if state[row][col].value() == VACANT_CELL_VALUE:
                 value = VACANT_CELL_CHAR
-            elif state[row][col].value() == MASKED_CELL_VALUE:
-                value = MASKED_CELL_CHAR
             elif state[row][col].value() == OUTSIDE_CELL_VALUE:
                 value = OUTSIDE_CELL_CHAR
             else:
@@ -141,14 +138,14 @@ def filter_token(token: int) -> bool:
             "CLS token is forbidden before passing the tensor to the neural net")
     legal_tokens = list(map(lambda x: ord(str(x)), range(10))) + \
         list(map(ord, [VACANT_CELL_CHAR,
-             MASKED_CELL_CHAR, OUTSIDE_CELL_CHAR]))
+             OUTSIDE_CELL_CHAR]))
     return token in legal_tokens
 
 
 def prepare_context(example_input: List[List[Cell]], current_state: List[List[Cell]], cell_address: CellAddress,
                     padding_char: str) -> Context:
 
-    masked_current_state = mask_current_state(current_state)
+    masked_current_state = current_state
 
     (attented_example_input, attented_current_state,
      ) = do_visual_fixation(example_input, masked_current_state, cell_address)
@@ -158,17 +155,3 @@ def prepare_context(example_input: List[List[Cell]], current_state: List[List[Ce
         attented_example_input, attented_current_state, padding_char)
 
     return input_tokens
-
-
-def mask_current_state(current_state: List[List[Cell]]) -> List[List[Cell]]:
-    """
-    Mask non-vacant cells that were assigned by past actions to reduce combinatorics
-    """
-    masked_current_state = copy.deepcopy(current_state)
-    width = len(masked_current_state[0])
-    height = len(masked_current_state)
-    for x in range(width):
-        for y in range(height):
-            if masked_current_state[y][x].value() != VACANT_CELL_VALUE:
-                masked_current_state[y][x].set_value(MASKED_CELL_VALUE)
-    return masked_current_state

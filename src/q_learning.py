@@ -2,7 +2,6 @@ from typing import List
 import math
 
 VACANT_CELL_VALUE = -1
-MASKED_CELL_VALUE = -2
 OUTSIDE_CELL_VALUE = -3
 
 cell_match_reward = +1.0
