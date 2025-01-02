@@ -216,7 +216,7 @@ def evaluate_solution(actual: List[List[Cell]], expected: List[List[Cell]]) -> T
 
 
 def test_policy(puzzle_examples, agent: Agent,
-                padding_char: str, cell_value_size: int,
+                config: Configuration, cell_value_size: int,
                 context_size: int, batch_size: int,
                 device: torch.device,
                 environment: Environment,):
@@ -225,7 +225,7 @@ def test_policy(puzzle_examples, agent: Agent,
         print("example")
         generate_episode_with_policy(
             environment,
-            padding_char,
+            config,
             context_size,
             batch_size,
             device,
@@ -238,7 +238,8 @@ def test_policy(puzzle_examples, agent: Agent,
         for state in episode:
             example_input = state.example_input()
             current_state = state.current_state()
-            print_current_state(example_input, current_state, padding_char)
+            print_current_state(
+                example_input, current_state, config.padding_char,)
 
         example_input, current_state = environment.get_observations()
 
@@ -247,7 +248,7 @@ def test_policy(puzzle_examples, agent: Agent,
             example_output, "example_input")
         print("Expected output")
         print_current_state(
-            example_input, example_output, padding_char)
+            example_input, example_output, config.padding_char,)
 
         correct_cells, total_cells = evaluate_solution(
             current_state, example_output)
@@ -266,7 +267,7 @@ def select_action_with_deep_q_network(
         example_input: List[List[Cell]],
         current_state: List[List[Cell]],
         candidate_actions: list[QLearningAction],
-        padding_char: str,
+        config: Configuration,
         context_size: int,
         batch_size: int,
         device: torch.device,
@@ -279,7 +280,7 @@ def select_action_with_deep_q_network(
     cell_address = CellAddress(candidate_action.row(), candidate_action.col(),)
 
     input_tokens = prepare_context(
-        example_input, cell_address, padding_char)
+        example_input, cell_address, config.padding_char, config.crop_width, config.crop_height,)
 
     if verbose:
         print("input_text")
@@ -354,7 +355,7 @@ def select_action_with_policy_network(
         example_input: List[List[Cell]],
         current_state: List[List[Cell]],
         cell_addresses: List[CellAddress],
-        padding_char: str,
+        config: Configuration,
         context_size: int,
         batch_size: int,
         device: torch.device,
@@ -370,7 +371,7 @@ def select_action_with_policy_network(
 
     for cell_address in cell_addresses:
         input_tokens = prepare_context(
-            example_input, cell_address, padding_char)
+            example_input, cell_address, config.padding_char, config.crop_width, config.crop_height,)
 
         if verbose:
             print("input_text")
@@ -396,7 +397,7 @@ def select_action_with_policy_network(
 
 def generate_episode_with_policy(
         environment: Environment,
-        padding_char: str,
+        config: Configuration,
         context_size: int,
         batch_size: int,
         device: torch.device,
@@ -444,7 +445,7 @@ def generate_episode_with_policy(
             example_input,
             current_state,
             cell_addresses,
-            padding_char,
+            config,
             context_size,
             batch_size,
             device,

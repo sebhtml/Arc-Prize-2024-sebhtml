@@ -1,7 +1,7 @@
 import torch
 import copy
 from typing import List
-from vision import Cell, CellAddress, do_visual_fixation
+from vision import Cell, CellAddress, do_visual_fixation, crop_field_of_view
 from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
 from q_learning import QLearningAction
 from model import CLS_TOKEN
@@ -104,9 +104,11 @@ def filter_token(token: int) -> bool:
 
 
 def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
-                    padding_char: str) -> Context:
+                    padding_char: str, crop_width: int, crop_height: int,) -> Context:
 
     attented_example_input = do_visual_fixation(example_input, cell_address)
+    attented_example_input = crop_field_of_view(
+        attented_example_input, crop_width, crop_height,)
 
     input_tokens = tokenize_example_input(
         attented_example_input, padding_char)

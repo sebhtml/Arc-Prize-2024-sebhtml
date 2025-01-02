@@ -139,12 +139,12 @@ def main():
     # Check if the auto-regressive inference AI is able to predict the output for the train examples.
     if config.run_autoregressive_inference_on_train_examples:
         test_policy(
-            puzzle_train_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
+            puzzle_train_examples, agent, config, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
 
     # Check if the auto-regressive inference AI is able to predict the output for the test example.
     if config.run_autoregressive_inference_on_test_examples:
         test_policy(
-            puzzle_test_examples, agent, config.padding_char, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
+            puzzle_test_examples, agent, config, config.cell_value_size, config.context_size, config.batch_size, device, environment,)
 
     # Render recorded episodes.
     if config.render_recorded_episodes:

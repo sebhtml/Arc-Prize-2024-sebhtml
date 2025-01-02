@@ -18,7 +18,7 @@ from vision import flip_board, rotate_90_clockwise
 
 def get_target_action_value(
         experience: Experience,
-        padding_char: str,
+        config: Configuration,
         context_size: int,
         cell_value_size: int,
         minimum_action_value: float,
@@ -63,7 +63,7 @@ def get_target_action_value(
         example_input,
         current_state,
         candidate_actions,
-        padding_char,
+        config,
         context_size,
         batch_size,
         device,
@@ -147,11 +147,13 @@ class MyDataset(Dataset):
         cell_address = CellAddress(
             candidate_action.row(), candidate_action.col(),)
         padding_char = self.__config.padding_char
+        crop_width = self.__config.crop_width
+        crop_height = self.__config.crop_height
         # action_index = candidate_action.cell_value()
         action_index = experience.correct_action_index()
 
         input_tokens = prepare_context(
-            example_input, cell_address, padding_char)
+            example_input, cell_address, padding_char, crop_width, crop_height,)
 
         if not self.__printed:
             print("input_text")
@@ -431,7 +433,7 @@ def train_model_with_experience_replay_data_set(
 
     new_train_examples = generate_episode_with_policy(
         environment,
-        padding_char,
+        config,
         context_size,
         batch_size,
         device,

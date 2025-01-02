@@ -154,3 +154,8 @@ def do_visual_fixation(example_input: List[List[Cell]], cell_address: CellAddres
         example_input, translation_x, translation_y, Cell(0))
 
     return attented_example_input
+
+
+def crop_field_of_view(view: List[List[Cell]], crop_width: int, crop_height: int,) -> List[List[Cell]]:
+    # TODO
+    return view

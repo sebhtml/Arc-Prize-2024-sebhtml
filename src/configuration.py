@@ -42,14 +42,14 @@ class Configuration:
     # See https://arcprize.org/play?task=3aa6fb7a
     selected_puzzle_id = "3aa6fb7a"
 
+    #
+    # Vision configuration
+    #
+    padding_char = ' '
+    crop_width = 5
+    crop_height = 5
     # Each cell has one color and there are 10 colors.
     cell_value_size = 10
-
-    #
-    # Game simulation configuration
-    #
-    discount = 0.99
-    padding_char = ' '
 
     #
     # Neural network model configuration
@@ -119,6 +119,11 @@ class Configuration:
     lr = 0.0001
     # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they use a weight decay of 0.1
     weight_decay = 0.1
+
+    #
+    # Q-learning parameters
+    #
+    discount = 0.99
     minimum_action_value = 0
     maximum_action_value = 49 * 1
 
@@ -126,12 +131,14 @@ class Configuration:
     # Options for loading AI neural net model
     #
     load_model = False
+
     #
     # Options for training AI neural net model
     #
     train_model = True
     save_step_losses = True
     save_neural_net_model = True
+
     #
     # Options for evaluating AI neural net model
     #
