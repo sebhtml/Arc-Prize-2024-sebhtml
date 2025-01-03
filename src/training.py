@@ -147,13 +147,13 @@ class MyDataset(Dataset):
         cell_address = CellAddress(
             candidate_action.row(), candidate_action.col(),)
         padding_char = self.__config.padding_char
-        crop_width = self.__config.crop_width
-        crop_height = self.__config.crop_height
+        visual_fixation_width = self.__config.visual_fixation_width
+        visual_fixation_height = self.__config.visual_fixation_height
         # action_index = candidate_action.cell_value()
         action_index = experience.correct_action_index()
 
         input_tokens = prepare_context(
-            example_input, cell_address, padding_char, crop_width, crop_height,)
+            example_input, cell_address, padding_char, visual_fixation_width, visual_fixation_height,)
 
         if not self.__printed:
             print("input_text")
@@ -243,7 +243,7 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
             print("--------------------")
             print(f"idx: {idx} ")
             input = inputs[idx]
-            #target = "unknown due to policy gradient method"
+            # target = "unknown due to policy gradient method"
             target = action_indices[idx]
 
             output = outputs[idx].argmax(dim=-1).item()

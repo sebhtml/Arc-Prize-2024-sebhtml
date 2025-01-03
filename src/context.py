@@ -104,7 +104,7 @@ def filter_token(token: int) -> bool:
 
 
 def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
-                    padding_char: str, crop_width: int, crop_height: int,) -> Context:
+                    padding_char: str, visual_fixation_width: int, visual_fixation_height: int,) -> Context:
 
     input_height = len(example_input)
     input_width = len(example_input[0])
@@ -122,7 +122,7 @@ def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
 
     attented_example_input = do_visual_fixation(example_input, cell_address)
     attented_example_input = crop_field_of_view(
-        attented_example_input, crop_width, crop_height,)
+        attented_example_input, visual_fixation_width, visual_fixation_height,)
 
     input_tokens = tokenize_example_input(
         attented_example_input, padding_char)

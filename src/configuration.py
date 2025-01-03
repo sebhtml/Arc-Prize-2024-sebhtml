@@ -46,8 +46,8 @@ class Configuration:
     # Vision configuration
     #
     padding_char = ' '
-    crop_width = 5
-    crop_height = 5
+    visual_fixation_width = 5
+    visual_fixation_height = 5
     # Each cell has one color and there are 10 colors.
     cell_value_size = 10
 

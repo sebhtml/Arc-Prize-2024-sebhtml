@@ -159,21 +159,21 @@ def do_visual_fixation(example_input: List[List[Cell]], cell_address: CellAddres
     return attented_example_input
 
 
-def crop_field_of_view(view: List[List[Cell]], crop_width: int, crop_height: int,) -> List[List[Cell]]:
+def crop_field_of_view(view: List[List[Cell]], visual_fixation_width: int, visual_fixation_height: int,) -> List[List[Cell]]:
     current_height = len(view)
     current_width = len(view[0])
     if current_height % 2 == 0 or current_width % 2 == 0:
         raise Exception("unable to crop")
 
-    if crop_width > current_width or crop_height > current_height:
+    if visual_fixation_width > current_width or visual_fixation_height > current_height:
         raise Exception("unable to crop")
 
-    if crop_height == current_height and crop_width == current_width:
+    if visual_fixation_height == current_height and visual_fixation_width == current_width:
         return view
 
-    width_to_crop = current_width - crop_width
+    width_to_crop = current_width - visual_fixation_width
     half_width_to_crop = width_to_crop // 2
-    height_to_crop = current_height - crop_height
+    height_to_crop = current_height - visual_fixation_height
     half_height_to_crop = height_to_crop // 2
 
     # crop height
