@@ -1,6 +1,5 @@
 # Research and Development
-
-test crop with puzzle 2 and puzzle 3            
+      
 - use sequences of fixations, 4 fixations following gaussian sampling on density of scene, 4 fixations following gaussian sampling around cell to assign
 - test with 009d5c81
 

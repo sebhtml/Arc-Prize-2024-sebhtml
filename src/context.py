@@ -106,6 +106,20 @@ def filter_token(token: int) -> bool:
 def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
                     padding_char: str, crop_width: int, crop_height: int,) -> Context:
 
+    input_height = len(example_input)
+    input_width = len(example_input[0])
+
+    # if height is even, add a dummy row.
+    if input_height % 2 == 0:
+        example_input.append([Cell(0)] * input_width)
+        input_height = len(example_input)
+
+    # if width is even, add a dummy column
+    if input_width % 2 == 0:
+        for row in example_input:
+            row.append(Cell(0))
+        input_width = len(example_input[0])
+
     attented_example_input = do_visual_fixation(example_input, cell_address)
     attented_example_input = crop_field_of_view(
         attented_example_input, crop_width, crop_height,)

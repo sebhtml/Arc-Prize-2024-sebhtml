@@ -141,6 +141,9 @@ def do_visual_fixation(example_input: List[List[Cell]], cell_address: CellAddres
     input_height = len(example_input)
     input_width = len(example_input[0])
 
+    if input_height % 2 == 0 or input_width % 2 == 0:
+        raise Exception("unable to do visual fixation")
+
     row = cell_address.row()
     col = cell_address.col()
 

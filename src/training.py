@@ -243,7 +243,8 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
             print("--------------------")
             print(f"idx: {idx} ")
             input = inputs[idx]
-            target = "unknown due to policy gradient method"
+            #target = "unknown due to policy gradient method"
+            target = action_indices[idx]
 
             output = outputs[idx].argmax(dim=-1).item()
             print("Example: " + str(idx))
