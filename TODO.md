@@ -1,13 +1,15 @@
 # Research and Development
 
-- in Cell, add number of num_adjacent_cells_with_different_color
-- in Cell, add sum_of_num_adjacent_cells_with_different_color using fixation width and fixation height
+- in Cell, add saliency which is number of num_adjacent_cells_with_different_color
+- in Cell, add fixation_saliency which is sum_of_num_adjacent_cells_with_different_color using fixation width and fixation height
 
-- use sequences of fixations, 4 fixations following gaussian sampling on density of scene, 4 fixations following gaussian sampling around cell to assign
+- use a sequence of 1 additional visual fixations using the fixation_saliency argmax 
+
+- to select visual fixations, use sampling in training, argmax in test)
+
 - test with 009d5c81
 
-- retry reinforce algorithm
-- remove get_correct
+
 
 - add puzzle id in png file names
 
@@ -53,3 +55,8 @@
 - add old policy network to use PPO (proximal policy optimization)
     see Off-Policy Proximal Policy Optimization
         https://ojs.aaai.org/index.php/AAAI/article/view/26099
+
+# Reinforcement learning
+
+- retry reinforce algorithm
+- remove get_correct
