@@ -20,13 +20,11 @@ class Context:
         return self.__attended_example_input
 
 
-def get_puzzle_starting_state(state, mode: str) -> List[List[Cell]]:
+def get_puzzle_starting_state(state: List[List[Cell]]) -> List[List[Cell]]:
     current_state = copy.deepcopy(state)
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
             value = VACANT_CELL_VALUE
-            if mode == "example_input":
-                value = state[row][col]
             current_state[row][col] = Cell(value)
     return current_state
 

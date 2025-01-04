@@ -244,8 +244,6 @@ def test_policy(puzzle_examples, agent: Agent,
         example_input, current_state = environment.get_observations()
 
         # Print the example_target.
-        example_output = get_puzzle_starting_state(
-            example_output, "example_input")
         print("Expected output")
         print_current_state(
             example_input, example_output, config.padding_char,)
@@ -402,8 +400,8 @@ def generate_episode_with_policy(
         batch_size: int,
         device: torch.device,
         agent: Agent,
-        example_input: List[List[int]],
-        example_output: List[List[int]],
+        example_input: List[List[Cell]],
+        example_output: List[List[Cell]],
 ) -> List[Experience]:
     """
     Generate (state, action, reward, next_state) experiences from a simulated game of the puzzle by the policy network.

@@ -119,11 +119,11 @@ class Experience:
         return self.__correct_action_index
 
 
-def reward(expected_state: List[List[int]], candidate_action: QLearningAction) -> float:
+def reward(expected_state: List[List[Cell]], candidate_action: QLearningAction) -> float:
     row = candidate_action.row()
     col = candidate_action.col()
     action_cell_value = candidate_action.cell_value()
-    expected_cell_value = expected_state[row][col]
+    expected_cell_value = expected_state[row][col].value()
     if expected_cell_value == action_cell_value:
         return cell_match_reward
     else:

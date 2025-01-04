@@ -27,7 +27,7 @@ class Environment:
         self.__recorded_episodes = []
         self.__current_episode = []
 
-    def set_puzzle_example(self, example_input: List[List[int]], example_output: Union[List[List[int]], None]):
+    def set_puzzle_example(self, example_input: List[List[Cell]], example_output: Union[List[List[Cell]], None]):
         """
         puzzle_output can be None. In that case, immediate reward will be None.
         """
@@ -44,10 +44,8 @@ class Environment:
                 raise Exception(
                     f"input and output have different sizes: {(input_width, input_height)} and {(output_width, output_height)}")
 
-        self.__example_input = get_puzzle_starting_state(
-            example_input, "example_input")
-        self.__current_state = get_puzzle_starting_state(
-            example_input, "current_state")
+        self.__example_input = example_input
+        self.__current_state = get_puzzle_starting_state(example_input)
 
         # Clear the current episode if the previous episode was truncated.
         self.__current_episode = []
@@ -112,7 +110,7 @@ class Environment:
 
         expected_state = self.__example_output
 
-        expected_cell_value = expected_state[row][col]
+        expected_cell_value = expected_state[row][col].value()
 
         return expected_cell_value
 

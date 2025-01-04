@@ -34,6 +34,7 @@ from environment import Environment
 from training import train_model_using_experience_replay
 from configuration import Configuration
 from episode_renderer import render_episodes
+from q_learning import Cell
 
 config = Configuration()
 
@@ -46,7 +47,26 @@ def get_puzzle_solution(venue, puzzle_id):
     return solution
 
 
-def load_puzzle_examples(puzzle_id, example_type) -> List[Tuple[List[List[int]], List[List[int]]]]:
+def make_celled_state(state: List[List[int]]) -> List[List[Cell]]:
+    celled_state = []
+    for row in state:
+        celled_row = []
+        for value in row:
+            celled_value = Cell(value)
+            celled_row.append(celled_value)
+        celled_state.append(celled_row)
+    return celled_state
+
+
+def make_celled_example(example: Tuple[List[List[int]], List[List[int]]]) -> Tuple[List[List[Cell]], List[List[Cell]]]:
+    example_input, example_output = example
+    celled_example_input = make_celled_state(example_input)
+    celled_example_output = make_celled_state(example_output)
+    celled_example = (celled_example_input, celled_example_output)
+    return celled_example
+
+
+def load_puzzle_examples(puzzle_id: str, example_type: str) -> List[Tuple[List[List[Cell]], List[List[Cell]]]]:
     """
     - example_type is "train" or "test"
     Note that for the "test" venue, no solutions are provided.
@@ -89,7 +109,10 @@ def load_puzzle_examples(puzzle_id, example_type) -> List[Tuple[List[List[int]],
             example_output = get_puzzle_solution(venue, puzzle_id)
 
         example = (example_input, example_output)
-        puzzle_venue_examples.append(example)
+
+        celled_example = make_celled_example(example)
+
+        puzzle_venue_examples.append(celled_example)
     return puzzle_venue_examples
 
 

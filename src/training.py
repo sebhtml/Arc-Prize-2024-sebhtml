@@ -12,7 +12,7 @@ from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
 from environment import Environment, generate_cell_actions
 from configuration import Configuration
-from q_learning import Experience, unbin_action_value, CellAddress, bin_action_value, trim_list
+from q_learning import Experience, unbin_action_value, CellAddress, bin_action_value, trim_list, Cell
 from vision import flip_board, rotate_90_clockwise
 
 
@@ -290,7 +290,7 @@ def train_model_using_experience_replay(
     config: Configuration,
     context_size: int, batch_size: int, device: torch.device,
     agent: Agent,
-    puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
+    puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool, lr: float, weight_decay: float,
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
@@ -378,8 +378,8 @@ def train_model_using_experience_replay(
 
 
 def generate_training_puzzle_example(
-    puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
-) -> Tuple[List[List[int]], List[List[int]]]:
+    puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
+) -> Tuple[List[List[Cell]], List[List[Cell]]]:
 
     i = random.randrange(0, len(puzzle_train_examples))
     puzzle_example = puzzle_train_examples[i]
@@ -415,7 +415,7 @@ def train_model_with_experience_replay_data_set(
     experience_replay_data_set: List[Experience],
     context_size: int, batch_size: int, device: torch.device,
     agent: Agent,
-    puzzle_train_examples: List[Tuple[List[List[int]], List[List[int]]]],
+    puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool,
     max_grad_norm: float, print_model_outputs: bool,
