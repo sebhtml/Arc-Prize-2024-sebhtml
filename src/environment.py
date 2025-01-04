@@ -15,7 +15,6 @@ class Environment:
     """
 
     def __init__(self, cell_value_size: int):
-        self.__puzzle_input = None
         self.__puzzle_output = None
         self.__example_input = None
         self.__current_state = None
@@ -32,24 +31,23 @@ class Environment:
         """
         puzzle_output can be None. In that case, immediate reward will be None.
         """
-        self.__puzzle_input = puzzle_input
         self.__puzzle_output = puzzle_output
 
-        input_width = len(self.__puzzle_input[0])
-        input_height = len(self.__puzzle_input)
+        input_width = len(puzzle_input[0])
+        input_height = len(puzzle_input)
 
-        if self.__puzzle_output != None:
-            output_width = len(self.__puzzle_output[0])
-            output_height = len(self.__puzzle_output)
+        if puzzle_output != None:
+            output_width = len(puzzle_output[0])
+            output_height = len(puzzle_output)
 
             if (input_width, input_height) != (output_width, output_height):
                 raise Exception(
                     f"input and output have different sizes: {(input_width, input_height)} and {(output_width, output_height)}")
 
         self.__example_input = get_puzzle_starting_state(
-            self.__puzzle_input, "example_input")
+            puzzle_input, "example_input")
         self.__current_state = get_puzzle_starting_state(
-            self.__puzzle_input, "current_state")
+            puzzle_input, "current_state")
 
         # Clear the current episode if the previous episode was truncated.
         self.__current_episode = []
