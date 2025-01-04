@@ -1,5 +1,8 @@
 # Research and Development
-      
+
+- in Cell, add number of num_adjacent_cells_with_different_color
+- in Cell, add sum_of_num_adjacent_cells_with_different_color using fixation width and fixation height
+
 - use sequences of fixations, 4 fixations following gaussian sampling on density of scene, 4 fixations following gaussian sampling around cell to assign
 - test with 009d5c81
 
