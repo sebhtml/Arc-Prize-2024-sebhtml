@@ -15,8 +15,8 @@ class Environment:
     """
 
     def __init__(self, cell_value_size: int):
-        self.__puzzle_output = None
         self.__example_input = None
+        self.__example_output = None
         self.__current_state = None
         self.__cell_value_size = cell_value_size
         self.__available_actions = []
@@ -27,27 +27,27 @@ class Environment:
         self.__recorded_episodes = []
         self.__current_episode = []
 
-    def set_puzzle_example(self, puzzle_input: List[List[int]], puzzle_output: Union[List[List[int]], None]):
+    def set_puzzle_example(self, example_input: List[List[int]], example_output: Union[List[List[int]], None]):
         """
         puzzle_output can be None. In that case, immediate reward will be None.
         """
-        self.__puzzle_output = puzzle_output
+        self.__example_output = example_output
 
-        input_width = len(puzzle_input[0])
-        input_height = len(puzzle_input)
+        input_width = len(example_input[0])
+        input_height = len(example_input)
 
-        if puzzle_output != None:
-            output_width = len(puzzle_output[0])
-            output_height = len(puzzle_output)
+        if example_output != None:
+            output_width = len(example_output[0])
+            output_height = len(example_output)
 
             if (input_width, input_height) != (output_width, output_height):
                 raise Exception(
                     f"input and output have different sizes: {(input_width, input_height)} and {(output_width, output_height)}")
 
         self.__example_input = get_puzzle_starting_state(
-            puzzle_input, "example_input")
+            example_input, "example_input")
         self.__current_state = get_puzzle_starting_state(
-            puzzle_input, "current_state")
+            example_input, "current_state")
 
         # Clear the current episode if the previous episode was truncated.
         self.__current_episode = []
@@ -90,8 +90,8 @@ class Environment:
             ))
 
         immediate_reward = None
-        if self.__puzzle_output != None:
-            immediate_reward = reward(self.__puzzle_output, action)
+        if self.__example_output != None:
+            immediate_reward = reward(self.__example_output, action)
             self.__current_episode_total_rewards += immediate_reward
 
         self.__available_actions = generate_cell_actions(
@@ -107,10 +107,10 @@ class Environment:
         Get the correct action.
         """
 
-        if self.__puzzle_output == None:
+        if self.__example_output == None:
             return None
 
-        expected_state = self.__puzzle_output
+        expected_state = self.__example_output
 
         expected_cell_value = expected_state[row][col]
 
@@ -141,9 +141,9 @@ class Environment:
         """
         Get the maximum number of rewards for the current puzzle example.
         """
-        if self.__puzzle_output != None:
-            output_width = len(self.__puzzle_output[0])
-            output_height = len(self.__puzzle_output)
+        if self.__example_output != None:
+            output_width = len(self.__example_output[0])
+            output_height = len(self.__example_output)
             return output_height * output_width
         return None
 
