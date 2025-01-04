@@ -79,7 +79,7 @@ class Environment:
         col = action.col()
         new_value = action.cell_value()
 
-        self.__current_state[row][col].set_value(new_value)
+        self.__current_state[row][col].set_cell_value(new_value)
 
         self.__current_episode.append(
             GameState(
@@ -110,7 +110,7 @@ class Environment:
 
         expected_state = self.__example_output
 
-        expected_cell_value = expected_state[row][col].value()
+        expected_cell_value = expected_state[row][col].cell_value()
 
         return expected_cell_value
 
@@ -155,7 +155,7 @@ def generate_cell_actions(
     for row in range(len(current_state)):
         for col in range(len(current_state[row])):
             # A cell can only be changed once.
-            if current_state[row][col].value() == VACANT_CELL_VALUE:
+            if current_state[row][col].cell_value() == VACANT_CELL_VALUE:
                 for new_value in range(cell_value_size):
                     action = QLearningAction(row, col, new_value)
                     candidate_actions.append(action)

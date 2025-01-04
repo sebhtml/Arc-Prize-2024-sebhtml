@@ -59,7 +59,7 @@ def print_with_colors(state: GameState, io: IO[str]):
 
     for y in range(example_input_height):
         for x in range(example_input_width):
-            cell_value = example_input[y][x].value()
+            cell_value = example_input[y][x].cell_value()
             print_cell(cell_value, io)
         io.write("\n")
     io.write("\n")
@@ -73,7 +73,7 @@ def print_with_colors(state: GameState, io: IO[str]):
 
     for y in range(current_state_height):
         for x in range(current_state_width):
-            cell_value = current_state[y][x].value()
+            cell_value = current_state[y][x].cell_value()
             print_cell(cell_value, io)
         io.write("\n")
     io.write("\n")

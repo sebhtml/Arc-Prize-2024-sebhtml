@@ -59,12 +59,12 @@ def state_to_text(state: List[List[Cell]]) -> str:
     for row in range(len(state)):
         for col in range(len(state[row])):
             value = None
-            if state[row][col].value() == VACANT_CELL_VALUE:
+            if state[row][col].cell_value() == VACANT_CELL_VALUE:
                 value = VACANT_CELL_CHAR
-            elif state[row][col].value() == OUTSIDE_CELL_VALUE:
+            elif state[row][col].cell_value() == OUTSIDE_CELL_VALUE:
                 value = OUTSIDE_CELL_CHAR
             else:
-                value = str(state[row][col].value())
+                value = str(state[row][col].cell_value())
             output += value
         output += "\n"
     return output

@@ -72,10 +72,10 @@ class Cell:
     def __init__(self, value):
         self.__value = value
 
-    def value(self) -> int:
+    def cell_value(self) -> int:
         return self.__value
 
-    def set_value(self, value):
+    def set_cell_value(self, value):
         self.__value = value
 
     def __eq__(self, other) -> bool:
@@ -123,7 +123,7 @@ def reward(expected_state: List[List[Cell]], candidate_action: QLearningAction) 
     row = candidate_action.row()
     col = candidate_action.col()
     action_cell_value = candidate_action.cell_value()
-    expected_cell_value = expected_state[row][col].value()
+    expected_cell_value = expected_state[row][col].cell_value()
     if expected_cell_value == action_cell_value:
         return cell_match_reward
     else:

@@ -18,7 +18,7 @@ def get_vacant_cells(board: List[List[Cell]]) -> List[Tuple[int, int]]:
     height = len(board)
     for x in range(width):
         for y in range(height):
-            if board[y][x].value() == VACANT_CELL_VALUE:
+            if board[y][x].cell_value() == VACANT_CELL_VALUE:
                 vacant_cells.append((x, y))
     return vacant_cells
 
