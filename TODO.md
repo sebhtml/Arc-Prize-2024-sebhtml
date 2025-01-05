@@ -1,5 +1,12 @@
 # Research and Development
 
+- retry reinforce algorithm
+
+- remove get_correct
+- normalize rewards
+- move cell_match_reward to config
+- move cell_mismatch_reward to config
+
 - in Cell, add saliency which is number of num_adjacent_cells_with_different_color
 - in Cell, add fixation_saliency which is sum_of_num_adjacent_cells_with_different_color using fixation width and fixation height
 
@@ -43,8 +50,6 @@
 - implement epsilon-greedy policy for random exploration
 
 - move training of action value network in a step method in Agent
-- move cell_match_reward to config
-- move cell_mismatch_reward to config
 - add actions left (10), up (11), right (12), down (13)
 - return only max_action_value in select_action_with_target_action_value_network
 
@@ -58,5 +63,3 @@
 
 # Reinforcement learning
 
-- retry reinforce algorithm
-- remove get_correct

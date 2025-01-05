@@ -4,7 +4,15 @@ import math
 VACANT_CELL_VALUE = -1
 OUTSIDE_CELL_VALUE = -3
 
-cell_match_reward = +1.0
+# There are 10 possible colors.
+# 9 colors are incorrect and 1 color is correct.
+# The control policy assigns a color to a cell.
+# With a random policy, a given cell has 0.90 chance of being incorrect.
+# And only 10% chance of being correct.
+# Thus, since correct actions are rarer, they are rewarded more.
+# This ensures that the agent will actually try to explore to reach those
+# good rewards.
+cell_match_reward = +10.0
 cell_mismatch_reward = -1.0
 
 
