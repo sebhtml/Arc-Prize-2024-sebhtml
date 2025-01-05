@@ -38,6 +38,7 @@ class Agent:
         if self.__config.use_policy_network:
             self.__policy_network = PolicyNetworkModel(config, device)
             self.__policy_network.to(device)
+            self.__policy_network.train()
             self.__policy_network_optimizer = AdamW(self.__policy_network.parameters(),
                                                     lr=config.lr, weight_decay=config.weight_decay)
         else:
@@ -415,7 +416,6 @@ def generate_episode_with_policy(
     See https://en.wikipedia.org/wiki/State%E2%80%93action%E2%80%93reward%E2%80%93state%E2%80%93action
     """
 
-    agent.policy_network().eval()
     replay_buffer = []
 
     environment.set_puzzle_example(example_input, example_output)

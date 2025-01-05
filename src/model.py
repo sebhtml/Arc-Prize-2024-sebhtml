@@ -200,7 +200,6 @@ class PolicyNetworkModel(nn.Module):
             config.vocab_size, config.d_model, config.d_ff,
             config.embedding_dropout, config.attention_head_dropout, config.attention_sublayer_dropout, config.ffn_sublayer_dropout,
             config.num_heads, config.context_size, config.num_layers, config.num_actions, config.num_classes, device)
-        self.__input_dropout = nn.Dropout(config.input_dropout)
         d_model = config.d_model
         num_actions = config.num_actions
         self.__cls_dropout = nn.Dropout(config.output_dropout)
@@ -208,7 +207,6 @@ class PolicyNetworkModel(nn.Module):
             in_features=d_model, out_features=num_actions)
 
     def forward(self, x: Tuple[torch.Tensor]) -> torch.Tensor:
-        x = self.__input_dropout(x)
         # Prepend the CLS token
         cls_token = torch.tensor([CLS_TOKEN])
         batch_size = x.shape[0]

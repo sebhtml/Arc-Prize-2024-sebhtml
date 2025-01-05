@@ -1,5 +1,6 @@
 # Research and Development
 
+- save log_probs in Experience
 - process all experience in training loop
 - retry reinforce algorithm
 
