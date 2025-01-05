@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime, timezone
 from typing import List, Tuple
 import random
-from agent import make_example_tensor, select_action_with_deep_q_network, generate_episode_with_policy, Agent
+from agent import make_example_tensor, select_action_with_deep_q_network, generate_episode_with_policy, Agent, evaluate_solution
 from context import tokens_to_text, prepare_context
 from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
@@ -306,7 +306,6 @@ def train_model_using_experience_replay(
 
     step = 0
 
-    relative_rewards = 0.0
     winning_streak_length = 0
 
     while len(environment.recorded_episodes()) < max_episodes:
@@ -315,7 +314,7 @@ def train_model_using_experience_replay(
 
         old_number_of_episodes = len(environment.recorded_episodes())
 
-        experience_replay_data_set, loss = train_model_with_experience_replay_data_set(
+        experience_replay_data_set, percentage_correct_cells, loss = train_model_with_experience_replay_data_set(
             config,
             environment,
             criterion,
@@ -329,15 +328,7 @@ def train_model_using_experience_replay(
         )
 
         if len(environment.recorded_episodes()) > old_number_of_episodes:
-            # A new episode has been recorded !
-            episode_total_rewards = environment.get_total_rewards_per_episode(
-            )[-1]
-            max_total_rewards = environment.get_max_total_rewards_per_episode(
-            )[-1]
-
-            relative_rewards = episode_total_rewards / max_total_rewards
-
-            if relative_rewards >= config.min_relative_rewards and loss <= config.max_loss:
+            if percentage_correct_cells >= config.min_percentage_correct_cells and loss <= config.max_loss:
                 winning_streak_length += 1
             else:
                 winning_streak_length = 0
@@ -347,7 +338,7 @@ def train_model_using_experience_replay(
             steps.append(step)
             losses.append(loss)
             print(
-                f"Step: {step}  Episode: {episode}  Rewards: {relative_rewards}  winning_streak_length: {winning_streak_length}  loss: {loss:.8f}")
+                f"Step: {step}  Episode: {episode}  percentage_correct_cells: {percentage_correct_cells}  winning_streak_length: {winning_streak_length}  loss: {loss:.8f}")
 
         if winning_streak_length == config.max_winning_streak_length:
             # Early stopping.
@@ -463,4 +454,9 @@ def train_model_with_experience_replay_data_set(
             print_model_outputs_for_train_examples(
                 dataset, batch_size, agent, device,)
 
-    return experience_replay_data_set, loss
+    example_input, current_state = environment.get_observations()
+    correct_cells, total_cells = evaluate_solution(
+        current_state, example_output)
+    percentage_correct_cells = correct_cells / total_cells
+
+    return experience_replay_data_set, percentage_correct_cells, loss

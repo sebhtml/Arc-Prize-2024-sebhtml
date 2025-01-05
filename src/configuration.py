@@ -92,7 +92,7 @@ class Configuration:
     # http://karpathy.github.io/2019/04/25/recipe/
 
     max_episodes = 1000
-    min_relative_rewards = 1.0
+    min_percentage_correct_cells = 1.0
     max_loss = 0.0001
     max_winning_streak_length = 10
     target_network_update_period = 1000  # prod: 1000, dev: 100

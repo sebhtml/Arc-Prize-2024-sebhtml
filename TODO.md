@@ -1,5 +1,6 @@
 # Research and Development
 
+- process all experience in training loop
 - retry reinforce algorithm
 
 - remove get_correct

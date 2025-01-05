@@ -250,10 +250,10 @@ def test_policy(puzzle_examples, agent: Agent,
 
         correct_cells, total_cells = evaluate_solution(
             current_state, example_output)
-        score = correct_cells / total_cells
+        percentage_correct_cells = correct_cells / total_cells
         result = "PASS" if correct_cells == total_cells else "FAIL"
         print(
-            f"Result:  correct_cells: {correct_cells}  total_cells: {total_cells}  score: {score}  result: {result}")
+            f"Result:  correct_cells: {correct_cells}  total_cells: {total_cells}  percentage_correct_cells: {percentage_correct_cells}  result: {result}")
 
 
 def print_current_state(example_input, current_state, padding_char):
