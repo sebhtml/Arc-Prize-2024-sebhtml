@@ -162,21 +162,15 @@ class Agent:
         policy_network = self.__policy_network
         optimizer = self.__policy_network_optimizer
 
-        (inputs, action_indices, rewards) = data
+        (inputs, action_indices, rewards, log_probs,) = data
 
         inputs = inputs.to(device)
         action_indices = action_indices.to(device)
         rewards = rewards.to(device)
 
-        # Get this quantity:    logits.
-        action_logits = policy_network(inputs)
+        batch_size = log_probs.shape[0]
 
-        batch_size = action_logits.shape[0]
-
-        # log π(a|s)
-        log_softmax_output = F.log_softmax(action_logits, dim=-1)
-
-        log_probs = log_softmax_output[torch.arange(
+        log_probs = log_probs[torch.arange(
             batch_size), action_indices]
 
         # Reinforce
@@ -360,7 +354,7 @@ def select_action_with_policy_network(
         device: torch.device,
         policy_network: PolicyNetworkModel,
         verbose: bool,
-) -> int:
+) -> Tuple[List[int], List[torch.Tensor]]:
     """
     The policy network outputs a probability distribution over actions.
     Sample an action index using the policy network.
@@ -384,14 +378,17 @@ def select_action_with_policy_network(
     inputs = inputs.to(device)
     logits = policy_network(inputs)
     temperature = 1.0
-    probs = F.softmax(logits / temperature, dim=-1)
+    logits = logits / temperature
+    probs = F.softmax(logits, dim=-1)
     dist = torch.distributions.Categorical(probs)
 
     # Sampling fom the probability distribution does the exploration.
     samples = dist.sample()
     best_action_indexes = samples.tolist()
 
-    return best_action_indexes
+    log_probs = F.log_softmax(logits, dim=-1)
+
+    return best_action_indexes, log_probs
 
 
 def generate_episode_with_policy(
@@ -439,7 +436,7 @@ def generate_episode_with_policy(
         example_input, current_state = environment.get_observations()
         current_state = copy.deepcopy(current_state)
 
-        best_action_indexes = select_action_with_policy_network(
+        best_action_indexes, log_probs = select_action_with_policy_network(
             example_input,
             current_state,
             cell_addresses,
@@ -454,6 +451,7 @@ def generate_episode_with_policy(
         for i in range(len(cell_addresses)):
             cell_address = cell_addresses[i]
             best_action_index = best_action_indexes[i]
+            cell_log_probs = log_probs[i]
             row = cell_address.row()
             col = cell_address.col()
             cell_value = best_action_index
@@ -472,6 +470,7 @@ def generate_episode_with_policy(
                 immediate_reward,
                 GameState(example_input, next_state),
                 expected_cell_value,
+                cell_log_probs,
             )
             replay_buffer.append(experience)
 

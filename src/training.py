@@ -151,6 +151,7 @@ class MyDataset(Dataset):
         visual_fixation_height = self.__config.visual_fixation_height
         # action_index = candidate_action.cell_value()
         action_index = experience.correct_action_index()
+        log_probs = experience.log_probs()
 
         input_tokens = prepare_context(
             example_input, cell_address, padding_char, visual_fixation_width, visual_fixation_height,)
@@ -163,7 +164,7 @@ class MyDataset(Dataset):
         item_input = make_example_tensor(
             input_tokens, self.__config.context_size)
 
-        item = (item_input, action_index, reward)
+        item = (item_input, action_index, reward, log_probs,)
 
         return item
 
@@ -235,7 +236,7 @@ def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, 
     inference_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True)
     for data in inference_loader:
-        (inputs, action_indices, rewards) = data
+        (inputs, action_indices, rewards, log_probs,) = data
         inputs = inputs.to(device)
         outputs = policy_network(inputs)
 

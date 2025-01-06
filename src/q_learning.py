@@ -1,3 +1,4 @@
+import torch
 from typing import List
 import math
 
@@ -104,12 +105,13 @@ class GameState:
 
 class Experience:
     def __init__(self, state: GameState, action: QLearningAction, reward: float, next_state: GameState,
-                 correct_action_index: int):
+                 correct_action_index: int, log_probs: torch.Tensor,):
         self.__state = state
         self.__action = action
         self.__reward = reward
         self.__next_state = next_state
         self.__correct_action_index = correct_action_index
+        self.__log_probs = log_probs
 
     def state(self) -> GameState:
         return self.__state
@@ -125,6 +127,9 @@ class Experience:
 
     def correct_action_index(self) -> int:
         return self.__correct_action_index
+
+    def log_probs(self) -> int:
+        return self.__log_probs
 
 
 def reward(expected_state: List[List[Cell]], candidate_action: QLearningAction) -> float:
