@@ -44,11 +44,11 @@ class FeedForward(nn.Module):
     See https://en.wikipedia.org/wiki/GPT-1#/media/File:Full_GPT_architecture.svg
     """
 
-    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, dropout: float,):
+    def __init__(self, dim, hidden_dim, dropout):
         super().__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc1 = nn.Linear(dim, hidden_dim)
         self.swiglu = SwiGLU(hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
+        self.fc2 = nn.Linear(hidden_dim, dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -101,8 +101,7 @@ class NonCausalSelfAttentionTransformerBlock(nn.Module):
             attention_head_dropout,  attention_sublayer_dropout,
             context_size, device)
 
-        self.ffn = FeedForward(
-            d_model, ffn_size, d_model, ffn_sublayer_dropout)
+        self.ffn = FeedForward(d_model, ffn_size, ffn_sublayer_dropout)
         self.attention_norm = nn.RMSNorm(d_model)
         self.ffn_norm = nn.RMSNorm(d_model)
 
@@ -204,8 +203,8 @@ class PolicyNetworkModel(nn.Module):
         d_model = config.d_model
         num_actions = config.num_actions
         self.__cls_dropout = nn.Dropout(config.output_dropout)
-        self.classifier = FeedForward(
-            d_model, 2 * d_model, num_actions, config.output_dropout,)
+        self.classifier = nn.Linear(
+            in_features=d_model, out_features=num_actions)
 
     def forward(self, x: Tuple[torch.Tensor]) -> torch.Tensor:
         # Prepend the CLS token
