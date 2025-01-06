@@ -1,10 +1,15 @@
 # Research and Development
 
-- save log_probs in Experience
-- process all experience in training loop
-- retry reinforce algorithm
+- process all experience in training loop because right now with reinforce, I get this:
+logits tensor([[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -1.5647,
+         -0.8588, -1.3075],
+- use term "returns" not "rewards"
 
+- retry reinforce algorithm
 - remove get_correct
+- save log_probs in Experience
+
+
 - normalize rewards
 - move cell_match_reward to config
 - move cell_mismatch_reward to config
