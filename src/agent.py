@@ -162,11 +162,9 @@ class Agent:
         policy_network = self.__policy_network
         optimizer = self.__policy_network_optimizer
 
-        (inputs, action_indices, rewards, log_probs,) = data
+        (action_indices, rewards, log_probs,) = data
 
-        inputs = inputs.to(device)
         action_indices = action_indices.to(device)
-        rewards = rewards.to(device)
 
         batch_size = log_probs.shape[0]
 
@@ -179,7 +177,8 @@ class Agent:
 
         # Negative log likelihood.
         # L = -log P(a | s)
-        loss = -torch.mean(log_probs)
+        loss = -log_probs
+        loss = loss.mean()
 
         optimizer.zero_grad()
         loss.backward()

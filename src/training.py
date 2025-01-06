@@ -140,31 +140,14 @@ class MyDataset(Dataset):
 
     def __getitem__(self, idx):
         experience = self.__train_examples[idx]
-        example_input = experience.state().example_input()
-        current_state = experience.state().current_state()
-        candidate_action = experience.action()
         reward = experience.reward()
-        cell_address = CellAddress(
-            candidate_action.row(), candidate_action.col(),)
-        padding_char = self.__config.padding_char
-        visual_fixation_width = self.__config.visual_fixation_width
-        visual_fixation_height = self.__config.visual_fixation_height
+
         # action_index = candidate_action.cell_value()
         action_index = experience.correct_action_index()
+
         log_probs = experience.log_probs()
 
-        input_tokens = prepare_context(
-            example_input, cell_address, padding_char, visual_fixation_width, visual_fixation_height,)
-
-        if not self.__printed:
-            print("input_text")
-            print(tokens_to_text(input_tokens))
-            self.__printed = True
-
-        item_input = make_example_tensor(
-            input_tokens, self.__config.context_size)
-
-        item = (item_input, action_index, reward, log_probs,)
+        item = (action_index, reward, log_probs,)
 
         return item
 
