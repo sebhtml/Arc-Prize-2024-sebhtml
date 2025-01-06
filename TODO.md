@@ -1,5 +1,14 @@
 # Research and Development
 
+- in Cell, add saliency which is number of num_adjacent_cells_with_different_color
+- in Cell, add fixation_saliency which is sum_of_num_adjacent_cells_with_different_color using fixation width and fixation height
+
+- use a sequence of 1 additional visual fixations using the fixation_saliency argmax 
+
+- test with 009d5c81
+
+# Backlog
+
 - process all experience in training loop because right now with reinforce, I get this:
 logits tensor([[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -1.5647,
          -0.8588, -1.3075],
@@ -7,21 +16,13 @@ logits tensor([[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -
 
 - retry reinforce algorithm
 - remove get_correct
-- save log_probs in Experience
-
 
 - normalize rewards
 - move cell_match_reward to config
 - move cell_mismatch_reward to config
 
-- in Cell, add saliency which is number of num_adjacent_cells_with_different_color
-- in Cell, add fixation_saliency which is sum_of_num_adjacent_cells_with_different_color using fixation width and fixation height
-
-- use a sequence of 1 additional visual fixations using the fixation_saliency argmax 
-
 - to select visual fixations, use sampling in training, argmax in test)
 
-- test with 009d5c81
 
 
 
