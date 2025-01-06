@@ -230,43 +230,6 @@ def print_train_examples(train_action_examples):
         print(example_target)
 
 
-def print_model_outputs_for_train_examples(dataset: MyDataset, batch_size: int, agent: Agent, device: torch.device,):
-    print("[after training] print_model_outputs_for_train_examples")
-    policy_network = agent.policy_network()
-    inference_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True)
-    for data in inference_loader:
-        (inputs, action_indices, rewards, log_probs,) = data
-        inputs = inputs.to(device)
-        outputs = policy_network(inputs)
-
-        for idx in range(len(inputs)):
-            print("--------------------")
-            print(f"idx: {idx} ")
-            input = inputs[idx]
-            # target = "unknown due to policy gradient method"
-            target = action_indices[idx]
-
-            output = outputs[idx].argmax(dim=-1).item()
-            print("Example: " + str(idx))
-            print("input")
-            print("".join(
-                list(map(chr,
-                         input.tolist()
-                         ))))
-            print("target: ")
-            print(target)
-            print("output: ")
-            print(output)
-            # Only check first example from batch for now.
-            break
-        for t in inputs:
-            del t
-        del outputs
-        # Only check first batch for now.
-        break
-
-
 def get_grad_norm(model):
     """
     Calculates and prints the total L2 norm of the gradients of all model parameters.
@@ -450,10 +413,6 @@ def train_model_with_experience_replay_data_set(
             experience_replay_data_set, config, device, agent,)
 
         loss = agent.step_policy_network_with_supervision(dataset)
-
-        if print_model_outputs:
-            print_model_outputs_for_train_examples(
-                dataset, batch_size, agent, device,)
 
     example_input, current_state = environment.get_observations()
     correct_cells, total_cells = evaluate_solution(
