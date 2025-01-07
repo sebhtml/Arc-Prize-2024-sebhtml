@@ -317,26 +317,27 @@ def train_model_using_experience_replay(
 
 def generate_training_puzzle_example(
     puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
+    i: int,
+    rotations: int,
+    horizontal_flip: int,
+    vertical_flip: int,
 ) -> Tuple[List[List[Cell]], List[List[Cell]]]:
 
-    i = random.randrange(0, len(puzzle_train_examples))
     puzzle_example = puzzle_train_examples[i]
 
     (raw_example_input, raw_example_output) = puzzle_example
-
-    rotations = random.randrange(0, 4)
 
     for _ in range(rotations):
         raw_example_input = rotate_90_clockwise(raw_example_input)
         raw_example_output = rotate_90_clockwise(raw_example_output)
 
-    if random.randrange(0, 2) == 0:
+    if horizontal_flip == 0:
         raw_example_input = flip_board(
             raw_example_input, 'horizontal')
         raw_example_output = flip_board(
             raw_example_output, 'horizontal')
 
-    if random.randrange(0, 2) == 0:
+    if vertical_flip == 0:
         raw_example_input = flip_board(
             raw_example_input, 'vertical')
         raw_example_output = flip_board(
@@ -364,8 +365,13 @@ def train_model_with_experience_replay_data_set(
     https://www.nature.com/articles/nature14236
     """
 
+    i = random.randrange(0, len(puzzle_train_examples))
+    rotations = random.randrange(0, 4)
+    horizontal_flip = random.randrange(0, 2)
+    vertical_flip = random.randrange(0, 2)
     example_input, example_output = generate_training_puzzle_example(
-        puzzle_train_examples)
+        puzzle_train_examples,
+        i, rotations, horizontal_flip, vertical_flip,)
 
     # Basically use on-policy data.
     experience_replay_data_set = []
