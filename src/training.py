@@ -3,6 +3,7 @@ from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
+import numpy as np
 from datetime import datetime, timezone
 from typing import List, Tuple
 import random
@@ -232,6 +233,21 @@ def get_grad_norm(model):
     return total_norm
 
 
+def augment_examples(
+        puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
+) -> List[Tuple[List[List[Cell]], List[List[Cell]]]]:
+    augmented_puzzle_train_examples = []
+    for i in range(len(puzzle_train_examples)):
+        for rotations in range(4):
+            for horizontal_flip in range(2):
+                for vertical_flip in range(2):
+                    augmented_example = generate_training_puzzle_example(
+                        puzzle_train_examples,
+                        i, rotations, horizontal_flip, vertical_flip,)
+                    augmented_puzzle_train_examples.append(augmented_example)
+    return augmented_puzzle_train_examples
+
+
 def train_model_using_experience_replay(
     environment: Environment,
     config: Configuration,
@@ -243,6 +259,8 @@ def train_model_using_experience_replay(
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
     max_episodes: int,
 ):
+    # Augment examples
+    augmented_puzzle_train_examples = augment_examples(puzzle_train_examples)
     criterion = None
     optimizer = None
 
@@ -261,6 +279,12 @@ def train_model_using_experience_replay(
 
         old_number_of_episodes = len(environment.recorded_episodes())
 
+        augmented_example_index = len(environment.recorded_episodes()) % len(
+            augmented_puzzle_train_examples)
+
+        if augmented_example_index == 0:
+            np.random.shuffle(augmented_puzzle_train_examples)
+
         experience_replay_data_set, percentage_correct_cells, loss = train_model_with_experience_replay_data_set(
             config,
             environment,
@@ -269,7 +293,7 @@ def train_model_using_experience_replay(
             experience_replay_data_set,
             context_size, batch_size, device,
             agent,
-            puzzle_train_examples, cell_value_size,
+            augmented_puzzle_train_examples[augmented_example_index], cell_value_size,
             discount, padding_char, num_classes, shuffle_train_examples,
             max_grad_norm, print_model_outputs,
         )
@@ -354,7 +378,7 @@ def train_model_with_experience_replay_data_set(
     experience_replay_data_set: List[Experience],
     context_size: int, batch_size: int, device: torch.device,
     agent: Agent,
-    puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
+    puzzle_train_example: Tuple[List[List[Cell]], List[List[Cell]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool,
     max_grad_norm: float, print_model_outputs: bool,
@@ -365,13 +389,7 @@ def train_model_with_experience_replay_data_set(
     https://www.nature.com/articles/nature14236
     """
 
-    i = random.randrange(0, len(puzzle_train_examples))
-    rotations = random.randrange(0, 4)
-    horizontal_flip = random.randrange(0, 2)
-    vertical_flip = random.randrange(0, 2)
-    example_input, example_output = generate_training_puzzle_example(
-        puzzle_train_examples,
-        i, rotations, horizontal_flip, vertical_flip,)
+    example_input, example_output = puzzle_train_example
 
     # Basically use on-policy data.
     experience_replay_data_set = []
