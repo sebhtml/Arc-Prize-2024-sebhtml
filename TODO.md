@@ -1,10 +1,11 @@
 # Research and Development
 
-- in Cell, add saliency which is number of num_adjacent_cells_with_different_color
 - in Cell, add fixation_saliency which is sum_of_num_adjacent_cells_with_different_color using fixation width and fixation height
 
 - use a sequence of 1 additional visual fixations using the fixation_saliency argmax 
 
+- clean up imports
+- rename module q_learning
 - test with 009d5c81
 
 # Backlog
@@ -38,6 +39,10 @@ logits tensor([[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -
 - remove QDN usage
 - use BERT_large parameters L=12, H=768, A=12
 
+# Vision
+
+- compute saliency with GPU
+- visual_fixation_width: int, visual_fixation_height: int, vs convolution kernel size
 
 # Refactoring
 
