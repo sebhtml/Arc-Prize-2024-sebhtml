@@ -104,6 +104,7 @@ def filter_token(token: int) -> bool:
 def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
                     padding_char: str, visual_fixation_width: int, visual_fixation_height: int,) -> Context:
 
+    example_input = copy.deepcopy(example_input)
     input_height = len(example_input)
     input_width = len(example_input[0])
 
