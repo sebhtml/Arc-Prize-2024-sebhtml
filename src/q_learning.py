@@ -80,6 +80,7 @@ class CellAddress:
 class Cell:
     def __init__(self, value):
         self.__value = value
+        self.__saliency = 0
 
     def cell_value(self) -> int:
         return self.__value
@@ -89,6 +90,15 @@ class Cell:
 
     def __eq__(self, other) -> bool:
         return self.__value == other.__value
+
+    def set_saliency(self, saliency: float):
+        self.__saliency = saliency
+
+    def saliency(self) -> float:
+        """
+        https://en.wikipedia.org/wiki/Salience_(neuroscience)
+        """
+        return self.__saliency
 
 
 class GameState:
