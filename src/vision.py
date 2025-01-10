@@ -1,4 +1,9 @@
 from typing import List, Tuple
+import torch
+from torch.distributions import Categorical
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import copy
 import random
@@ -190,3 +195,214 @@ def crop_field_of_view(view: List[List[Cell]], visual_fixation_width: int, visua
         output.append(row)
 
     return output
+
+
+def add_cell_saliency(state: List[List[Cell]], saliency: List[List[int]]):
+    """
+    Set saliency in state cells.
+    """
+    height = len(state)
+    width = len(state[0])
+
+    for x in range(width):
+        for y in range(height):
+            state[y][x].set_saliency(saliency[y][x])
+
+
+def get_saliency(state: List[List[int]], visual_fixation_width: int, visual_fixation_height: int, cell_value_size: int,) -> List[List[float]]:
+    """
+    Get saliency of cells.
+    We use entropy as described by the litterature.
+
+    See
+    Saliency, Scale and Image Description
+    https://homes.cs.washington.edu/~shapiro/EE596/notes/kadir.pdf
+    """
+
+    height = len(state)
+    width = len(state[0])
+
+    # Compute saliency.
+    saliency = copy.deepcopy(state)
+
+    q_values = []
+
+    for x in range(width):
+        for y in range(height):
+            value = state[y][x]
+            q_values.append(value)
+
+    q_values = torch.tensor(q_values)
+    q_counts = torch.bincount(q_values, minlength=cell_value_size)
+    q = q_counts.float() / q_counts.sum()
+    q_safe = torch.clamp(q, min=1e-10)
+
+    for x in range(width):
+        x_start = -(visual_fixation_width//2)
+        x_stop = (visual_fixation_width//2) + 1
+        # print(f"{x_start} {x_stop}")
+        for y in range(height):
+            # print(f"point {x},{y}")
+
+            p_values = []
+
+            y_start = -(visual_fixation_height//2)
+            y_stop = (visual_fixation_height//2) + 1
+            # print(f"{y_start} {y_stop}")
+            for x_offset in range(x_start, x_stop):
+                x_other = x + x_offset
+                if x_other < 0 or x_other >= width:
+                    continue
+                for y_offset in range(y_start, y_stop):
+                    y_other = y + y_offset
+                    if y_other < 0 or y_other >= height:
+                        continue
+                    # print(f"point {x_other},{y_other}")
+
+                    value = state[y_other][x_other]
+                    p_values.append(value)
+
+            # print(f"p_values {len(p_values)}")
+
+            p_values = torch.tensor(p_values)
+            p_counts = torch.bincount(p_values, minlength=cell_value_size)
+            p = p_counts.float() / p_counts.sum()
+            p_safe = torch.clamp(p, min=1e-10)
+
+            # print(f"p {p}")
+            # print(f"q {q}")
+
+            kl_div = (p * torch.log(p_safe / q_safe)).sum()
+            entropy = -(p * torch.log(p_safe)).sum()
+            cross_entropy = -(p * torch.log(q_safe)).sum()
+
+            saliency[y][x] = entropy.item()
+
+    return saliency
+
+
+"""
+https://en.wikipedia.org/wiki/Local_binary_patterns
+"""
+
+
+def get_local_binary_pattern(state: List[List[int]]) -> List[List[int]]:
+    height = len(state)
+    width = len(state[0])
+
+    # Compute saliency.
+    lbp = copy.deepcopy(state)
+    for x in range(width):
+        x_start = -1
+        x_stop = 1 + 1
+        # print(f"{x_start} {x_stop}")
+        for y in range(height):
+            center_value = state[y][x]
+            # print(f"point {x},{y}")
+
+            p_values = []
+
+            y_start = -1
+            y_stop = 1 + 1
+            # print(f"{y_start} {y_stop}")
+
+            pattern = []
+            for x_offset in range(x_start, x_stop):
+                x_other = x + x_offset
+                for y_offset in range(y_start, y_stop):
+                    if x_offset == 0 and y_offset == 0:
+                        # Skip center.
+                        continue
+                    y_other = y + y_offset
+
+                    if x_other < 0 or x_other >= width or y_other < 0 or y_other >= height:
+                        pattern.append(0)
+                        continue
+                    # print(f"point {x_other},{y_other}")
+
+                    neighbor_value = state[y_other][x_other]
+                    value = 1 if neighbor_value > center_value else 0
+                    pattern.append(value)
+
+            # print(f"pattern {pattern}")
+            integer = 0
+            for i, bit in enumerate(pattern):
+                # Calculate the value for each bit position
+                integer += bit * 2**(7 - i)
+            lbp[y][x] = integer
+
+    return lbp
+
+
+def center_surround_saliency(data: List[List[int]]) -> List[List[float]]:
+    """
+    Calculates a simple center-surround saliency map for a given image.
+
+    Args:
+      image: A 2D NumPy array representing the image.
+
+    Returns:
+      A 2D NumPy array representing the saliency map.
+
+    See
+    Receptive fields, binocular interaction and functional architecture in the cat's visual cortex
+    The Journal of physiology, 1962•ncbi.nlm.nih.gov
+    https://pmc.ncbi.nlm.nih.gov/articles/PMC1359523/pdf/jphysiol01247-0121.pdf?ref=hackernoon.com
+
+    See
+    A model of saliency-based visual attention for rapid scene analysis.
+    IEEE Transactions on pattern analysis and machine intelligence, 1998•ieeexplore.ieee.org
+    https://www.cse.psu.edu/~rtc12/CSE597E/papers/Itti_etal98pami.pdf
+    """
+
+    f = ReceptiveField(kernel_size=5)
+    M = len(data)
+    N = len(data[0])
+    data_array = np.array(data)
+    data_array = data_array.reshape(M, N)
+    img = torch.from_numpy(data_array).unsqueeze(0).unsqueeze(0).float()
+
+    output = f(img)
+
+    return output.squeeze(0).squeeze(0).tolist()
+
+
+def create_gradient_weight_matrix_euclidean_torch(size):
+    """
+    Creates a PyTorch tensor representing the gradient weight matrix 
+    with Euclidean distance.
+
+    Args:
+      size: The size of the square matrix.
+
+    Returns:
+      A PyTorch tensor representing the weight matrix.
+    """
+
+    center = torch.tensor([size // 2, size // 2], dtype=torch.float32)
+    weight_matrix = torch.zeros((size, size), dtype=torch.float32)
+
+    for i in range(size):
+        for j in range(size):
+            current_point = torch.tensor([i, j], dtype=torch.float32)
+            distance = torch.linalg.norm(current_point - center)
+            normalized_distance = distance / torch.linalg.norm(center)
+            weight_matrix[i, j] = 1.0 - 2 * normalized_distance
+
+    return weight_matrix
+
+
+class ReceptiveField(nn.Module):
+    def __init__(self, kernel_size):
+        super(ReceptiveField, self).__init__()
+        self.stride = 1
+        self.padding = "same"
+        self.weight = create_gradient_weight_matrix_euclidean_torch(
+            kernel_size).unsqueeze(0).unsqueeze(0)
+
+    def forward(self, x):
+        print("weight")
+        print(self.weight)
+        output = nn.functional.conv2d(x, self.weight,
+                                      stride=self.stride, padding=self.padding)
+        return output

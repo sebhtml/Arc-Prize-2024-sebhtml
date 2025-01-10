@@ -1,5 +1,7 @@
 from vision import rotate_90_clockwise, translate_board, flip_board, crop_field_of_view
-
+from vision import center_surround_saliency
+import torch
+import numpy as np
 
 def test_rotate_90_clockwise():
     board = [
@@ -111,3 +113,41 @@ def test_crop_field_of_view():
         [0, 0, 0, 0, 0],
     ]
     assert new_board == expected
+
+def test_add_cell_saliency():
+    state = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,], 
+        [0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 8, 8, 0, 0,], 
+        [0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 0, 0, 0,], 
+        [0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0, 0, 0,], 
+        [0, 0, 0, 0, 8, 8, 0, 8, 0, 0, 8, 8, 0, 0,], 
+        [0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0,], 
+        [0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 8, 0, 0, 0,], 
+        [0, 0, 0, 0, 0, 0, 8, 8, 8, 0, 8, 8, 8, 0,], 
+        [0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0,], 
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,], 
+        [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,], 
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,], 
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,], 
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+        ]
+    
+    print("state")
+    for row in state:
+        row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
+        print(row2)
+
+    saliency = center_surround_saliency(np.array(state))
+    
+    print("saliency")
+    for row in saliency:
+        row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
+        print(row2)
+
+    sorted_saliency = torch.tensor(saliency).view(-1).tolist()
+    sorted_saliency.sort(reverse=True)
+    
+    print(f"sorted_saliency {sorted_saliency}")
+
+    assert False == True
+
