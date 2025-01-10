@@ -334,7 +334,7 @@ def get_local_binary_pattern(state: List[List[int]]) -> List[List[int]]:
     return lbp
 
 
-def center_surround_saliency(data: List[List[int]]) -> List[List[float]]:
+def center_surround_saliency(data: List[List[int]],) -> List[List[float]]:
     """
     Calculates a simple center-surround saliency map for a given image.
 
@@ -355,7 +355,7 @@ def center_surround_saliency(data: List[List[int]]) -> List[List[float]]:
     https://www.cse.psu.edu/~rtc12/CSE597E/papers/Itti_etal98pami.pdf
     """
 
-    f = ReceptiveField(kernel_size=5)
+    f = ReceptiveField()
     M = len(data)
     N = len(data[0])
     data_array = np.array(data)
@@ -367,42 +367,48 @@ def center_surround_saliency(data: List[List[int]]) -> List[List[float]]:
     return output.squeeze(0).squeeze(0).tolist()
 
 
-def create_gradient_weight_matrix_euclidean_torch(size):
-    """
-    Creates a PyTorch tensor representing the gradient weight matrix 
-    with Euclidean distance.
-
-    Args:
-      size: The size of the square matrix.
-
-    Returns:
-      A PyTorch tensor representing the weight matrix.
-    """
-
-    center = torch.tensor([size // 2, size // 2], dtype=torch.float32)
-    weight_matrix = torch.zeros((size, size), dtype=torch.float32)
-
-    for i in range(size):
-        for j in range(size):
-            current_point = torch.tensor([i, j], dtype=torch.float32)
-            distance = torch.linalg.norm(current_point - center)
-            normalized_distance = distance / torch.linalg.norm(center)
-            weight_matrix[i, j] = 1.0 - 2 * normalized_distance
-
-    return weight_matrix
-
-
 class ReceptiveField(nn.Module):
-    def __init__(self, kernel_size):
+    """
+    See
+    https://homepages.inf.ed.ac.uk/rbf/HIPR2/log.htm
+    
+    See
+    https://homepages.inf.ed.ac.uk/rbf/HIPR2/gsmooth.htm
+    """
+    def __init__(self,):
         super(ReceptiveField, self).__init__()
-        self.stride = 1
-        self.padding = "same"
-        self.weight = create_gradient_weight_matrix_euclidean_torch(
-            kernel_size).unsqueeze(0).unsqueeze(0)
+        gaussian_kernel = [
+            [1, 4, 7, 4, 1,],
+            [4, 16, 26, 16, 4,],
+            [7, 26, 41, 26, 7,],
+            [4, 16, 26, 16, 4,],
+            [1, 4, 7, 4, 1,],
+        ]
+        self.gaussian_kernel = torch.tensor(gaussian_kernel).float()
+        self.gaussian_kernel = self.gaussian_kernel / self.gaussian_kernel.sum()
+        self.gaussian_kernel = self.gaussian_kernel.unsqueeze(0).unsqueeze(0)
 
+        laplacian_kernel = [
+            [0, -1, 0,],
+            [-1, 4, -1,],
+            [0, -1, 0,],
+        ]
+        self.laplacian_kernel = torch.tensor(laplacian_kernel).float()
+        self.laplacian_kernel = self.laplacian_kernel.unsqueeze(0).unsqueeze(0)
+        
     def forward(self, x):
-        print("weight")
-        print(self.weight)
-        output = nn.functional.conv2d(x, self.weight,
-                                      stride=self.stride, padding=self.padding)
+        #print("x")
+        #print(x)
+        
+        #smoothed = nn.functional.conv2d(x, self.gaussian_kernel,
+        #                              stride=1, padding="same")
+        
+        #print("smoothed")
+        #print(smoothed)
+        
+        output = nn.functional.conv2d(x, self.laplacian_kernel,
+                                      stride=1, padding="same")
+        #print("output")
+        #print(output)
+        
         return output

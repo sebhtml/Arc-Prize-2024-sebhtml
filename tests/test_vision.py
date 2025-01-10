@@ -137,7 +137,7 @@ def test_add_cell_saliency():
         row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
         print(row2)
 
-    saliency = center_surround_saliency(np.array(state))
+    saliency = center_surround_saliency(np.array(state),)
     
     print("saliency")
     for row in saliency:
