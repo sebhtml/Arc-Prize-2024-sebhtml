@@ -176,4 +176,4 @@ def test_count_zero_crossings_2d():
     )
     edges = count_zero_crossings_2d(tensor)
 
-    assert torch.equal(edges, expected)
+    assert edges.tolist() == expected.tolist()
