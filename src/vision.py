@@ -125,7 +125,9 @@ def flip_board(grid, direction):
             "Invalid direction. Must be 'horizontal' or 'vertical'.")
 
 
-def do_visual_fixation(example_input: List[List[Cell]], cell_address: CellAddress) -> List[List[Cell]]:
+def do_visual_fixation(example_input: List[List[Cell]], cell_address: CellAddress,
+                       visual_fixation_height: int, visual_fixation_width: int,
+                       ) -> List[List[Cell]]:
     """
     Attend to a cell address.
 
@@ -142,6 +144,8 @@ def do_visual_fixation(example_input: List[List[Cell]], cell_address: CellAddres
     Predicting human gaze beyond pixels
     https://jov.arvojournals.org/article.aspx?articleid=2193943
     """
+
+    example_input = pad_state(example_input)
 
     input_height = len(example_input)
     input_width = len(example_input[0])
@@ -161,10 +165,16 @@ def do_visual_fixation(example_input: List[List[Cell]], cell_address: CellAddres
     attented_example_input = translate_board(
         example_input, translation_x, translation_y, Cell(0))
 
+    attented_example_input = crop_field_of_view(
+        attented_example_input, visual_fixation_height, visual_fixation_width,)
+
     return attented_example_input
 
 
-def crop_field_of_view(view: List[List[Cell]], visual_fixation_width: int, visual_fixation_height: int,) -> List[List[Cell]]:
+def crop_field_of_view(view: List[List[Cell]],
+                       visual_fixation_height: int,
+                       visual_fixation_width: int,
+                       ) -> List[List[Cell]]:
     current_height = len(view)
     current_width = len(view[0])
     if current_height % 2 == 0 or current_width % 2 == 0:
@@ -470,3 +480,22 @@ def select_visual_fixations(
               (visual_fixation_width//2):x+(visual_fixation_width//2)+1] = 0.0
 
     return cell_addresses
+
+
+def pad_state(example_input: List[List[Cell]],) -> List[List[Cell]]:
+    example_input = copy.deepcopy(example_input)
+    input_height = len(example_input)
+    input_width = len(example_input[0])
+
+    # if height is even, add a dummy row.
+    if input_height % 2 == 0:
+        example_input.append([Cell(0)] * input_width)
+        input_height = len(example_input)
+
+    # if width is even, add a dummy column
+    if input_width % 2 == 0:
+        for row in example_input:
+            row.append(Cell(0))
+        input_width = len(example_input[0])
+
+    return example_input

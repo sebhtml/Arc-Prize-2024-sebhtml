@@ -104,32 +104,10 @@ def filter_token(token: int) -> bool:
 def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
                     padding_char: str, visual_fixation_width: int, visual_fixation_height: int,) -> Context:
 
-    example_input = pad_state(example_input)
-
-    attented_example_input = do_visual_fixation(example_input, cell_address)
-    attented_example_input = crop_field_of_view(
-        attented_example_input, visual_fixation_width, visual_fixation_height,)
+    attented_example_input = do_visual_fixation(
+        example_input, cell_address, visual_fixation_height, visual_fixation_width,)
 
     input_tokens = tokenize_example_input(
         attented_example_input, padding_char)
 
     return input_tokens
-
-
-def pad_state(example_input: List[List[Cell]],) -> List[List[Cell]]:
-    example_input = copy.deepcopy(example_input)
-    input_height = len(example_input)
-    input_width = len(example_input[0])
-
-    # if height is even, add a dummy row.
-    if input_height % 2 == 0:
-        example_input.append([Cell(0)] * input_width)
-        input_height = len(example_input)
-
-    # if width is even, add a dummy column
-    if input_width % 2 == 0:
-        for row in example_input:
-            row.append(Cell(0))
-        input_width = len(example_input[0])
-
-    return example_input

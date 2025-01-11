@@ -8,7 +8,6 @@ import sys
 from q_learning import CellAddress
 from episode_renderer import print_state_with_colors
 from main import make_celled_state
-from context import pad_state
 
 
 def test_rotate_90_clockwise():
@@ -230,14 +229,10 @@ def test_select_visual_fixations():
     addresses = select_visual_fixations(
         example_input, num_visual_fixations, visual_fixation_height, visual_fixation_width,)
 
-    padding_char = ' '
     celled_example_input = make_celled_state(example_input)
-    celled_example_input = pad_state(celled_example_input)
     for cell_address in addresses:
         attented_example_input = do_visual_fixation(
-            celled_example_input, cell_address)
-        attented_example_input = crop_field_of_view(
-            attented_example_input, visual_fixation_width, visual_fixation_height,)
+            celled_example_input, cell_address, visual_fixation_height, visual_fixation_width,)
 
         print_state_with_colors(attented_example_input, sys.stdout,)
 
