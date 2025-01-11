@@ -92,8 +92,7 @@ class Configuration:
 
     max_episodes = 1000
     min_percentage_correct_cells = 1.0
-    max_loss = 0.0001
-    max_winning_streak_length = 10
+    max_winning_streak_length = 32
     target_network_update_period = 1000  # prod: 1000, dev: 100
     render_recorded_episodes = True
 

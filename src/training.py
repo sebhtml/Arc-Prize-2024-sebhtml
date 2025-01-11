@@ -299,7 +299,7 @@ def train_model_using_experience_replay(
         )
 
         if len(environment.recorded_episodes()) > old_number_of_episodes:
-            if percentage_correct_cells >= config.min_percentage_correct_cells and loss <= config.max_loss:
+            if percentage_correct_cells >= config.min_percentage_correct_cells:
                 winning_streak_length += 1
             else:
                 winning_streak_length = 0
