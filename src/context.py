@@ -1,7 +1,9 @@
 import torch
+import numpy as np
 import copy
 from typing import List
 from vision import Cell, CellAddress, do_visual_fixation, crop_field_of_view
+from vision import select_visual_fixations
 from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
 from q_learning import QLearningAction
 from model import CLS_TOKEN
@@ -27,22 +29,6 @@ def get_puzzle_starting_state(state: List[List[Cell]]) -> List[List[Cell]]:
             value = VACANT_CELL_VALUE
             current_state[row][col] = Cell(value)
     return current_state
-
-
-def tokenize_example_input(
-        attended_example_input: List[List[Cell]],
-        padding_char: str) -> Context:
-    """
-    Tokenize a example input.
-    """
-
-    attended_example_input_text = ""
-    attended_example_input_text += "attendedExampleInput" + "\n"
-    attended_example_input_text += state_to_text(attended_example_input)
-
-    return Context(
-        text_to_tokens(attended_example_input_text),
-    )
 
 
 def text_to_tokens(s: str) -> List[int]:
@@ -102,12 +88,34 @@ def filter_token(token: int) -> bool:
 
 
 def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
-                    padding_char: str, visual_fixation_width: int, visual_fixation_height: int,) -> Context:
+                    padding_char: str,
+                    num_visual_fixations: int,
+                    visual_fixation_height: int,
+                    visual_fixation_width: int,
+                    ) -> Context:
 
-    attented_example_input = do_visual_fixation(
-        example_input, cell_address, visual_fixation_height, visual_fixation_width,)
+    # Get salient visual fixations.
+    state = []
+    for row in example_input:
+        row2 = list(map(lambda cell: cell.cell_value(), row))
+        state.append(row2)
+    cell_addresses = select_visual_fixations(
+        state, num_visual_fixations, visual_fixation_height, visual_fixation_width,)
+    np.random.shuffle(cell_addresses)
 
-    input_tokens = tokenize_example_input(
-        attented_example_input, padding_char)
+    # Append the cell address to attend to.
+    cell_addresses.append(cell_address)
 
-    return input_tokens
+    context_text = ""
+
+    for cell_address in cell_addresses:
+        context_text += "fixation" + "\n"
+        visual_fixation = do_visual_fixation(
+            example_input, cell_address, visual_fixation_height, visual_fixation_width,)
+        context_text += state_to_text(visual_fixation)
+
+    context = Context(
+        text_to_tokens(context_text),
+    )
+
+    return context

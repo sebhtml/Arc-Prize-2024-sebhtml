@@ -272,7 +272,11 @@ def select_action_with_deep_q_network(
     cell_address = CellAddress(candidate_action.row(), candidate_action.col(),)
 
     input_tokens = prepare_context(
-        example_input, cell_address, config.padding_char, config.visual_fixation_width, config.visual_fixation_height,)
+        example_input, cell_address, config.padding_char,
+        config.num_visual_fixations,
+        config.visual_fixation_height,
+        config.visual_fixation_width,
+    )
 
     if verbose:
         print("input_text")
@@ -363,7 +367,11 @@ def select_action_with_policy_network(
 
     for cell_address in cell_addresses:
         input_tokens = prepare_context(
-            example_input, cell_address, config.padding_char, config.visual_fixation_width, config.visual_fixation_height,)
+            example_input, cell_address, config.padding_char,
+            config.num_visual_fixations,
+            config.visual_fixation_height,
+            config.visual_fixation_width,
+        )
 
         if verbose:
             print("input_text")
