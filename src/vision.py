@@ -450,22 +450,22 @@ def select_visual_fixations(
     cell_addresses = []
 
     while len(cell_addresses) < num_visual_fixations:
-        edges2 = edges.squeeze(0).squeeze(0).tolist()
-        print("edges")
-        for row in edges2:
-            row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
-            print(row2)
+        # edges2 = edges.squeeze(0).squeeze(0).tolist()
+        # print("edges")
+        # for row in edges2:
+        #    row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
+        #    print(row2)
 
         saliency_kernel = torch.ones(
             1, 1, visual_fixation_height, visual_fixation_width)
         saliency = nn.functional.conv2d(edges, saliency_kernel,
                                         stride=1, padding="same")
 
-        saliency2 = saliency.squeeze(0).squeeze(0).tolist()
-        print("saliency")
-        for row in saliency2:
-            row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
-            print(row2)
+        # saliency2 = saliency.squeeze(0).squeeze(0).tolist()
+        # print("saliency")
+        # for row in saliency2:
+        #    row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
+        #    print(row2)
 
         N = saliency.shape[-1]
         flattened = saliency.view(-1)
@@ -473,7 +473,7 @@ def select_visual_fixations(
         y, x = max_index // N, max_index % N
         y, x = y.item(), x.item()
 
-        print(f"max at y,x={y,x}")
+        # print(f"max at y,x={y,x}")
         addr = CellAddress(y, x)
         cell_addresses.append(addr)
         edges[:, :, y-(visual_fixation_height//2):y+(visual_fixation_height//2)+1, x -
