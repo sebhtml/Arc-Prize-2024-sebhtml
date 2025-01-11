@@ -141,16 +141,37 @@ def test_add_cell_saliency():
         row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
         print(row2)
 
-    laplacian = center_surround_receptive_field(np.array(state),)
+    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0)
+    laplacian = center_surround_receptive_field(state)
 
+    expected = [
+                [+0,  +0,  +0,  +0,  +0,  +0,  +0,  -8,  -8,  +0,  -8,  -8,  +0,  +0],  # nopep8
+                [+0,  +0,  +0,  +0,  +0,  +0,  -8, +24, +16, -24, +16, +24,  -8,  +0],  # nopep8
+                [+0,  +0,  +0,  +0,  +0,  -8,  -8, -24,  +8, +16, +16, -16,  +0,  +0],  # nopep8
+                [+0,  +0,  +0,  +0, -16, +16, +16,  +8, +16, -16, -16,  -8,  +0,  +0],  # nopep8
+                [+0,  +0,  +0,  -8, +24, +16, -24, +16, -24, -16, +16, +24,  -8,  +0],  # nopep8
+                [+0,  +0,  +0,  +0,  -8,  -8,  -8, +16,  +8, +16,  +8, -16,  +0,  +0],  # nopep8
+                [+0,  +0,  +0,  +0,  +0,  +0,  -8, -24, +16, -24, +16, -16,  -8,  +0],  # nopep8
+                [+0,  +0,  +0,  +0,  +0,  -8, +16, +16, +16, -16, +16, +16, +16,  -8],  # nopep8
+                [+0,  +0,  -1,  +0,  +0,  -8, +24, -16,  -8,  +0,  -8, -16, +24,  -8],  # nopep8
+                [+0,  -2,  +3,  -2,  +0,  +0,  -8,  +0,  +0,  +0,  +0,  +0,  -8,  +0],  # nopep8
+                [-1,  +3,  +0,  +3,  -1,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0],  # nopep8
+                [+0,  -2,  +3,  -2,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0],  # nopep8
+                [+0,  +0,  -1,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0],  # nopep8
+                [+0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0,  +0],  # nopep8
+    ]
+    expected = torch.tensor(expected).float().unsqueeze(0).unsqueeze(0)
+
+    laplacian2 = laplacian.squeeze(0).squeeze(0).tolist()
     print("laplacian")
-    for row in laplacian:
+    for row in laplacian2:
         row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
         print(row2)
 
-    # edges = count_edges(laplacian)
+    print(laplacian.tolist())
+    print(expected.tolist())
 
-    assert False == True
+    assert laplacian.tolist() == expected.tolist()
 
 
 def test_count_zero_crossings_2d():
@@ -162,7 +183,7 @@ def test_count_zero_crossings_2d():
             [-1.1996, -0.7706, -3.8851, -0.1429, -2.0533],
             [-0.7130,  0.6620,  0.1569,  0.6320, -0.2912],
             [0.1315, -0.7237, -1.4901, -0.7380,  0.7858]
-          ]]]
+        ]]]
     )
 
     expected = torch.tensor(

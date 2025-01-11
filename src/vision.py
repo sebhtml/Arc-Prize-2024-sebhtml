@@ -334,15 +334,15 @@ def get_local_binary_pattern(state: List[List[int]]) -> List[List[int]]:
     return lbp
 
 
-def center_surround_receptive_field(data: List[List[int]],) -> List[List[float]]:
+def center_surround_receptive_field(img: torch.Tensor,) -> torch.Tensor:
     """
     Calculates a simple center-surround saliency map for a given image.
 
     Args:
-      image: A 2D NumPy array representing the image.
+      img: a tensor of shape [1,1,M,N]
 
     Returns:
-      A 2D NumPy array representing the saliency map.
+      a tensor of shape [1,1,M,N]
 
     See
     Receptive fields, binocular interaction and functional architecture in the cat's visual cortex
@@ -356,19 +356,14 @@ def center_surround_receptive_field(data: List[List[int]],) -> List[List[float]]
     """
 
     f = ReceptiveField()
-    M = len(data)
-    N = len(data[0])
-    data_array = np.array(data)
-    data_array = data_array.reshape(M, N)
-    img = torch.from_numpy(data_array).unsqueeze(0).unsqueeze(0).float()
-
     output = f(img)
-
-    return output.squeeze(0).squeeze(0).tolist()
+    return output
 
 
 class ReceptiveField(nn.Module):
     """
+    Use a Laplacian kernel to detect edges in a receptive field.
+
     See
     https://homepages.inf.ed.ac.uk/rbf/HIPR2/log.htm
 
@@ -397,21 +392,9 @@ class ReceptiveField(nn.Module):
         self.laplacian_kernel = torch.tensor(laplacian_kernel).float()
         self.laplacian_kernel = self.laplacian_kernel.unsqueeze(0).unsqueeze(0)
 
-    def forward(self, x):
-        # print("x")
-        # print(x)
-
-        # smoothed = nn.functional.conv2d(x, self.gaussian_kernel,
-        #                              stride=1, padding="same")
-
-        # print("smoothed")
-        # print(smoothed)
-
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         output = nn.functional.conv2d(x, self.laplacian_kernel,
                                       stride=1, padding="same")
-        # print("output")
-        # print(output)
-
         return output
 
 
