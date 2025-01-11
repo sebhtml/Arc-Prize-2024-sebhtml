@@ -8,41 +8,18 @@
 - clean up imports
 - rename module q_learning
 
+- use new puzzle
+
 # Backlog
-
-- process all experience in training loop because right now with reinforce, I get this:
-logits tensor([[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -1.5647,
-         -0.8588, -1.3075],
-- use term "returns" not "rewards"
-
-- retry reinforce algorithm
-- remove get_correct
-
-- normalize rewards
-- move cell_match_reward to config
-- move cell_mismatch_reward to config
-
-- to select visual fixations, use sampling in training, argmax in test)
-
-
-
 
 - add puzzle id in png file names
 
-- use Dropout in classifier of policy network model
 - move norm and dropout at same scope in transformer block
 
 - remove vacant variables
-- use new puzzle
 
-- for data augmentation, maybe remove random cols or rows
-- remove QDN usage
 - use BERT_large parameters L=12, H=768, A=12
 
-# Vision
-
-- compute saliency with GPU
-- visual_fixation_width: int, visual_fixation_height: int, vs convolution kernel size
 
 # Refactoring
 
@@ -59,6 +36,7 @@ logits tensor([[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -
 
 # Value network
 
+- remove QDN usage
 - use load_dict for target net
 - implement epsilon-greedy policy for random exploration
 
@@ -76,3 +54,14 @@ logits tensor([[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -
 
 # Reinforcement learning
 
+- process all experience in training loop because right now with reinforce, I get this:
+logits tensor[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -1.5647,
+         -0.8588, -1.3075],
+- use term "returns" not "rewards"
+
+- retry reinforce algorithm
+- remove get_correct
+
+- normalize rewards
+- move cell_match_reward to config
+- move cell_mismatch_reward to config
