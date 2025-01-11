@@ -1,11 +1,7 @@
 # Research and Development
 
-- for each candidate visual fixation, sum the number of laplacian zero-crossings
-
-- in Cell, add fixation_saliency which is sum_of_num_adjacent_cells_with_different_color using fixation width and fixation height
-
-- use a sequence of 1 additional visual fixations using the fixation_saliency argmax 
-
+- calculate salient cells once at the beginningv
+- num_visual_fixations should be 5 actually
 - clean up imports
 - rename module q_learning
 - test with 009d5c81
