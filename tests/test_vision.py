@@ -1,8 +1,13 @@
 from vision import rotate_90_clockwise, translate_board, flip_board, crop_field_of_view
-from vision import center_surround_receptive_field
-from vision import count_zero_crossings_2d
+from vision import center_surround_receptive_field, do_visual_fixation
+from vision import count_zero_crossings_2d, select_visual_fixations
 import torch
 import numpy as np
+from torch import nn
+from q_learning import CellAddress
+from agent import print_current_state
+from main import make_celled_state
+from context import pad_state
 
 
 def test_rotate_90_clockwise():
@@ -198,3 +203,45 @@ def test_count_zero_crossings_2d():
     edges = count_zero_crossings_2d(tensor)
 
     assert edges.tolist() == expected.tolist()
+
+
+def test_select_visual_fixations():
+    example_input = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+        [0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 8, 8, 0, 0,],
+        [0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 0, 0, 0,],
+        [0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0, 0, 0,],
+        [0, 0, 0, 0, 8, 8, 0, 8, 0, 0, 8, 8, 0, 0,],
+        [0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0,],
+        [0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 8, 0, 0, 0,],
+        [0, 0, 0, 0, 0, 0, 8, 8, 8, 0, 8, 8, 8, 0,],
+        [0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 8, 0,],
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+        [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+    ]
+
+    num_visual_fixations = 4
+    visual_fixation_width = 5
+    visual_fixation_height = 5
+    addresses = select_visual_fixations(
+        example_input, num_visual_fixations, visual_fixation_height, visual_fixation_width,)
+
+    padding_char = ' '
+    celled_example_input = make_celled_state(example_input)
+    celled_example_input = pad_state(celled_example_input)
+    for cell_address in addresses:
+        attented_example_input = do_visual_fixation(
+            celled_example_input, cell_address)
+        attented_example_input = crop_field_of_view(
+            attented_example_input, visual_fixation_width, visual_fixation_height,)
+
+        print_current_state(attented_example_input,
+                            attented_example_input, padding_char,)
+
+    simple_addresses = list(map(lambda a: [a.row(), a.col(),], addresses))
+
+    assert simple_addresses == [[10, 2], [6, 10], [4, 5], [1, 10]]
+    # assert True == False

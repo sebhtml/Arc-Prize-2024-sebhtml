@@ -425,3 +425,48 @@ def count_zero_crossings_2d(tensor):
     sign_changes[:-1, :] += sign[1:, :] != sign[:-1, :]
 
     return sign_changes.unsqueeze(0).unsqueeze(0)
+
+
+def select_visual_fixations(
+    state: List[List[int]],
+    num_visual_fixations: int,
+    visual_fixation_height: int, visual_fixation_width: int,
+) -> List[CellAddress]:
+
+    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0)
+    laplacian = center_surround_receptive_field(state)
+    edges = count_zero_crossings_2d(laplacian)
+
+    cell_addresses = []
+
+    while len(cell_addresses) < num_visual_fixations:
+        edges2 = edges.squeeze(0).squeeze(0).tolist()
+        print("edges")
+        for row in edges2:
+            row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
+            print(row2)
+
+        saliency_kernel = torch.ones(
+            1, 1, visual_fixation_height, visual_fixation_width)
+        saliency = nn.functional.conv2d(edges, saliency_kernel,
+                                        stride=1, padding="same")
+
+        saliency2 = saliency.squeeze(0).squeeze(0).tolist()
+        print("saliency")
+        for row in saliency2:
+            row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
+            print(row2)
+
+        N = saliency.shape[-1]
+        flattened = saliency.view(-1)
+        max_index = flattened.argmax()
+        y, x = max_index // N, max_index % N
+        y, x = y.item(), x.item()
+
+        print(f"max at y,x={y,x}")
+        addr = CellAddress(y, x)
+        cell_addresses.append(addr)
+        edges[:, :, y-(visual_fixation_height//2):y+(visual_fixation_height//2)+1, x -
+              (visual_fixation_width//2):x+(visual_fixation_width//2)+1] = 0.0
+
+    return cell_addresses
