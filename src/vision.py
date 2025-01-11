@@ -366,6 +366,7 @@ def center_surround_receptive_field(img: torch.Tensor,) -> torch.Tensor:
     """
 
     f = ReceptiveField()
+    f.to('cuda')
     output = f(img)
     return output
 
@@ -400,7 +401,8 @@ class ReceptiveField(nn.Module):
             [0, -1, 0,],
         ]
         self.laplacian_kernel = torch.tensor(laplacian_kernel).float()
-        self.laplacian_kernel = self.laplacian_kernel.unsqueeze(0).unsqueeze(0)
+        self.laplacian_kernel = self.laplacian_kernel.unsqueeze(
+            0).unsqueeze(0).to('cuda')
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         output = nn.functional.conv2d(x, self.laplacian_kernel,
@@ -428,7 +430,7 @@ def count_zero_crossings_2d(tensor):
     sign = torch.sign(tensor)
 
     # Detect sign changes (avoiding out-of-bounds access)
-    sign_changes = torch.zeros_like(sign)  # Initialize with zeros
+    sign_changes = torch.zeros_like(sign).to('cuda')  # Initialize with zeros
     sign_changes[:, 1:] += sign[:, :-1] != sign[:, 1:]
     sign_changes[:, :-1] += sign[:, 1:] != sign[:, :-1]
     sign_changes[1:, :] += sign[:-1, :] != sign[1:, :]
@@ -443,7 +445,7 @@ def select_visual_fixations(
     visual_fixation_height: int, visual_fixation_width: int,
 ) -> List[CellAddress]:
 
-    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0)
+    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0).to('cuda')
     laplacian = center_surround_receptive_field(state)
     edges = count_zero_crossings_2d(laplacian)
 
@@ -457,7 +459,7 @@ def select_visual_fixations(
         #    print(row2)
 
         saliency_kernel = torch.ones(
-            1, 1, visual_fixation_height, visual_fixation_width)
+            1, 1, visual_fixation_height, visual_fixation_width).to('cuda')
         saliency = nn.functional.conv2d(edges, saliency_kernel,
                                         stride=1, padding="same")
 
