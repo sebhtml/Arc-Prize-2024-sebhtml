@@ -1,10 +1,12 @@
 # Research and Development
 
-- calculate salient cells once at the beginningv
+- test with 0ca9ddb6
+- test with 009d5c81
+- add cuda device in configuration
 - num_visual_fixations should be 5 actually
+- calculate salient cells once at the beginningv
 - clean up imports
 - rename module q_learning
-- test with 009d5c81
 
 # Backlog
 
