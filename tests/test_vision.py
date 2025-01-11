@@ -118,7 +118,7 @@ def test_crop_field_of_view():
     assert new_board == expected
 
 
-def test_add_cell_saliency():
+def test_center_surround_receptive_field():
     state = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
         [0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 8, 8, 0, 0,],
