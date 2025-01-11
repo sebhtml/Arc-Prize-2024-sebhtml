@@ -334,7 +334,7 @@ def get_local_binary_pattern(state: List[List[int]]) -> List[List[int]]:
     return lbp
 
 
-def center_surround_saliency(data: List[List[int]],) -> List[List[float]]:
+def center_surround_receptive_field(data: List[List[int]],) -> List[List[float]]:
     """
     Calculates a simple center-surround saliency map for a given image.
 
@@ -371,10 +371,11 @@ class ReceptiveField(nn.Module):
     """
     See
     https://homepages.inf.ed.ac.uk/rbf/HIPR2/log.htm
-    
+
     See
     https://homepages.inf.ed.ac.uk/rbf/HIPR2/gsmooth.htm
     """
+
     def __init__(self,):
         super(ReceptiveField, self).__init__()
         gaussian_kernel = [
@@ -395,20 +396,49 @@ class ReceptiveField(nn.Module):
         ]
         self.laplacian_kernel = torch.tensor(laplacian_kernel).float()
         self.laplacian_kernel = self.laplacian_kernel.unsqueeze(0).unsqueeze(0)
-        
+
     def forward(self, x):
-        #print("x")
-        #print(x)
-        
-        #smoothed = nn.functional.conv2d(x, self.gaussian_kernel,
+        # print("x")
+        # print(x)
+
+        # smoothed = nn.functional.conv2d(x, self.gaussian_kernel,
         #                              stride=1, padding="same")
-        
-        #print("smoothed")
-        #print(smoothed)
-        
+
+        # print("smoothed")
+        # print(smoothed)
+
         output = nn.functional.conv2d(x, self.laplacian_kernel,
                                       stride=1, padding="same")
-        #print("output")
-        #print(output)
-        
+        # print("output")
+        # print(output)
+
         return output
+
+
+def count_zero_crossings_2d(tensor):
+    """
+    Counts zero crossings in both x and y axes of a 4D PyTorch tensor 
+    (shape: [1, 1, M, N]), and returns tensors indicating locations of crossings.
+
+    Args:
+      tensor: Input tensor with shape [1, 1, M, N].
+
+    Returns:
+      A tuple containing:
+        - sign_changes: A tensor with shape [M, N] representing locations of x-axis zero crossings (1 for crossing, 0 otherwise).
+    """
+
+    # Squeeze redundant dimensions
+    tensor = tensor.squeeze(0).squeeze(0)  # Now shape is [M, N]
+
+    # Calculate sign of each element
+    sign = torch.sign(tensor)
+
+    # Detect sign changes (avoiding out-of-bounds access)
+    sign_changes = torch.zeros_like(sign)  # Initialize with zeros
+    sign_changes[:, 1:] += sign[:, :-1] != sign[:, 1:]
+    sign_changes[:, :-1] += sign[:, 1:] != sign[:, :-1]
+    sign_changes[1:, :] += sign[:-1, :] != sign[1:, :]
+    sign_changes[:-1, :] += sign[1:, :] != sign[:-1, :]
+
+    return sign_changes.unsqueeze(0).unsqueeze(0)
