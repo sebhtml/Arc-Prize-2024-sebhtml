@@ -1,5 +1,5 @@
 format-code:
-	autopep8 -i src/*.py
+	autopep8 -i src/*.py tests/*.py
 
 pip-freeze:
 	pip freeze > requirements.txt
