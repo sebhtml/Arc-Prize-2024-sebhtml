@@ -4,8 +4,9 @@ from vision import count_zero_crossings_2d, select_visual_fixations
 import torch
 import numpy as np
 from torch import nn
+import sys
 from q_learning import CellAddress
-from agent import print_current_state
+from episode_renderer import print_state_with_colors
 from main import make_celled_state
 from context import pad_state
 
@@ -238,8 +239,7 @@ def test_select_visual_fixations():
         attented_example_input = crop_field_of_view(
             attented_example_input, visual_fixation_width, visual_fixation_height,)
 
-        print_current_state(attented_example_input,
-                            attented_example_input, padding_char,)
+        print_state_with_colors(attented_example_input, sys.stdout,)
 
     simple_addresses = list(map(lambda a: [a.row(), a.col(),], addresses))
 

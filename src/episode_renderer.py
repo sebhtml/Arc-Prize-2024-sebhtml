@@ -1,7 +1,7 @@
 from typing import List
 from datetime import datetime, timezone
 from typing import IO
-from q_learning import GameState, VACANT_CELL_VALUE
+from q_learning import GameState, VACANT_CELL_VALUE, Cell
 from context import VACANT_CELL_CHAR
 
 
@@ -18,7 +18,7 @@ def render_episodes(puzzle_id: str, episodes: List[List[GameState]], episodes_di
         for j, state in enumerate(episode):
             io.write(
                 f"Episodes: {len(episodes)},  Episode: {i},  State: {j}\n")
-            print_with_colors(state, io,)
+            print_game_state_with_colors(state, io,)
 
     io.close()
 
@@ -49,33 +49,29 @@ def print_cell(value: int, io: IO[str]):
     io.write(f"{before} {char} {after}")
 
 
-def print_with_colors(state: GameState, io: IO[str]):
+def print_state_with_colors(state: List[List[Cell]], io: IO[str]):
+    example_input_height = len(state)
+    example_input_width = len(state[0])
+
+    for y in range(example_input_height):
+        for x in range(example_input_width):
+            cell_value = state[y][x].cell_value()
+            print_cell(cell_value, io)
+        io.write("\n")
+    io.write("\n")
+
+
+def print_game_state_with_colors(state: GameState, io: IO[str]):
     # Render example input.
     io.write("EXAMPLE_INPUT")
     io.write("\n")
     example_input = state.example_input()
-    example_input_height = len(example_input)
-    example_input_width = len(example_input[0])
-
-    for y in range(example_input_height):
-        for x in range(example_input_width):
-            cell_value = example_input[y][x].cell_value()
-            print_cell(cell_value, io)
-        io.write("\n")
-    io.write("\n")
+    print_state_with_colors(example_input, io,)
 
     # Render current state.
     io.write("CURRENT_STATE")
     io.write("\n")
     current_state = state.current_state()
-    current_state_height = len(current_state)
-    current_state_width = len(current_state[0])
-
-    for y in range(current_state_height):
-        for x in range(current_state_width):
-            cell_value = current_state[y][x].cell_value()
-            print_cell(cell_value, io)
-        io.write("\n")
-    io.write("\n")
+    print_state_with_colors(current_state, io,)
 
     io.flush()

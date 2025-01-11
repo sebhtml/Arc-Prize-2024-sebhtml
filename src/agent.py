@@ -14,7 +14,7 @@ from q_learning import QLearningAction, Cell, CellAddress, Experience, GameState
 from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment
 from configuration import Configuration
-from episode_renderer import print_with_colors
+from episode_renderer import print_game_state_with_colors
 
 
 class Agent:
@@ -252,7 +252,7 @@ def test_policy(puzzle_examples, agent: Agent,
 
 def print_current_state(example_input, current_state, padding_char):
     game_state = GameState(example_input, current_state)
-    print_with_colors(game_state, sys.stdout)
+    print_game_state_with_colors(game_state, sys.stdout)
 
 
 def select_action_with_deep_q_network(
