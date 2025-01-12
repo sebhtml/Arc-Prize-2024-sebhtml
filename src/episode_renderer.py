@@ -65,7 +65,7 @@ def print_game_state_with_colors(state: GameState, io: IO[str]):
     # Render example input.
     io.write("EXAMPLE_INPUT")
     io.write("\n")
-    example_input = state.example_input()
+    example_input = state.example_input().cells()
     print_state_with_colors(example_input, io,)
 
     # Render current state.

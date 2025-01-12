@@ -34,7 +34,7 @@ from environment import Environment
 from training import train_model_using_experience_replay
 from configuration import Configuration
 from episode_renderer import render_episodes
-from q_learning import Cell
+from q_learning import Cell, ExampleInput
 
 config = Configuration()
 
@@ -58,15 +58,16 @@ def make_celled_state(state: List[List[int]]) -> List[List[Cell]]:
     return celled_state
 
 
-def make_celled_example(example: Tuple[List[List[int]], List[List[int]]]) -> Tuple[List[List[Cell]], List[List[Cell]]]:
+def make_celled_example(example: Tuple[List[List[int]], List[List[int]]]) -> Tuple[ExampleInput, List[List[Cell]]]:
     example_input, example_output = example
     celled_example_input = make_celled_state(example_input)
     celled_example_output = make_celled_state(example_output)
+    celled_example_input = ExampleInput(celled_example_input)
     celled_example = (celled_example_input, celled_example_output)
     return celled_example
 
 
-def load_puzzle_examples(puzzle_id: str, example_type: str) -> List[Tuple[List[List[Cell]], List[List[Cell]]]]:
+def load_puzzle_examples(puzzle_id: str, example_type: str) -> List[Tuple[ExampleInput, List[List[Cell]]]]:
     """
     - example_type is "train" or "test"
     Note that for the "test" venue, no solutions are provided.

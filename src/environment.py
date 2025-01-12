@@ -1,7 +1,7 @@
 import random
 from typing import List, Tuple, Union
 from context import get_puzzle_starting_state
-from q_learning import Cell, reward, QLearningAction, GameState
+from q_learning import Cell, reward, QLearningAction, GameState, ExampleInput
 from vision import VACANT_CELL_VALUE
 import copy
 
@@ -27,14 +27,14 @@ class Environment:
         self.__recorded_episodes = []
         self.__current_episode = []
 
-    def set_puzzle_example(self, example_input: List[List[Cell]], example_output: Union[List[List[Cell]], None]):
+    def set_puzzle_example(self, example_input: ExampleInput, example_output: Union[List[List[Cell]], None]):
         """
         puzzle_output can be None. In that case, immediate reward will be None.
         """
         self.__example_output = example_output
 
-        input_width = len(example_input[0])
-        input_height = len(example_input)
+        input_width = len(example_input.cells()[0])
+        input_height = len(example_input.cells())
 
         if example_output != None:
             output_width = len(example_output[0])
@@ -45,7 +45,7 @@ class Environment:
                     f"input and output have different sizes: {(input_width, input_height)} and {(output_width, output_height)}")
 
         self.__example_input = example_input
-        self.__current_state = get_puzzle_starting_state(example_input)
+        self.__current_state = get_puzzle_starting_state(example_input.cells())
 
         # Clear the current episode if the previous episode was truncated.
         self.__current_episode = []
@@ -64,7 +64,7 @@ class Environment:
     def is_in_terminal_state(self) -> bool:
         return len(self.__available_actions) == 0
 
-    def get_observations(self) -> Tuple[List[List[Cell]], List[List[Cell]]]:
+    def get_observations(self) -> Tuple[ExampleInput, List[List[Cell]]]:
         return (self.__example_input, self.__current_state)
 
     def take_action(self, action: QLearningAction) -> float:

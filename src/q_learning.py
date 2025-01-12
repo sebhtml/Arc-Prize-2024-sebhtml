@@ -101,12 +101,20 @@ class Cell:
         return self.__saliency
 
 
+class ExampleInput:
+    def __init__(self, cells: List[List[Cell]],):
+        self.__cells = cells
+
+    def cells(self) -> List[List[Cell]]:
+        return self.__cells
+
+
 class GameState:
-    def __init__(self, example_input: List[List[Cell]], current_state: List[List[Cell]]):
+    def __init__(self, example_input: ExampleInput, current_state: List[List[Cell]]):
         self.__example_input = example_input
         self.__current_state = current_state
 
-    def example_input(self) -> List[List[Cell]]:
+    def example_input(self) -> ExampleInput:
         return self.__example_input
 
     def current_state(self) -> List[List[Cell]]:

@@ -13,7 +13,7 @@ from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
 from environment import Environment, generate_cell_actions
 from configuration import Configuration
-from q_learning import Experience, unbin_action_value, CellAddress, bin_action_value, trim_list, Cell
+from q_learning import Experience, unbin_action_value, CellAddress, bin_action_value, trim_list, Cell, ExampleInput
 from vision import flip_board, rotate_90_clockwise
 
 
@@ -234,8 +234,8 @@ def get_grad_norm(model):
 
 
 def augment_examples(
-        puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
-) -> List[Tuple[List[List[Cell]], List[List[Cell]]]]:
+        puzzle_train_examples: List[Tuple[ExampleInput, List[List[Cell]]]],
+) -> List[Tuple[ExampleInput, List[List[Cell]]]]:
     augmented_puzzle_train_examples = []
     for i in range(len(puzzle_train_examples)):
         for rotations in range(4):
@@ -253,7 +253,7 @@ def train_model_using_experience_replay(
     config: Configuration,
     context_size: int, batch_size: int, device: torch.device,
     agent: Agent,
-    puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
+    puzzle_train_examples: List[Tuple[ExampleInput, List[List[Cell]]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool, lr: float, weight_decay: float,
     max_grad_norm: float, print_model_outputs: bool, save_step_losses: bool,
@@ -340,16 +340,17 @@ def train_model_using_experience_replay(
 
 
 def generate_training_puzzle_example(
-    puzzle_train_examples: List[Tuple[List[List[Cell]], List[List[Cell]]]],
+    puzzle_train_examples: List[Tuple[ExampleInput, List[List[Cell]]]],
     i: int,
     rotations: int,
     horizontal_flip: int,
     vertical_flip: int,
-) -> Tuple[List[List[Cell]], List[List[Cell]]]:
+) -> Tuple[ExampleInput, List[List[Cell]]]:
 
     puzzle_example = puzzle_train_examples[i]
 
     (raw_example_input, raw_example_output) = puzzle_example
+    raw_example_input = raw_example_input.cells()
 
     for _ in range(rotations):
         raw_example_input = rotate_90_clockwise(raw_example_input)
@@ -367,6 +368,7 @@ def generate_training_puzzle_example(
         raw_example_output = flip_board(
             raw_example_output, 'vertical')
 
+    raw_example_input = ExampleInput(raw_example_input)
     return raw_example_input, raw_example_output
 
 
@@ -378,7 +380,7 @@ def train_model_with_experience_replay_data_set(
     experience_replay_data_set: List[Experience],
     context_size: int, batch_size: int, device: torch.device,
     agent: Agent,
-    puzzle_train_example: Tuple[List[List[Cell]], List[List[Cell]]],
+    puzzle_train_example: Tuple[ExampleInput, List[List[Cell]]],
     cell_value_size: int, discount: float, padding_char: str, num_classes: int,
     shuffle_train_examples: bool,
     max_grad_norm: float, print_model_outputs: bool,

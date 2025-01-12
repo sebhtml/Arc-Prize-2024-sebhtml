@@ -5,7 +5,7 @@ from typing import List
 from vision import Cell, CellAddress, do_visual_fixation, crop_field_of_view
 from vision import select_visual_fixations
 from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
-from q_learning import QLearningAction
+from q_learning import QLearningAction, ExampleInput
 from model import CLS_TOKEN
 
 VACANT_CELL_CHAR = '_'
@@ -87,7 +87,7 @@ def filter_token(token: int) -> bool:
     return token in legal_tokens
 
 
-def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
+def prepare_context(example_input: ExampleInput, cell_address: CellAddress,
                     padding_char: str,
                     num_visual_fixations: int,
                     visual_fixation_height: int,
@@ -95,6 +95,7 @@ def prepare_context(example_input: List[List[Cell]], cell_address: CellAddress,
                     ) -> Context:
 
     # Get salient visual fixations.
+    example_input = example_input.cells()
     state = []
     for row in example_input:
         row2 = list(map(lambda cell: cell.cell_value(), row))

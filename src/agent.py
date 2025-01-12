@@ -10,7 +10,7 @@ import copy
 from typing import List, Tuple
 from context import tokens_to_text, make_example_tensor, prepare_context
 from context import state_to_text, get_puzzle_starting_state
-from q_learning import QLearningAction, Cell, CellAddress, Experience, GameState, trim_list
+from q_learning import QLearningAction, Cell, CellAddress, Experience, GameState, trim_list, ExampleInput
 from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment
 from configuration import Configuration
@@ -209,7 +209,7 @@ def evaluate_solution(actual: List[List[Cell]], expected: List[List[Cell]]) -> T
     return correct, len(expected)
 
 
-def test_policy(puzzle_examples, agent: Agent,
+def test_policy(puzzle_examples: List[Tuple[ExampleInput, List[List[Cell]]]], agent: Agent,
                 config: Configuration, cell_value_size: int,
                 context_size: int, batch_size: int,
                 device: torch.device,
@@ -256,7 +256,7 @@ def print_current_state(example_input, current_state, padding_char):
 
 
 def select_action_with_deep_q_network(
-        example_input: List[List[Cell]],
+        example_input: ExampleInput,
         current_state: List[List[Cell]],
         candidate_actions: list[QLearningAction],
         config: Configuration,
@@ -348,7 +348,7 @@ def select_action_with_deep_q_network(
 
 
 def select_action_with_policy_network(
-        example_input: List[List[Cell]],
+        example_input: ExampleInput,
         current_state: List[List[Cell]],
         cell_addresses: List[CellAddress],
         config: Configuration,
@@ -405,7 +405,7 @@ def generate_episode_with_policy(
         batch_size: int,
         device: torch.device,
         agent: Agent,
-        example_input: List[List[Cell]],
+        example_input: ExampleInput,
         example_output: List[List[Cell]],
 ) -> List[Experience]:
     """
