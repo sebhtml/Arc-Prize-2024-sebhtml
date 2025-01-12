@@ -1,8 +1,8 @@
 import random
 from typing import List, Tuple, Union
 from context import get_puzzle_starting_state
-from q_learning import Cell, reward, QLearningAction, GameState, ExampleInput
-from vision import VACANT_CELL_VALUE
+from q_learning import reward, QLearningAction, GameState, ExampleInput
+from vision import VACANT_CELL_VALUE, Cell
 import copy
 
 

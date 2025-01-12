@@ -34,7 +34,8 @@ from environment import Environment
 from training import train_model_using_experience_replay
 from configuration import Configuration
 from episode_renderer import render_episodes
-from q_learning import Cell, ExampleInput
+from q_learning import ExampleInput
+from vision import Cell
 
 config = Configuration()
 

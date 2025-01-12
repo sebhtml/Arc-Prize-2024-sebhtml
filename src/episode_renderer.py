@@ -1,8 +1,9 @@
 from typing import List
 from datetime import datetime, timezone
 from typing import IO
-from q_learning import GameState, VACANT_CELL_VALUE, Cell
+from q_learning import GameState
 from context import VACANT_CELL_CHAR
+from vision import VACANT_CELL_VALUE, Cell
 
 
 def render_episodes(puzzle_id: str, episodes: List[List[GameState]], episodes_dir_path: str,):

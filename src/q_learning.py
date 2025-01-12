@@ -2,8 +2,7 @@ import torch
 from typing import List
 import math
 
-VACANT_CELL_VALUE = -1
-OUTSIDE_CELL_VALUE = -3
+from vision import Cell
 
 # There are 10 possible colors.
 # 9 colors are incorrect and 1 color is correct.
@@ -63,42 +62,6 @@ class QLearningAction:
 
     def __eq__(self, other) -> bool:
         return self.__row == other.__row and self.__col == other.__col and self.__cell_value == other.__cell_value
-
-
-class CellAddress:
-    def __init__(self, row: int, col: int,):
-        self.__row = row
-        self.__col = col
-
-    def row(self) -> int:
-        return self.__row
-
-    def col(self) -> int:
-        return self.__col
-
-
-class Cell:
-    def __init__(self, value):
-        self.__value = value
-        self.__saliency = 0
-
-    def cell_value(self) -> int:
-        return self.__value
-
-    def set_cell_value(self, value):
-        self.__value = value
-
-    def __eq__(self, other) -> bool:
-        return self.__value == other.__value
-
-    def set_saliency(self, saliency: float):
-        self.__saliency = saliency
-
-    def saliency(self) -> float:
-        """
-        https://en.wikipedia.org/wiki/Salience_(neuroscience)
-        """
-        return self.__saliency
 
 
 class ExampleInput:
