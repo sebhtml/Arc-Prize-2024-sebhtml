@@ -1,6 +1,7 @@
 import torch
 from typing import List
 import math
+import copy
 
 from vision import Cell, CellAddress, do_visual_fixation
 from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
@@ -70,14 +71,31 @@ class ExampleInput:
     def __init__(self, cells: List[List[Cell]],):
         self.__cells = cells
 
+        # Prepare a cache for visual fixations.
+        self.__visual_fixations = copy.deepcopy(cells)
+        height = len(self.__visual_fixations)
+        width = len(self.__visual_fixations[0])
+        for y in range(height):
+            for x in range(width):
+                self.__visual_fixations[y][x] = None
+
     def cells(self) -> List[List[Cell]]:
         return self.__cells
 
     def visual_fixation_text(self, cell_address: CellAddress, visual_fixation_height: int, visual_fixation_width: int,) -> str:
-        example_input = self.cells()
-        visual_fixation = do_visual_fixation(
-            example_input, cell_address, visual_fixation_height, visual_fixation_width,)
-        return state_to_text(visual_fixation)
+        """
+        Calculate a visual fixation text and cache it for later.
+        """
+        y = cell_address.row()
+        x = cell_address.col()
+        if self.__visual_fixations[y][x] == None:
+            cell_address = CellAddress(y, x,)
+            example_input = self.cells()
+            visual_fixation = do_visual_fixation(
+                example_input, cell_address, visual_fixation_height, visual_fixation_width,)
+            text = state_to_text(visual_fixation)
+            self.__visual_fixations[y][x] = text
+        return self.__visual_fixations[y][x]
 
 
 class GameState:
