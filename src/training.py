@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime, timezone
 from typing import List, Tuple
 import random
-from agent import make_example_tensor, select_action_with_deep_q_network, generate_episode_with_policy, Agent, evaluate_solution
+from agent import make_example_tensor, generate_episode_with_policy, Agent, evaluate_solution
 from context import tokens_to_text, prepare_context
 from report import plot_train_loss_graph, plot_total_rewards_graph
 from model import ActionValueNetworkModel
@@ -15,112 +15,6 @@ from environment import Environment, generate_cell_actions
 from configuration import Configuration
 from q_learning import Experience, unbin_action_value, bin_action_value, trim_list, ExampleInput
 from vision import flip_board, rotate_90_clockwise, Cell
-
-
-def get_target_action_value(
-        experience: Experience,
-        config: Configuration,
-        context_size: int,
-        cell_value_size: int,
-        minimum_action_value: float,
-        maximum_action_value: float,
-        num_classes: int,
-        batch_size: int,
-        discount: float,
-        device: torch.device,
-        target_action_value_network: ActionValueNetworkModel,
-        verbose: bool,
-) -> float:
-    """
-    This software used reinforcement learning.
-    It uses Q-learning.
-
-    See https://en.wikipedia.org/wiki/Q-learning
-    See https://en.wikipedia.org/wiki/Bellman_equation
-
-    See
-    Dynamic Programming
-    https://www.science.org/doi/10.1126/science.153.3731.34
-
-    See:
-    Human-level control through deep reinforcement learning
-    https://www.nature.com/articles/nature14236
-    """
-
-    reward = experience.reward()
-
-    example_input = experience.next_state().example_input()
-    current_state = experience.next_state().current_state()
-
-    candidate_actions = generate_cell_actions(
-        current_state, cell_value_size)
-
-    is_terminal = len(candidate_actions) == 0
-
-    if is_terminal:
-        return reward
-
-    best_action, best_action_value, action_values = select_action_with_deep_q_network(
-        example_input,
-        current_state,
-        candidate_actions,
-        config,
-        context_size,
-        batch_size,
-        device,
-        target_action_value_network,
-        verbose,
-    )
-
-    best_action_value = unbin_action_value(
-        best_action_value, minimum_action_value, maximum_action_value, num_classes)
-
-    # We use the Bellman equation.
-    # See https://en.wikipedia.org/wiki/Bellman_equation
-    #
-    # Given an experience
-    # (x, a, r, x')
-    # where
-    #   x                        is the state
-    #   a in Gamma(x)            is the action
-    #   r = F(s, a)              is the reward
-    #   x' = T(s, a)             is the new state
-    #
-    # We have
-    #
-    # V(x) = max_{a \in \Gamma(x)} [ F(x, a) + \beta * V(T(x, a)) ]
-    #
-    # Here, concretely, we have:
-    #
-    #
-    #  Mathematical expression           Python expression
-    #  -----------------------------------------------------
-    #  a                                 experience.action()
-    #  F(x, a)                           reward
-    #  \beta                             discount
-    #  V(T(x, a))                        best_action_value
-    #
-
-    # In Q-learning (https://en.wikipedia.org/wiki/Q-learning)
-    # we write the Bellman equation as the following mathematical expresssion:
-    #
-    # We note the state with s instead of x.
-    #
-    # The discount is noted with gamma instead of beta.
-    #
-    # Q: S x A -> R
-    #
-    #
-    # \hat{Q}(s, a) = r + gamma * max_{a' \in \Gamma(s')} \hat{Q}(s', a')
-    #
-    #
-    # with
-    # s' = T(s, a)
-    # s \in S
-    # a \in A
-    # a \in \Gamma(s)
-
-    return reward + discount * best_action_value
 
 
 class MyDataset(Dataset):

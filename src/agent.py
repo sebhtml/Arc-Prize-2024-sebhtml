@@ -255,99 +255,6 @@ def print_current_state(example_input, current_state, padding_char):
     print_game_state_with_colors(game_state, sys.stdout)
 
 
-def select_action_with_deep_q_network(
-        example_input: ExampleInput,
-        current_state: List[List[Cell]],
-        candidate_actions: list[QLearningAction],
-        config: Configuration,
-        context_size: int,
-        batch_size: int,
-        device: torch.device,
-        action_value_network: ActionValueNetworkModel,
-        verbose: bool,
-) -> Tuple[QLearningAction, int, List[Tuple[int, float]]]:
-
-    # Note that all candidate actions act on the same cell.
-    candidate_action = candidate_actions[0]
-    cell_address = CellAddress(candidate_action.row(), candidate_action.col(),)
-
-    input_tokens = prepare_context(
-        device,
-        example_input, cell_address, config.padding_char,
-        config.num_visual_fixations,
-        config.visual_fixation_height,
-        config.visual_fixation_width,
-    )
-
-    if verbose:
-        print("input_text")
-        print(tokens_to_text(input_tokens))
-
-    # Add a dimension for the batch_size
-    inputs = list(map(lambda tensor: tensor.unsqueeze(0),
-                      make_example_tensor(input_tokens, context_size)))
-
-    inputs = [t.to(device) for t in inputs]
-    log_softmax_outputs = action_value_network(inputs)
-
-    action_values = []
-
-    # outputs.shape is [batch_size, num_actions, num_classes]
-
-    # Use a distributional mean action value.
-    #
-    # See
-    # Rainbow: Combining Improvements in Deep Reinforcement Learning
-    # https://arxiv.org/pdf/1710.02298
-    #
-    # See
-    # A Distributional Perspective on Reinforcement Learning
-    # https://arxiv.org/abs/1707.06887
-    #
-    # Evaluates the Einstein summation convention on the operands.
-
-    outputs = None
-    use_mean_action_value = False
-
-    if use_mean_action_value:
-        num_classes = log_softmax_outputs.shape[-1]
-        atoms = torch.arange(
-            num_classes, device=log_softmax_outputs.device).float()
-
-        probability_outputs = torch.exp(log_softmax_outputs)
-        outputs = torch.einsum('n,ban->ba', atoms, probability_outputs)
-    else:
-        outputs = log_softmax_outputs.argmax(-1).float()
-
-    for action_index in range(outputs.shape[1]):
-        mean_action_value = outputs[0, action_index].item()
-        action_values.append([action_index, mean_action_value])
-
-    np.random.shuffle(action_values)
-
-    best_action = None
-    best_action_value = None
-
-    for action_index, action_value in action_values:
-        candidate_action = candidate_actions[action_index]
-        row = candidate_action.row()
-        col = candidate_action.col()
-        cell_value = candidate_action.cell_value()
-
-        if verbose:
-            print(
-                f"Testing action  row: {row}  col: {col}  cell_value: {cell_value} action_value: {action_value}")
-        if best_action_value == None or action_value > best_action_value:
-            best_action = candidate_action
-            best_action_value = action_value
-
-    for t in inputs:
-        del t
-    del outputs
-
-    return best_action, best_action_value, action_values
-
-
 def select_action_with_policy_network(
         example_input: ExampleInput,
         current_state: List[List[Cell]],
@@ -385,10 +292,10 @@ def select_action_with_policy_network(
     inputs = torch.stack(inputs)
 
     inputs = inputs.to(device)
-    logits = policy_network(inputs)    
+    logits = policy_network(inputs)
     log_probs = F.log_softmax(logits, dim=-1)
     best_action_indexes = None
-    
+
     if config.policy_action_selection == "stochastic":
         temperature = 1.0
         logits = logits / temperature
@@ -403,6 +310,7 @@ def select_action_with_policy_network(
         best_action_indexes = logits.argmax(dim=-1).tolist()
 
     return best_action_indexes, log_probs
+
 
 def generate_episode_with_policy(
         environment: Environment,
