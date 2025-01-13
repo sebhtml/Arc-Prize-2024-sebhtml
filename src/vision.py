@@ -11,6 +11,9 @@ import random
 VACANT_CELL_VALUE = -1
 OUTSIDE_CELL_VALUE = -3
 
+VACANT_CELL_CHAR = '_'
+OUTSIDE_CELL_CHAR = '.'
+
 
 class CellAddress:
     def __init__(self, row: int, col: int,):

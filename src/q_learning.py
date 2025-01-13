@@ -2,7 +2,9 @@ import torch
 from typing import List
 import math
 
-from vision import Cell
+from vision import Cell, CellAddress, do_visual_fixation
+from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
+from vision import VACANT_CELL_CHAR, OUTSIDE_CELL_CHAR
 
 # There are 10 possible colors.
 # 9 colors are incorrect and 1 color is correct.

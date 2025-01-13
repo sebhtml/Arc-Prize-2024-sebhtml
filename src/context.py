@@ -5,11 +5,9 @@ from typing import List
 from vision import Cell, CellAddress, do_visual_fixation, crop_field_of_view
 from vision import select_visual_fixations
 from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
-from q_learning import QLearningAction, ExampleInput
+from vision import VACANT_CELL_CHAR, OUTSIDE_CELL_CHAR
+from q_learning import ExampleInput
 from model import CLS_TOKEN
-
-VACANT_CELL_CHAR = '_'
-OUTSIDE_CELL_CHAR = '.'
 
 
 class Context:

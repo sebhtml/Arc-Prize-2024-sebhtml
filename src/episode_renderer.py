@@ -2,7 +2,7 @@ from typing import List
 from datetime import datetime, timezone
 from typing import IO
 from q_learning import GameState
-from context import VACANT_CELL_CHAR
+from vision import VACANT_CELL_CHAR
 from vision import VACANT_CELL_VALUE, Cell
 
 
