@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from torch import nn
 import sys
-from q_learning import CellAddress
+from vision import CellAddress
 from episode_renderer import print_state_with_colors
 from main import make_celled_state
 
