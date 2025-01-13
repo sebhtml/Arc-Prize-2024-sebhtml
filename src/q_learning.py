@@ -6,6 +6,7 @@ import copy
 from vision import Cell, CellAddress, do_visual_fixation
 from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
 from vision import VACANT_CELL_CHAR, OUTSIDE_CELL_CHAR
+from vision import select_visual_fixations
 
 # There are 10 possible colors.
 # 9 colors are incorrect and 1 color is correct.
@@ -78,9 +79,29 @@ class ExampleInput:
         for y in range(height):
             for x in range(width):
                 self.__visual_fixations[y][x] = None
+        self._salient_cell_addresses = None
 
     def cells(self) -> List[List[Cell]]:
         return self.__cells
+
+    def get_salient_visual_fixations(
+        self,
+        num_visual_fixations: int,
+        visual_fixation_height: int, visual_fixation_width: int,
+    ) -> List[CellAddress]:
+        """
+        Get salient visual fixations.
+        """
+        if self._salient_cell_addresses == None:
+            example_input = self.cells()
+            state = []
+            for row in example_input:
+                row2 = list(map(lambda cell: cell.cell_value(), row))
+                state.append(row2)
+            cell_addresses = select_visual_fixations(
+                state, num_visual_fixations, visual_fixation_height, visual_fixation_width,)
+            self._salient_cell_addresses = cell_addresses
+        return self._salient_cell_addresses
 
     def visual_fixation_text(self, cell_address: CellAddress, visual_fixation_height: int, visual_fixation_width: int,) -> str:
         """

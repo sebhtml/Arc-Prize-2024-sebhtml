@@ -78,14 +78,9 @@ def prepare_context(example_input_obj: ExampleInput, cell_address: CellAddress,
                     visual_fixation_width: int,
                     ) -> Context:
 
-    # Get salient visual fixations.
-    example_input = example_input_obj.cells()
-    state = []
-    for row in example_input:
-        row2 = list(map(lambda cell: cell.cell_value(), row))
-        state.append(row2)
-    cell_addresses = select_visual_fixations(
-        state, num_visual_fixations, visual_fixation_height, visual_fixation_width,)
+    cell_addresses = example_input_obj.get_salient_visual_fixations(
+        num_visual_fixations, visual_fixation_height, visual_fixation_width,)
+    cell_addresses = copy.deepcopy(cell_addresses)
     np.random.shuffle(cell_addresses)
 
     # Append the cell address to attend to.
