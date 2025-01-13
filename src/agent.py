@@ -9,7 +9,6 @@ import sys
 import copy
 from typing import List, Tuple
 from context import tokens_to_text, make_example_tensor, prepare_context
-from context import state_to_text, get_puzzle_starting_state
 from q_learning import QLearningAction, Experience, GameState, trim_list, ExampleInput
 from model import ActionValueNetworkModel, PolicyNetworkModel
 from environment import Environment

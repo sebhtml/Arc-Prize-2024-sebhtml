@@ -38,22 +38,6 @@ def tokens_to_text(example_input_tokens: Context) -> str:
     return "".join(map(chr, tokens))
 
 
-def state_to_text(state: List[List[Cell]]) -> str:
-    output = ""
-    for row in range(len(state)):
-        for col in range(len(state[row])):
-            value = None
-            if state[row][col].cell_value() == VACANT_CELL_VALUE:
-                value = VACANT_CELL_CHAR
-            elif state[row][col].cell_value() == OUTSIDE_CELL_VALUE:
-                value = OUTSIDE_CELL_CHAR
-            else:
-                value = str(state[row][col].cell_value())
-            output += value
-        output += "\n"
-    return output
-
-
 def make_example_tensor(example_input_tokens: Context, context_size: int):
     attended_example_input = filter_tokens(
         example_input_tokens.attended_example_input())

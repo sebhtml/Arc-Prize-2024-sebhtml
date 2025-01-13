@@ -131,3 +131,19 @@ def trim_list(lst, k):
     keep at most k elements from list lst
     """
     return lst[-k:] if len(lst) > k else lst
+
+
+def state_to_text(state: List[List[Cell]]) -> str:
+    output = ""
+    for row in range(len(state)):
+        for col in range(len(state[row])):
+            value = None
+            if state[row][col].cell_value() == VACANT_CELL_VALUE:
+                value = VACANT_CELL_CHAR
+            elif state[row][col].cell_value() == OUTSIDE_CELL_VALUE:
+                value = OUTSIDE_CELL_CHAR
+            else:
+                value = str(state[row][col].cell_value())
+            output += value
+        output += "\n"
+    return output
