@@ -80,9 +80,12 @@ def prepare_context(
     visual_fixation_width: int,
 ) -> Context:
 
+    # Substract 1 because of the attended visual fixation for the cell that needs to be changed.
+    num_salient_visual_fixations = num_visual_fixations - 1
+
     cell_addresses = example_input_obj.get_salient_visual_fixations(
         device,
-        num_visual_fixations, visual_fixation_height, visual_fixation_width,)
+        num_salient_visual_fixations, visual_fixation_height, visual_fixation_width,)
     cell_addresses = copy.deepcopy(cell_addresses)
     np.random.shuffle(cell_addresses)
 

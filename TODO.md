@@ -1,7 +1,6 @@
 # Research and Development
 
 - add colors for 5 and other missing ones
-- num_visual_fixations should be 5 actually
 
 - clean up imports
 - rename module q_learning
