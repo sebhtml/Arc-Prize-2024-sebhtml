@@ -1,7 +1,5 @@
 # Research and Development
 
-- add colors for 5 and other missing ones
-
 - clean up imports
 - rename module q_learning
 

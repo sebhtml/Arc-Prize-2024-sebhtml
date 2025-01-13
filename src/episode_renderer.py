@@ -31,9 +31,11 @@ def print_cell(value: int, io: IO[str]):
         "2": "41m",  # red
         "3": "42m",  # green
         "4": "43m",  # yellow
-        "6": "45m",  # purple
+        "5": "47m",   # gray
+        "6": "45m",  # pink
         "7": "48;5;208m",  # orange
-        "8": "46m",  # cyan
+        "8": "46m",  # light blue
+        "9": "48;5;124m",  # maroon
     }
 
     char = VACANT_CELL_CHAR if value == VACANT_CELL_VALUE else str(value)
