@@ -26,6 +26,9 @@ learn:
 less-log:
 	./less-log.sh
 
+check-result:
+	./check-result.sh
+
 watch-log:
 	./watch-log.sh
 
