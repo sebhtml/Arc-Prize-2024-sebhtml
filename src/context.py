@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import copy
 from typing import List
-from vision import Cell, CellAddress, do_visual_fixation, crop_field_of_view
+from vision import Cell, CellAddress
 from vision import select_visual_fixations
 from vision import VACANT_CELL_VALUE, OUTSIDE_CELL_VALUE
 from vision import VACANT_CELL_CHAR, OUTSIDE_CELL_CHAR
@@ -69,7 +69,7 @@ def filter_token(token: int) -> bool:
     return token in legal_tokens
 
 
-def prepare_context(example_input: ExampleInput, cell_address: CellAddress,
+def prepare_context(example_input_obj: ExampleInput, cell_address: CellAddress,
                     padding_char: str,
                     num_visual_fixations: int,
                     visual_fixation_height: int,
@@ -77,7 +77,7 @@ def prepare_context(example_input: ExampleInput, cell_address: CellAddress,
                     ) -> Context:
 
     # Get salient visual fixations.
-    example_input = example_input.cells()
+    example_input = example_input_obj.cells()
     state = []
     for row in example_input:
         row2 = list(map(lambda cell: cell.cell_value(), row))
@@ -93,9 +93,8 @@ def prepare_context(example_input: ExampleInput, cell_address: CellAddress,
 
     for cell_address in cell_addresses:
         context_text += "fixation" + "\n"
-        visual_fixation = do_visual_fixation(
-            example_input, cell_address, visual_fixation_height, visual_fixation_width,)
-        context_text += state_to_text(visual_fixation)
+        context_text += example_input_obj.visual_fixation_text(
+            cell_address, visual_fixation_height, visual_fixation_width,)
 
     context = Context(
         text_to_tokens(context_text),

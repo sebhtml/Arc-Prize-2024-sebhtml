@@ -73,6 +73,12 @@ class ExampleInput:
     def cells(self) -> List[List[Cell]]:
         return self.__cells
 
+    def visual_fixation_text(self, cell_address: CellAddress, visual_fixation_height: int, visual_fixation_width: int,) -> str:
+        example_input = self.cells()
+        visual_fixation = do_visual_fixation(
+            example_input, cell_address, visual_fixation_height, visual_fixation_width,)
+        return state_to_text(visual_fixation)
+
 
 class GameState:
     def __init__(self, example_input: ExampleInput, current_state: List[List[Cell]]):
