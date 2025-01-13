@@ -1,12 +1,17 @@
 # Research and Development
 
-- test with 0ca9ddb6
-- test with 009d5c81
-- add cuda device in configuration
+- add colors for 5 and other missing ones
 - num_visual_fixations should be 5 actually
-- calculate salient cells once at the beginningv
+
 - clean up imports
 - rename module q_learning
+
+- test with 0ca9ddb6
+- test with 009d5c81
+
+- move norm and dropout at same scope in transformer block
+
+- verify shuffling of augmented data
 
 - use new puzzle
 
@@ -14,12 +19,9 @@
 
 - add puzzle id in png file names
 
-- move norm and dropout at same scope in transformer block
-
 - remove vacant variables
 
 - use BERT_large parameters L=12, H=768, A=12
-
 
 # Refactoring
 
@@ -41,7 +43,6 @@
 - implement epsilon-greedy policy for random exploration
 
 - move training of action value network in a step method in Agent
-- add actions left (10), up (11), right (12), down (13)
 - return only max_action_value in select_action_with_target_action_value_network
 
 - move training of action value network to agent.py
@@ -54,12 +55,13 @@
 
 # Reinforcement learning
 
+- Goal: retry reinforce algorithm to make it work.
+
 - process all experience in training loop because right now with reinforce, I get this:
 logits tensor[11.0497, -1.1402, -1.0108, -1.6909, -1.8992, -1.2135, -1.2171, -1.5647,
          -0.8588, -1.3075],
 - use term "returns" not "rewards"
 
-- retry reinforce algorithm
 - remove get_correct
 
 - normalize rewards
