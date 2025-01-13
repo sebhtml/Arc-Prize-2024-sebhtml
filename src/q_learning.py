@@ -135,12 +135,12 @@ class GameState:
 
 class Experience:
     def __init__(self, state: GameState, action: QLearningAction, reward: float, next_state: GameState,
-                 correct_action_index: int, log_probs: torch.Tensor,):
+                 optimal_action_index: int, log_probs: torch.Tensor,):
         self.__state = state
         self.__action = action
         self.__reward = reward
         self.__next_state = next_state
-        self.__correct_action_index = correct_action_index
+        self.__optimal_action_index = optimal_action_index
         self.__log_probs = log_probs
 
     def state(self) -> GameState:
@@ -155,8 +155,8 @@ class Experience:
     def next_state(self) -> GameState:
         return self.__next_state
 
-    def correct_action_index(self) -> int:
-        return self.__correct_action_index
+    def optimal_action_index(self) -> int:
+        return self.__optimal_action_index
 
     def log_probs(self) -> int:
         return self.__log_probs

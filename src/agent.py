@@ -379,7 +379,7 @@ def generate_episode_with_policy(
             best_action = QLearningAction(row, col, cell_value,)
 
             immediate_reward = environment.take_action(best_action)
-            expected_cell_value = environment.get_correct_action(
+            optimal_action_index = environment.get_optimal_action_index(
                 best_action.row(), best_action.col())
 
             example_input, next_state = environment.get_observations()
@@ -390,7 +390,7 @@ def generate_episode_with_policy(
                 best_action,
                 immediate_reward,
                 GameState(example_input, next_state),
-                expected_cell_value,
+                optimal_action_index,
                 cell_log_probs,
             )
             replay_buffer.append(experience)

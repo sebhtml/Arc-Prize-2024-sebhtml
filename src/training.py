@@ -38,7 +38,7 @@ class MyDataset(Dataset):
         reward = experience.reward()
 
         # action_index = candidate_action.cell_value()
-        action_index = experience.correct_action_index()
+        action_index = experience.optimal_action_index()
 
         log_probs = experience.log_probs()
 

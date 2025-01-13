@@ -100,7 +100,7 @@ class Environment:
 
         return immediate_reward
 
-    def get_correct_action(self, row: int, col: int) -> int:
+    def get_optimal_action_index(self, row: int, col: int) -> int:
         """
         Get the correct action.
         """
