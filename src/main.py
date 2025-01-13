@@ -120,7 +120,7 @@ def load_puzzle_examples(puzzle_id: str, example_type: str) -> List[Tuple[Exampl
 
 def main():
     cell_value_size = config.cell_value_size
-    device = torch.device("cuda")
+    device = torch.device(config.device,)
     environment = Environment(cell_value_size)
     agent = Agent(config, device)
     # RuntimeError: Found Tesla P100-PCIE-16GB which is too old to be supported by the triton GPU compiler, which is used as the backend. Triton only supports devices of CUDA Capability >= 7.0, but your device is of CUDA capability 6.0

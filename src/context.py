@@ -71,14 +71,17 @@ def filter_token(token: int) -> bool:
     return token in legal_tokens
 
 
-def prepare_context(example_input_obj: ExampleInput, cell_address: CellAddress,
-                    padding_char: str,
-                    num_visual_fixations: int,
-                    visual_fixation_height: int,
-                    visual_fixation_width: int,
-                    ) -> Context:
+def prepare_context(
+    device: torch.device,
+    example_input_obj: ExampleInput, cell_address: CellAddress,
+    padding_char: str,
+    num_visual_fixations: int,
+    visual_fixation_height: int,
+    visual_fixation_width: int,
+) -> Context:
 
     cell_addresses = example_input_obj.get_salient_visual_fixations(
+        device,
         num_visual_fixations, visual_fixation_height, visual_fixation_width,)
     cell_addresses = copy.deepcopy(cell_addresses)
     np.random.shuffle(cell_addresses)

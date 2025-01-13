@@ -405,8 +405,7 @@ def center_surround_receptive_field(img: torch.Tensor,) -> torch.Tensor:
     https://www.cse.psu.edu/~rtc12/CSE597E/papers/Itti_etal98pami.pdf
     """
 
-    f = ReceptiveField()
-    f.to('cuda')
+    f = ReceptiveField(img.device)
     output = f(img)
     return output
 
@@ -422,7 +421,7 @@ class ReceptiveField(nn.Module):
     https://homepages.inf.ed.ac.uk/rbf/HIPR2/gsmooth.htm
     """
 
-    def __init__(self,):
+    def __init__(self, device: torch.device,):
         super(ReceptiveField, self).__init__()
         gaussian_kernel = [
             [1, 4, 7, 4, 1,],
@@ -433,7 +432,8 @@ class ReceptiveField(nn.Module):
         ]
         self.gaussian_kernel = torch.tensor(gaussian_kernel).float()
         self.gaussian_kernel = self.gaussian_kernel / self.gaussian_kernel.sum()
-        self.gaussian_kernel = self.gaussian_kernel.unsqueeze(0).unsqueeze(0)
+        self.gaussian_kernel = self.gaussian_kernel.unsqueeze(
+            0).unsqueeze(0).to(device)
 
         laplacian_kernel = [
             [0, -1, 0,],
@@ -442,7 +442,7 @@ class ReceptiveField(nn.Module):
         ]
         self.laplacian_kernel = torch.tensor(laplacian_kernel).float()
         self.laplacian_kernel = self.laplacian_kernel.unsqueeze(
-            0).unsqueeze(0).to('cuda')
+            0).unsqueeze(0).to(device)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         output = nn.functional.conv2d(x, self.laplacian_kernel,
@@ -463,6 +463,8 @@ def count_zero_crossings_2d(tensor):
         - sign_changes: A tensor with shape [M, N] representing locations of x-axis zero crossings (1 for crossing, 0 otherwise).
     """
 
+    device = tensor.device
+
     # Squeeze redundant dimensions
     tensor = tensor.squeeze(0).squeeze(0)  # Now shape is [M, N]
 
@@ -470,7 +472,7 @@ def count_zero_crossings_2d(tensor):
     sign = torch.sign(tensor)
 
     # Detect sign changes (avoiding out-of-bounds access)
-    sign_changes = torch.zeros_like(sign).to('cuda')  # Initialize with zeros
+    sign_changes = torch.zeros_like(sign).to(device)  # Initialize with zeros
     sign_changes[:, 1:] += sign[:, :-1] != sign[:, 1:]
     sign_changes[:, :-1] += sign[:, 1:] != sign[:, :-1]
     sign_changes[1:, :] += sign[:-1, :] != sign[1:, :]
@@ -480,12 +482,13 @@ def count_zero_crossings_2d(tensor):
 
 
 def select_visual_fixations(
+    device: torch.device,
     state: List[List[int]],
     num_visual_fixations: int,
     visual_fixation_height: int, visual_fixation_width: int,
 ) -> List[CellAddress]:
 
-    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0).to('cuda')
+    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0).to(device)
     laplacian = center_surround_receptive_field(state)
     edges = count_zero_crossings_2d(laplacian)
 
@@ -499,7 +502,7 @@ def select_visual_fixations(
         #    print(row2)
 
         saliency_kernel = torch.ones(
-            1, 1, visual_fixation_height, visual_fixation_width).to('cuda')
+            1, 1, visual_fixation_height, visual_fixation_width).to(device)
         saliency = nn.functional.conv2d(edges, saliency_kernel,
                                         stride=1, padding="same")
 

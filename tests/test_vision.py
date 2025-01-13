@@ -1,13 +1,16 @@
 from vision import rotate_90_clockwise, translate_board, flip_board, crop_field_of_view
 from vision import center_surround_receptive_field, do_visual_fixation
 from vision import count_zero_crossings_2d, select_visual_fixations
+
 import torch
 import numpy as np
 from torch import nn
 import sys
+
 from vision import CellAddress
 from episode_renderer import print_state_with_colors
 from main import make_celled_state
+from configuration import Configuration
 
 
 def test_rotate_90_clockwise():
@@ -124,6 +127,9 @@ def test_crop_field_of_view():
 
 
 def test_center_surround_receptive_field():
+    config = Configuration()
+    device = torch.device(config.device)
+
     state = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
         [0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 8, 8, 0, 0,],
@@ -146,7 +152,7 @@ def test_center_surround_receptive_field():
         row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
         print(row2)
 
-    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0).to('cuda')
+    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0).to(device)
     laplacian = center_surround_receptive_field(state)
 
     expected = [
@@ -180,6 +186,9 @@ def test_center_surround_receptive_field():
 
 
 def test_count_zero_crossings_2d():
+    config = Configuration()
+    device = torch.device(config.device)
+
     # Example usage
     tensor = torch.tensor(
         [[[
@@ -189,7 +198,7 @@ def test_count_zero_crossings_2d():
             [-0.7130,  0.6620,  0.1569,  0.6320, -0.2912],
             [0.1315, -0.7237, -1.4901, -0.7380,  0.7858]
         ]]]
-    ).to('cuda')
+    ).to(device)
 
     expected = torch.tensor(
         [[[
@@ -206,6 +215,9 @@ def test_count_zero_crossings_2d():
 
 
 def test_select_visual_fixations():
+    config = Configuration()
+    device = torch.device(config.device)
+
     example_input = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
         [0, 0, 0, 0, 0, 0, 0, 8, 8, 0, 8, 8, 0, 0,],
@@ -227,6 +239,7 @@ def test_select_visual_fixations():
     visual_fixation_width = 5
     visual_fixation_height = 5
     addresses = select_visual_fixations(
+        device,
         example_input, num_visual_fixations, visual_fixation_height, visual_fixation_width,)
 
     celled_example_input = make_celled_state(example_input)

@@ -29,6 +29,8 @@ class Configuration:
 
     time_marker = '2024-11-09T00:18:25.063611+00:00'
 
+    device = "cuda"
+
     #
     # Infrastructure configuration
     #

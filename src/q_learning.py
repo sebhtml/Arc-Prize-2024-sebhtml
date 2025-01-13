@@ -86,6 +86,7 @@ class ExampleInput:
 
     def get_salient_visual_fixations(
         self,
+        device: torch.device,
         num_visual_fixations: int,
         visual_fixation_height: int, visual_fixation_width: int,
     ) -> List[CellAddress]:
@@ -99,6 +100,7 @@ class ExampleInput:
                 row2 = list(map(lambda cell: cell.cell_value(), row))
                 state.append(row2)
             cell_addresses = select_visual_fixations(
+                device,
                 state, num_visual_fixations, visual_fixation_height, visual_fixation_width,)
             self._salient_cell_addresses = cell_addresses
         return self._salient_cell_addresses
