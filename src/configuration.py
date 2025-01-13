@@ -103,6 +103,8 @@ class Configuration:
     verbose_target_action_value_network = False
     use_action_value_network = False
     use_policy_network = True
+    # "greedy" or "stochastic"
+    policy_action_selection = "greedy"
     shuffle_train_examples = True
     # In "Llama 2: Open Foundation and Fine-Tuned Chat Models" https://arxiv.org/abs/2307.09288, they do gradient clipping with norm=1.0
     max_grad_norm = 1.0

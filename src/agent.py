@@ -385,20 +385,24 @@ def select_action_with_policy_network(
     inputs = torch.stack(inputs)
 
     inputs = inputs.to(device)
-    logits = policy_network(inputs)
-    temperature = 1.0
-    logits = logits / temperature
-    probs = F.softmax(logits, dim=-1)
-    dist = torch.distributions.Categorical(probs)
-
-    # Sampling fom the probability distribution does the exploration.
-    samples = dist.sample()
-    best_action_indexes = samples.tolist()
-
+    logits = policy_network(inputs)    
     log_probs = F.log_softmax(logits, dim=-1)
+    best_action_indexes = None
+    
+    if config.policy_action_selection == "stochastic":
+        temperature = 1.0
+        logits = logits / temperature
+        probs = F.softmax(logits, dim=-1)
+        dist = torch.distributions.Categorical(probs)
+
+        # Sampling fom the probability distribution does the exploration.
+        samples = dist.sample()
+        best_action_indexes = samples.tolist()
+
+    elif config.policy_action_selection == "greedy":
+        best_action_indexes = logits.argmax(dim=-1).tolist()
 
     return best_action_indexes, log_probs
-
 
 def generate_episode_with_policy(
         environment: Environment,
