@@ -146,7 +146,7 @@ def test_center_surround_receptive_field():
         row2 = list(map(lambda x: str(round(x, 2)).rjust(6), row))
         print(row2)
 
-    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0)
+    state = torch.tensor(state).float().unsqueeze(0).unsqueeze(0).to('cuda')
     laplacian = center_surround_receptive_field(state)
 
     expected = [
@@ -189,7 +189,7 @@ def test_count_zero_crossings_2d():
             [-0.7130,  0.6620,  0.1569,  0.6320, -0.2912],
             [0.1315, -0.7237, -1.4901, -0.7380,  0.7858]
         ]]]
-    )
+    ).to('cuda')
 
     expected = torch.tensor(
         [[[
